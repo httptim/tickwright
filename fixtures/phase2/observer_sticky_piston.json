@@ -1,0 +1,42 @@
+{
+  "name": "observer_sticky_piston",
+  "description": "An observer's two-tick pulse drives a sticky piston, which pushes a block up and pulls it back.",
+  "ticks": 24,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "observer",
+    "piston"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "sticky_piston[extended=false,facing=up]",
+    "O": "observer[facing=east,powered=false]"
+  },
+  "layers": [
+    [
+      "#.."
+    ],
+    [
+      "PO."
+    ],
+    [
+      "#.."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        2,
+        1,
+        0
+      ],
+      "state": "redstone_block"
+    }
+  ]
+}

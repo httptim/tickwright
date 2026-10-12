@@ -1,0 +1,34 @@
+{
+  "name": "observer_chain",
+  "description": "Four observers in a row, each watching the next. A block placed at the far end ripples back one observer every two ticks to the lamp.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "observer"
+  ],
+  "palette": {
+    "L": "redstone_lamp[lit=false]",
+    "O": "observer[facing=east,powered=false]"
+  },
+  "layers": [
+    [
+      "LOOOO."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        5,
+        0,
+        0
+      ],
+      "state": "redstone_block"
+    }
+  ]
+}

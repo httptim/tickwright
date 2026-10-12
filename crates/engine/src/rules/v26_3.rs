@@ -30,6 +30,7 @@ fn block(name: &str) -> Option<Kind> {
         "slime_block" => Kind::Slime,
         "honey_block" => Kind::Honey,
         "chest" | "trapped_chest" => Kind::Chest,
+        "observer" => Kind::Observer,
         _ => return None,
     })
 }

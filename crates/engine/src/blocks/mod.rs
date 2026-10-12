@@ -13,6 +13,7 @@
 mod button;
 mod lamp;
 mod lever;
+mod observer;
 mod piston;
 mod repeater;
 mod torch;
@@ -46,6 +47,7 @@ pub enum Kind {
     Slime,
     Honey,
     Chest,
+    Observer,
     Other,
 }
 
@@ -112,6 +114,7 @@ pub fn is_signal_source(level: &Level, state: StateId) -> bool {
                 | Kind::RedstoneTorch
                 | Kind::RedstoneWallTorch
                 | Kind::Repeater
+                | Kind::Observer
         ),
     }
 }
@@ -120,7 +123,7 @@ pub fn is_signal_source(level: &Level, state: StateId) -> bool {
 /// block's support shape covers its whole `dir` face.
 pub fn is_face_sturdy(level: &Level, pos: Pos, state: StateId, dir: Dir) -> bool {
     match level.kind(state) {
-        Kind::Solid | Kind::RedstoneLamp | Kind::RedstoneBlock | Kind::Slime | Kind::Glass => true,
+        Kind::Solid | Kind::RedstoneLamp | Kind::RedstoneBlock | Kind::Slime | Kind::Glass | Kind::Observer => true,
         Kind::Slab => match level.prop(state, "type") {
             "double" => true,
             "top" => dir == Dir::Up,
@@ -142,6 +145,7 @@ pub fn get_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i32 {
     match level.kind(state) {
         Kind::Lever | Kind::StoneButton => lever::get_signal(level, pos, state, dir),
         Kind::RedstoneBlock => 15,
+        Kind::Observer => observer::get_signal(level, state, dir),
         Kind::Repeater => repeater::get_signal(level, pos, state, dir),
         Kind::RedstoneWire => wire::get_signal(level, pos, state, dir),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::get_signal(level, pos, state, dir),
@@ -155,6 +159,7 @@ pub fn get_direct_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i
         Kind::Lever | Kind::StoneButton => lever::get_direct_signal(level, pos, state, dir),
         Kind::RedstoneWire => wire::get_direct_signal(level, pos, state, dir),
         Kind::Repeater => repeater::get_signal(level, pos, state, dir),
+        Kind::Observer => observer::get_signal(level, state, dir),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::get_direct_signal(level, pos, state, dir),
         _ => 0,
     }
@@ -169,6 +174,7 @@ pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId, moved
         Kind::Repeater => repeater::on_place(level, pos, state),
         Kind::Piston | Kind::StickyPiston => piston::on_place(level, pos, state, old),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::on_place(level, pos, state),
+        Kind::Observer => observer::on_place(level, pos, state, old),
         _ => {}
     }
 }
@@ -180,6 +186,7 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
         Kind::RedstoneWire => wire::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
         Kind::Repeater => repeater::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
         Kind::PistonHead => piston::head_affect_neighbors_after_removal(level, pos, state),
+        Kind::Observer => observer::affect_neighbors_after_removal(level, pos, state),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => {
             torch::affect_neighbors_after_removal(level, pos, state, moved_by_piston)
         }
@@ -214,6 +221,7 @@ pub fn update_shape(
         Kind::PistonHead => piston::head_update_shape(level, pos, state, dir),
         Kind::Lever | Kind::StoneButton => face_attached_update_shape(level, pos, state, dir),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::update_shape(level, pos, state, dir),
+        Kind::Observer => observer::update_shape(level, pos, state, dir),
         _ => state,
     }
 }
@@ -231,6 +239,7 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::tick(level, pos, state),
         Kind::Repeater => repeater::tick(level, pos, state),
         Kind::StoneButton => button::tick(level, pos, state),
+        Kind::Observer => observer::tick(level, pos, state),
         _ => {}
     }
 }

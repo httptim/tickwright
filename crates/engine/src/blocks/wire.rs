@@ -71,6 +71,8 @@ fn should_connect_to(level: &Level, state: StateId, dir: Option<Dir>) -> bool {
             let facing = level.dir(state, "facing");
             dir.is_some_and(|d| facing == d || facing.opposite() == d)
         }
+        // Only toward its back, where its pulse comes out.
+        Kind::Observer => dir == Some(level.dir(state, "facing")),
         _ => super::is_signal_source(level, state) && dir.is_some(),
     }
 }

@@ -1,0 +1,43 @@
+{
+  "name": "observer_removed_mid_pulse",
+  "description": "An observer is broken while its pulse is still on, which tells the lamp behind it the pulse ended.",
+  "ticks": 20,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "observer"
+  ],
+  "palette": {
+    "L": "redstone_lamp[lit=false]",
+    "O": "observer[facing=east,powered=false]"
+  },
+  "layers": [
+    [
+      "LO."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        2,
+        0,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 4,
+      "action": "destroy",
+      "pos": [
+        1,
+        0,
+        0
+      ]
+    }
+  ]
+}
