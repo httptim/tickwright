@@ -60,3 +60,5 @@ with open(f"{out_dir}/loot.json", "w") as f:
     f.write("{\n" + ",\n".join(rows) + "\n}\n")
 complex_count = sum(r.endswith('"complex"') for r in rows)
 print(f"    {len(rows)} block loot tables, {complex_count} complex -> {out_dir}/loot.json")
+with open(f"{out_dir}/loot_debug.json", "w") as f:
+    json.dump({b: json.loads(z.read(PREFIX + b + ".json")) for b in ["glass", "dead_tube_coral_fan", "torch"]}, f, indent=1)
