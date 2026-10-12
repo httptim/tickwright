@@ -164,3 +164,4 @@ sculk_calibrated_frequency order
 sculk_destroy_distances order
 sculk_lever_on_off order
 sculk_wool_blocks order
+sculk_hears_blocks order
