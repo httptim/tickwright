@@ -66,13 +66,36 @@ rm -rf "$WORK/traces"
 java -javaagent:"$WORK/agent.jar" -cp "$WORK/classes:$WORK/agent.jar:$CP" \
     tickwright.harness.Capture \
     --fixtures "$WORK/resolved" --out "$WORK/traces" --universe "$WORK/universe" "$@" \
-    2>&1 | grep -vE 'Saving |chunks are saved|dimensions are saved|Preparing '
+    2>&1 | grep -vE 'Saving |chunks are saved|dimensions are saved|Preparing |\[ \]$' | tee "$WORK/capture.log"
 
 # --- check the traces parse ---------------------------------------------------
 echo "==> checking traces"
 n=0
 for t in "$WORK"/traces/*.json; do
-    target/release/tickwright diff "$t" "$t" --level phase >/dev/null
+    target/release/tickwright diff "$t" "$t" --level order >/dev/null
     n=$((n + 1))
 done
 echo "    $n trace(s) parse and self-compare"
+echo "    traces total: $(du -sh "$WORK/traces" | cut -f1)"
+
+# --- committed copy -----------------------------------------------------------
+# traces/<version>/ holds the ground truth the engine is tested against,
+# gzipped (-n keeps the output byte-identical between runs).
+if [[ $# -eq 0 ]]; then
+    rm -rf "traces/$MC_VERSION"
+    mkdir -p "traces/$MC_VERSION"
+    for t in "$WORK"/traces/*.json; do
+        gzip -n -9 -c "$t" > "traces/$MC_VERSION/$(basename "$t").gz"
+    done
+fi
+
+# --- data reports -------------------------------------------------------------
+# The game's own dump of every block, its properties and default state, and
+# every registry. tools/registry.py condenses it into data/<version>/.
+if [[ -n "${REPORTS:-}" ]]; then
+    echo "==> generating data reports"
+    rm -rf "$WORK/reports"
+    (cd "$WORK" && java -DbundlerMainClass=net.minecraft.data.Main -jar "server-$MC_VERSION.jar" \
+        --reports --output reports >/dev/null)
+    python3 -I tools/registry.py "$WORK/reports/reports" "data/$MC_VERSION"
+fi

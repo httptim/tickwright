@@ -24,7 +24,8 @@ Traces compare at three levels, each stricter than the last:
 | `phase` | each block's changes within a tick, and the phase each happened in |
 | `order` | every update, scheduled tick and block event, in the game's order |
 
-The harness records `state` and `phase` today; `order` is next.
+The harness records all three. Comparator updates are not recorded yet;
+phase 1 has no comparators.
 
 ## Layout
 
@@ -34,6 +35,9 @@ The harness records `state` and `phase` today; `order` is next.
 | `crates/cli` | The `tickwright` command: `resolve` and `diff` |
 | `fixtures/phase1` | Phase 1 fixtures: dust, torches, repeaters, pistons |
 | `harness/` | Java capture harness for the vanilla server |
+| `traces/<version>/` | Ground-truth traces from the real game, gzipped |
+| `data/<version>/` | Blocks, items and block entity types from the game's data reports |
+| `tools/registry.py` | Turns the game's data reports into `data/<version>/` |
 
 ## Usage
 
@@ -58,8 +62,11 @@ The script downloads the official server jar from Mojang and checks its
 SHA-1 against Mojang's manifest. The jar is never committed or
 redistributed. Traces land in `harness/work/traces/`.
 
-The `oracle` workflow runs the same script on GitHub Actions and uploads the
-traces as an artifact.
+The `oracle` workflow runs the same script on GitHub Actions on every pull
+request. It fails if the committed `traces/` or `data/` no longer match what
+the game produces, which also catches a capture that is not deterministic.
+After changing fixtures or the harness, run the workflow by hand with
+`commit_data` to commit fresh copies to the branch.
 
 ## Writing a fixture
 

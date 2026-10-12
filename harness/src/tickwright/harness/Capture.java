@@ -42,7 +42,9 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.BlockEventData;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.ticks.ScheduledTick;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import net.minecraft.world.phys.AABB;
@@ -93,11 +95,19 @@ public final class Capture {
         Bootstrap.bootStrap();
         Util.startTimerHackThread();
 
-        if (Hooks.patchedMethods == 0) {
-            throw new IllegalStateException(
-                    "the agent patched no setBlockState method; run with -javaagent:agent.jar");
+        // Load the remaining patched classes so every hook can be checked.
+        for (String c : List.of("net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase",
+                "net.minecraft.world.ticks.LevelTicks", "net.minecraft.server.level.ServerLevel")) {
+            Class.forName(c, false, Capture.class.getClassLoader());
         }
-        System.out.printf("agent patched %d method(s)%n", Hooks.patchedMethods);
+        System.out.printf("agent patched: %s%n", new TreeMap<>(Hooks.patched));
+        for (String kind : List.of("set", "neighbor", "shape", "schedule", "tick", "block_event_queued",
+                "block_event")) {
+            if (!Hooks.patched.containsKey(kind)) {
+                throw new IllegalStateException("the agent patched no method for " + kind
+                        + "; run with -javaagent:agent.jar, or the game's method changed");
+            }
+        }
 
         deleteRecursively(universe);
         LevelStorageSource storage = LevelStorageSource.createDefault(universe);
@@ -120,7 +130,12 @@ public final class Capture {
         String mcVersion = SharedConstants.getCurrentVersion().name();
         System.out.printf("Minecraft %s%n", mcVersion);
 
-        Hooks.listener = Capture::beforeSet;
+        // Bring every chunk near the default origin to full ticking once, up
+        // front, so the first fixture in a new chunk does not wait on loading.
+        warmUp(new BlockPos(-32, 90, -32), new BlockPos(31, 130, 31));
+
+        Hooks.setListener = Capture::beforeSet;
+        Hooks.eventListener = Capture::onEvent;
 
         List<Path> files;
         try (Stream<Path> s = Files.list(fixtures)) {
@@ -135,6 +150,7 @@ public final class Capture {
         Files.createDirectories(out);
 
         Map<String, Integer> phaseCounts = new TreeMap<>();
+        Map<String, Integer> kindCounts = new TreeMap<>();
         int failures = 0;
         for (Path file : files) {
             try {
@@ -142,6 +158,7 @@ public final class Capture {
                         mcVersion);
                 for (JsonElement e : trace.getAsJsonArray("entries")) {
                     phaseCounts.merge(e.getAsJsonObject().get("phase").getAsString(), 1, Integer::sum);
+                    kindCounts.merge(e.getAsJsonObject().get("kind").getAsString(), 1, Integer::sum);
                 }
                 String id = trace.get("fixture").getAsString();
                 Files.writeString(out.resolve(id + ".json"), GSON.toJson(trace) + "\n");
@@ -154,6 +171,7 @@ public final class Capture {
         }
 
         System.out.printf("entries by phase: %s%n", phaseCounts);
+        System.out.printf("entries by kind: %s%n", kindCounts);
         if (!unknownPhases.isEmpty()) {
             failures++;
             System.out.println("block writes in a phase the harness could not identify:");
@@ -254,13 +272,12 @@ public final class Capture {
             recording = null;
         }
 
+        // Every kind of event phase 1 needs is recorded, so the trace is
+        // complete at every level. Comparator updates are not hooked yet.
         JsonArray levels = new JsonArray();
-        for (JsonElement l : fixture.getAsJsonArray("levels")) {
-            // Writes are recorded with phases; update order is not recorded yet.
-            if (!l.getAsString().equals("order")) {
-                levels.add(l);
-            }
-        }
+        levels.add("state");
+        levels.add("phase");
+        levels.add("order");
 
         JsonObject trace = new JsonObject();
         trace.addProperty("format", 1);
@@ -301,16 +318,70 @@ public final class Capture {
         }
         rec.lastKey = key;
 
+        add(rec, phase, "set", pos, serialized, null);
+    }
+
+    /**
+     * Called by the agent's hooks for updates, scheduled ticks and block
+     * events. Only the overworld's events inside the box are kept.
+     */
+    private static void onEvent(String kind, Object self, Object arg) {
+        Recording rec = recording;
+        if (rec == null) {
+            return;
+        }
+        BlockPos pos;
+        String detail = null;
+        switch (kind) {
+            case "neighbor", "shape" -> pos = (BlockPos) arg;
+            case "tick", "block_event_queued" -> {
+                if (self != level) {
+                    return;
+                }
+                pos = (BlockPos) arg;
+            }
+            case "schedule" -> {
+                if (self != level.getBlockTicks() || !(arg instanceof ScheduledTick<?> t)) {
+                    return;
+                }
+                pos = t.pos();
+                detail = "delay=" + (t.triggerTick() - level.getGameTime())
+                        + ",priority=" + t.priority().getValue();
+            }
+            case "block_event" -> {
+                if (self != level || !(arg instanceof BlockEventData e)) {
+                    return;
+                }
+                pos = e.pos();
+                detail = e.paramA() + "," + e.paramB();
+            }
+            default -> {
+                return;
+            }
+        }
+        if (!rec.contains(pos)) {
+            return;
+        }
+        rec.lastKey = null;
+        add(rec, phase(), kind, pos, null, detail);
+    }
+
+    private static void add(Recording rec, String phase, String kind, BlockPos pos, String state, String detail) {
         JsonObject e = new JsonObject();
         e.addProperty("tick", rec.tick);
         e.addProperty("phase", phase);
-        e.addProperty("kind", "set");
+        e.addProperty("kind", kind);
         JsonArray p = new JsonArray();
-        p.add(x);
-        p.add(y);
-        p.add(z);
+        p.add(pos.getX() - rec.origin.getX());
+        p.add(pos.getY() - rec.origin.getY());
+        p.add(pos.getZ() - rec.origin.getZ());
         e.add("pos", p);
-        e.addProperty("state", serialized);
+        if (state != null) {
+            e.addProperty("state", state);
+        }
+        if (detail != null) {
+            e.addProperty("detail", detail);
+        }
         rec.entries.add(e);
     }
 
@@ -420,10 +491,13 @@ public final class Capture {
                 }
             }
         }
-        int n = 0;
-        while (n < 600 && !chunks.stream().allMatch(c -> level.isPositionTickingWithEntitiesLoaded(c.pack()))) {
+        // Chunk loading happens on worker threads, so wait on the clock rather
+        // than a tick count: unthrottled ticks can outrun it.
+        long deadline = System.nanoTime() + 120_000_000_000L;
+        while (System.nanoTime() < deadline
+                && !chunks.stream().allMatch(c -> level.isPositionTickingWithEntitiesLoaded(c.pack()))) {
             tick();
-            n++;
+            Thread.sleep(5);
         }
         if (!chunks.stream().allMatch(c -> level.isPositionTickingWithEntitiesLoaded(c.pack()))) {
             throw new IllegalStateException("chunks around the fixture never became entity-ticking");

@@ -11,6 +11,8 @@ on:
       - harness/**
       - fixtures/**
       - crates/**
+      - tools/**
+      - data/**
       - .github/workflows/oracle.yml
   push:
     branches: [main]
@@ -19,12 +21,20 @@ on:
       only:
         description: Capture only fixtures whose file name contains this
         required: false
+      commit_data:
+        description: Commit regenerated registry data and traces to the branch
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
 
 jobs:
   capture:
     runs-on: ubuntu-latest
     env:
       MC_VERSION: "26.3"
+      REPORTS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -47,14 +57,42 @@ jobs:
       - name: Print unrotated traces
         if: always()
         run: |
-          for t in harness/work/traces/*@r0.json; do
+          for t in harness/work/traces/{torch_inverter,repeater_lock,piston_push,sticky_piston_pulse_1}@r0.json; do
+            [ -f "$t" ] || continue
             echo "::group::$(basename "$t" .json)"
-            jq -c '{initial: .initial | length, levels}, (.entries[] | [.tick, .phase, .pos, .state])' "$t"
+            jq -c '{initial: .initial | length, levels}, (.entries[] | [.tick, .phase, .kind, .pos, (.state // .detail)])' "$t"
             echo "::endgroup::"
           done
+      - name: Committed ground truth is current
+        if: ${{ !inputs.commit_data && !inputs.only }}
+        run: |
+          if [ -z "$(git ls-tree --name-only HEAD "data/$MC_VERSION")" ]; then
+            echo "::warning::data/$MC_VERSION is not committed yet; run this workflow with commit_data"
+            exit 0
+          fi
+          # Fails if the game's output changed, or if a capture is not deterministic.
+          git add -N data traces
+          git diff --exit-code --stat -- data traces
+      - name: Commit ground truth
+        if: ${{ inputs.commit_data && !inputs.only }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data traces
+          git diff --cached --quiet || git commit -m "Regenerate $MC_VERSION registry data and traces from the game"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: traces-${{ env.MC_VERSION }}
           path: harness/work/traces/
           if-no-files-found: ignore
+      - name: Capture summary
+        if: always()
+        run: |
+          log=harness/work/capture.log
+          [ -f "$log" ] || exit 0
+          grep -E '^(agent patched|Minecraft|entries by|captured|block writes)' "$log" || true
+          grep -A 25 -m 3 ' FAILED: ' "$log" || true
+          du -sh harness/work/traces || true
+
