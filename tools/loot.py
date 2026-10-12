@@ -8,7 +8,7 @@ writes <out dir>/loot.json, one block per line:
 - "minecraft:<item>": the block always drops one of that item (one pool,
   one roll, one plain item entry, no conditions but survives_explosion and
   no functions but explosion_decay), so the drop draws no random numbers;
-- "": the table drops nothing;
+- "": the table drops nothing, or only to a silk touch tool;
 - "complex": anything else (counts, fortune, silk touch, block state
   conditions), which the engine refuses rather than guessing.
 
@@ -25,6 +25,28 @@ PREFIX = "data/minecraft/loot_table/blocks/"
 
 ALLOWED_CONDITIONS = {"minecraft:survives_explosion"}
 ALLOWED_FUNCTIONS = {"minecraft:explosion_decay"}
+# A break with no tool never passes these.
+SILK_TOUCH = {"minecraft:tool/can_silk_touch"}
+
+
+def listed(obj, one, many):
+    """The conditions or functions on a table, pool or entry. 26.x writes a
+    single one under the singular key, older data a list under the plural."""
+    out = []
+    for key in (one, many):
+        v = obj.get(key)
+        if v is None:
+            continue
+        out.extend(v if isinstance(v, list) else [v])
+    return out
+
+
+def kind(c, legacy_key):
+    """A condition or function's type: a reference to a named predicate is a
+    plain string; an inline one names its type."""
+    if isinstance(c, str):
+        return c
+    return c.get("type") or c.get(legacy_key)
 
 
 def simple(table):
@@ -42,12 +64,17 @@ def simple(table):
     e = entries[0]
     if e.get("type") != "minecraft:item":
         return "complex"
-    conditions = pool.get("conditions", []) + e.get("conditions", [])
-    if any(c.get("condition") not in ALLOWED_CONDITIONS for c in conditions):
+    conditions = [kind(c, "condition") for c in listed(pool, "condition", "conditions") + listed(e, "condition", "conditions")]
+    functions = [
+        kind(f, "function")
+        for f in listed(pool, "function", "functions") + listed(e, "function", "functions") + listed(table, "function", "functions")
+    ]
+    if any(f not in ALLOWED_FUNCTIONS for f in functions):
         return "complex"
-    functions = pool.get("functions", []) + e.get("functions", []) + table.get("functions", [])
-    if any(f.get("function") not in ALLOWED_FUNCTIONS for f in functions):
+    if any(c not in ALLOWED_CONDITIONS | SILK_TOUCH for c in conditions):
         return "complex"
+    if any(c in SILK_TOUCH for c in conditions):
+        return ""
     return e["name"]
 
 
@@ -60,5 +87,3 @@ with open(f"{out_dir}/loot.json", "w") as f:
     f.write("{\n" + ",\n".join(rows) + "\n}\n")
 complex_count = sum(r.endswith('"complex"') for r in rows)
 print(f"    {len(rows)} block loot tables, {complex_count} complex -> {out_dir}/loot.json")
-with open(f"{out_dir}/loot_debug.json", "w") as f:
-    json.dump({b: json.loads(z.read(PREFIX + b + ".json")) for b in ["glass", "dead_tube_coral_fan", "torch"]}, f, indent=1)

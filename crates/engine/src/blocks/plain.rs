@@ -61,6 +61,24 @@ pub fn hook_direct_signal(level: &Level, state: StateId, dir: Dir) -> i32 {
     if level.flag(state, "powered") && level.dir(state, "facing") == dir { 15 } else { 0 }
 }
 
+/// `BaseCoralPlantTypeBlock.updateShape` and `BaseCoralWallFanBlock`'s: dead
+/// coral pops when what holds it up goes. Waterlogged coral would schedule
+/// a water tick, which isn't simulated.
+pub fn coral_update_shape(level: &mut Level, pos: Pos, state: StateId, dir: Dir) -> StateId {
+    if level.flag(state, "waterlogged") {
+        level.unsupported("waterlogged coral");
+        return state;
+    }
+    let support =
+        if level.kind(state) == Kind::DeadCoralWallFan { level.dir(state, "facing").opposite() } else { Dir::Down };
+    let at = pos.offset(support);
+    if dir == support && !super::is_face_sturdy(level, at, level.get(at), support.opposite()) {
+        level.air
+    } else {
+        state
+    }
+}
+
 /// `TripWireHookBlock.updateShape`: a hook whose wall goes pops off.
 pub fn hook_update_shape(level: &Level, pos: Pos, state: StateId, dir: Dir) -> StateId {
     let facing = level.dir(state, "facing");
