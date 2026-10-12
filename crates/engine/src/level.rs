@@ -372,8 +372,22 @@ impl Level {
         self.add_and_run(Update::Shape { dir, pos, neighbor, neighbor_state, flags, recursion });
     }
 
-    /// `Level.updateNeighbourForOutputSignal`: comparators are not in phase 1.
-    pub fn update_neighbour_for_output_signal(&mut self, _pos: Pos, _block: BlockId) {}
+    /// `Level.updateNeighbourForOutputSignal`: tell comparators beside `pos`,
+    /// or behind a conductor beside it, that its analog output may have
+    /// changed.
+    pub fn update_neighbour_for_output_signal(&mut self, pos: Pos, block: BlockId) {
+        for dir in Dir::HORIZONTAL {
+            let mut p = pos.offset(dir);
+            let mut s = self.get(p);
+            if self.kind(s) != Kind::Comparator && blocks::is_conductor(self, p, s) {
+                p = p.offset(dir);
+                s = self.get(p);
+            }
+            if self.kind(s) == Kind::Comparator {
+                self.neighbor_changed(p, block);
+            }
+        }
+    }
 
     /// `CollectingNeighborUpdater.addAndRun`.
     fn add_and_run(&mut self, update: Update) {

@@ -20,9 +20,13 @@ enum PushReaction {
 
 fn push_reaction(level: &Level, state: StateId) -> PushReaction {
     match level.kind(state) {
-        Kind::Lever | Kind::RedstoneWire | Kind::RedstoneTorch | Kind::RedstoneWallTorch | Kind::Repeater => {
-            PushReaction::Destroy
-        }
+        Kind::Lever
+        | Kind::RedstoneWire
+        | Kind::RedstoneTorch
+        | Kind::RedstoneWallTorch
+        | Kind::Repeater
+        | Kind::Comparator
+        | Kind::Cake => PushReaction::Destroy,
         Kind::MovingPiston | Kind::PistonHead => PushReaction::Block,
         _ => PushReaction::Normal,
     }

@@ -158,6 +158,8 @@ public final class Capture {
             }
         }
         warmUp(new BlockPos(lo[0], lo[1], lo[2]), new BlockPos(hi[0], hi[1], hi[2]));
+        strayMinY = lo[1] - 16;
+        strayMaxY = hi[1] + 16;
 
         Hooks.setListener = Capture::beforeSet;
         Hooks.eventListener = Capture::onEvent;
@@ -309,11 +311,16 @@ public final class Capture {
     /** Called by the agent's hook before every block write in a loaded chunk. */
     private static void beforeSet(Object chunkObj, Object posObj, Object stateObj) {
         Recording rec = recording;
-        if (rec == null || !(chunkObj instanceof LevelChunk chunk) || chunk.getLevel() != level) {
+        if (!(chunkObj instanceof LevelChunk chunk) || chunk.getLevel() != level) {
+            return;
+        }
+        if (rec == null) {
+            noteStray((BlockPos) posObj);
             return;
         }
         BlockPos pos = (BlockPos) posObj;
         if (!rec.contains(pos)) {
+            noteStray(pos);
             return;
         }
         BlockState state = (BlockState) stateObj;
@@ -518,10 +525,34 @@ public final class Capture {
         }
     }
 
+    /**
+     * Blocks written outside the box being recorded: a flying machine that
+     * left its box keeps flying through later captures unless it is removed.
+     * Only the height band fixtures use is tracked, away from the terrain.
+     */
+    private static final java.util.Set<BlockPos> strays = new java.util.HashSet<>();
+    private static boolean clearing;
+    // Nothing is tracked until the fixtures' height band is known.
+    private static int strayMinY = Integer.MAX_VALUE;
+    private static int strayMaxY = Integer.MIN_VALUE;
+
+    private static void noteStray(BlockPos pos) {
+        if (!clearing && pos.getY() >= strayMinY && pos.getY() <= strayMaxY) {
+            strays.add(pos.immutable());
+        }
+    }
+
     private static void clear(BlockPos min, BlockPos max) {
+        clearing = true;
+        for (BlockPos p : strays) {
+            level.setBlock(p, Blocks.AIR.defaultBlockState(), QUIET);
+            level.removeBlockEntity(p);
+        }
+        strays.clear();
         for (BlockPos p : BlockPos.betweenClosed(min, max)) {
             level.setBlock(p, Blocks.AIR.defaultBlockState(), QUIET);
         }
+        clearing = false;
         AABB box = new AABB(min.getX() - 1, min.getY() - 1, min.getZ() - 1,
                 max.getX() + 2, max.getY() + 2, max.getZ() + 2);
         for (Entity e : level.getEntitiesOfClass(Entity.class, box)) {

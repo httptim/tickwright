@@ -18,12 +18,13 @@ fn delay(level: &Level, state: StateId) -> i32 {
     level.int(state, "delay") * 2
 }
 
-fn is_diode(level: &Level, state: StateId) -> bool {
-    level.kind(state) == Kind::Repeater
+/// `DiodeBlock.isDiode`: repeaters and comparators.
+pub(super) fn is_diode(level: &Level, state: StateId) -> bool {
+    matches!(level.kind(state), Kind::Repeater | Kind::Comparator)
 }
 
-/// `getInputSignal`.
-fn input_signal(level: &Level, pos: Pos, state: StateId) -> i32 {
+/// `DiodeBlock.getInputSignal`.
+pub(super) fn input_signal(level: &Level, pos: Pos, state: StateId) -> i32 {
     let dir = level.dir(state, "facing");
     let p = pos.offset(dir);
     let signal = level.get_signal(p, dir);
@@ -38,20 +39,40 @@ fn should_turn_on(level: &Level, pos: Pos, state: StateId) -> bool {
     input_signal(level, pos, state) > 0
 }
 
-/// `SignalGetter.getControlInputSignal` with `onlyDiodes`.
-fn control_input_signal(level: &Level, pos: Pos, dir: Dir) -> i32 {
-    if is_diode(level, level.get(pos)) { level.get_direct_signal(pos, dir) } else { 0 }
+/// `SignalGetter.getControlInputSignal`.
+fn control_input_signal(level: &Level, pos: Pos, dir: Dir, only_diodes: bool) -> i32 {
+    let s = level.get(pos);
+    if only_diodes {
+        return if is_diode(level, s) { level.get_direct_signal(pos, dir) } else { 0 };
+    }
+    match level.kind(s) {
+        Kind::RedstoneBlock => 15,
+        Kind::RedstoneWire => level.int(s, "power"),
+        _ if super::is_signal_source(level, s) => level.get_direct_signal(pos, dir),
+        _ => 0,
+    }
+}
+
+/// `DiodeBlock.getAlternateSignal`: the stronger of the two side inputs.
+/// Repeaters only listen to diodes there; comparators to any source.
+pub(super) fn alternate_signal(level: &Level, pos: Pos, state: StateId, only_diodes: bool) -> i32 {
+    let facing = level.dir(state, "facing");
+    let (cw, ccw) = (facing.clockwise(), facing.counter_clockwise());
+    control_input_signal(level, pos.offset(cw), cw, only_diodes).max(control_input_signal(
+        level,
+        pos.offset(ccw),
+        ccw,
+        only_diodes,
+    ))
 }
 
 /// `isLocked`: a powered diode points into either side.
 pub fn is_locked(level: &Level, pos: Pos, state: StateId) -> bool {
-    let facing = level.dir(state, "facing");
-    let (cw, ccw) = (facing.clockwise(), facing.counter_clockwise());
-    control_input_signal(level, pos.offset(cw), cw).max(control_input_signal(level, pos.offset(ccw), ccw)) > 0
+    alternate_signal(level, pos, state, true) > 0
 }
 
-/// `shouldPrioritize`: the repeater outputs into a diode not facing back.
-fn should_prioritize(level: &Level, pos: Pos, state: StateId) -> bool {
+/// `shouldPrioritize`: the diode outputs into a diode not facing back.
+pub(super) fn should_prioritize(level: &Level, pos: Pos, state: StateId) -> bool {
     let dir = level.dir(state, "facing").opposite();
     let front = level.get(pos.offset(dir));
     is_diode(level, front) && level.dir(front, "facing") != dir
@@ -77,14 +98,23 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
     }
 }
 
-pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId) {
+/// `DiodeBlock.neighborChanged`, first half: a diode that lost its support
+/// breaks and tells the blocks around it. Returns whether it broke.
+pub(super) fn break_if_unsupported(level: &mut Level, pos: Pos, state: StateId) -> bool {
     let below = pos.below();
-    if !can_survive_on(level, below, level.get(below)) {
-        let block = level.block(state);
-        level.remove_block(pos);
-        for dir in Dir::ALL {
-            level.update_neighbors_at(pos.offset(dir), block);
-        }
+    if can_survive_on(level, below, level.get(below)) {
+        return false;
+    }
+    let block = level.block(state);
+    level.remove_block(pos);
+    for dir in Dir::ALL {
+        level.update_neighbors_at(pos.offset(dir), block);
+    }
+    true
+}
+
+pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId) {
+    if break_if_unsupported(level, pos, state) {
         return;
     }
     if is_locked(level, pos, state) {
@@ -105,7 +135,7 @@ pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId) {
 }
 
 /// `updateNeighborsInFront`.
-fn update_neighbors_in_front(level: &mut Level, pos: Pos, state: StateId) {
+pub(super) fn update_neighbors_in_front(level: &mut Level, pos: Pos, state: StateId) {
     let facing = level.dir(state, "facing");
     let front = pos.offset(facing.opposite());
     let block = level.block(state);
@@ -123,7 +153,7 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
     }
 }
 
-fn can_survive_on(level: &Level, pos: Pos, state: StateId) -> bool {
+pub(super) fn can_survive_on(level: &Level, pos: Pos, state: StateId) -> bool {
     super::is_face_sturdy(level, pos, state, Dir::Up)
 }
 
