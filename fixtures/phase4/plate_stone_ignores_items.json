@@ -1,0 +1,41 @@
+{
+  "name": "plate_stone_ignores_items",
+  "description": "Stone pressure plates only notice mobs, so an item lying on one never presses it.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "pressure_plate"
+  ],
+  "palette": {
+    "#": "stone",
+    "p": "stone_pressure_plate[powered=false]",
+    "L": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "###"
+    ],
+    [
+      ".pL"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        1.5,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"stone\",count:1}}"
+    }
+  ],
+  "entities": true
+}

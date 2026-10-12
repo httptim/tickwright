@@ -289,6 +289,10 @@ public final class Capture {
             // from 0, in place of one from the clock.
             Hooks.nextSeed = 0;
             Hooks.seedThread = Thread.currentThread();
+            // Random block ticks land anywhere in the loaded world, and a
+            // block left there that ticks randomly (copper, grass) draws from
+            // the level's random source at times no fixture controls.
+            randomTicks(0);
         }
         setMaxChainedUpdates(fixture.has("max_chained_updates")
                 ? fixture.get("max_chained_updates").getAsInt() : -1);
@@ -398,6 +402,9 @@ public final class Capture {
         } finally {
             recording = null;
             Hooks.seedThread = null;
+            if (trackEntities) {
+                randomTicks(3);
+            }
         }
 
         // Every kind of event phase 1 needs is recorded, so the trace is
@@ -858,6 +865,12 @@ public final class Capture {
     private static boolean clockFrozen;
 
     /** Stop the day-night cycle and the weather, once, for fixtures that read the time of day. */
+    private static void randomTicks(int speed) {
+        // The game rule's name changed in 1.21.11; the other one is rejected quietly.
+        command("gamerule random_tick_speed " + speed);
+        command("gamerule randomTickSpeed " + speed);
+    }
+
     private static void freezeClock() {
         if (clockFrozen) {
             return;
