@@ -717,7 +717,13 @@ public final class Capture {
                     }
                 }
                 if (entityCounter == null) {
-                    throw new IllegalStateException("no entity id counter in Entity");
+                    List<String> statics = new ArrayList<>();
+                    for (java.lang.reflect.Field f : Entity.class.getDeclaredFields()) {
+                        if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
+                            statics.add(f.getType().getSimpleName() + " " + f.getName());
+                        }
+                    }
+                    throw new IllegalStateException("no entity id counter in Entity; its static fields: " + statics);
                 }
             }
             ((java.util.concurrent.atomic.AtomicInteger) entityCounter.get(null)).set(0);
@@ -730,7 +736,7 @@ public final class Capture {
      * What entity physics needs from every block: each state's collision
      * boxes (with no world around it, so context-dependent shapes like
      * scaffolding are their defaults), and each block's friction, speed and
-     * jump factors.
+     * jump factors and explosion resistance.
      */
     private static void exportPhysics(Path file) throws IOException {
         List<String> shapes = new ArrayList<>();
@@ -784,11 +790,9 @@ public final class Capture {
         out.append("  \"blocks\": {\n");
         List<String> rows = new ArrayList<>();
         for (Block b : BuiltInRegistries.BLOCK) {
-            if (b.getFriction() == 0.6F && b.getSpeedFactor() == 1.0F && b.getJumpFactor() == 1.0F) {
-                continue;
-            }
             rows.add("    \"" + BuiltInRegistries.BLOCK.getKey(b) + "\": {\"friction\": " + b.getFriction()
-                    + ", \"speed\": " + b.getSpeedFactor() + ", \"jump\": " + b.getJumpFactor() + "}");
+                    + ", \"speed\": " + b.getSpeedFactor() + ", \"jump\": " + b.getJumpFactor()
+                    + ", \"resistance\": " + b.getExplosionResistance() + "}");
         }
         out.append(String.join(",\n", rows)).append("\n  }\n}\n");
         Files.writeString(file, out.toString());
