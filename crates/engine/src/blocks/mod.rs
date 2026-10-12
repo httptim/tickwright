@@ -12,6 +12,7 @@
 
 mod button;
 mod comparator;
+pub mod container;
 mod door;
 mod lamp;
 mod lever;
@@ -65,6 +66,8 @@ pub enum Kind {
     PoweredRail,
     /// Water, source or flowing.
     Water,
+    Hopper,
+    Dropper,
     Other,
 }
 
@@ -73,8 +76,11 @@ pub enum Kind {
 pub enum BlockEntity {
     /// `ComparatorBlockEntity`: the output strength.
     Comparator(i32),
-    /// A chest: present only because it makes the block immovable.
-    Chest,
+    /// A chest's 27 slots.
+    Chest(Vec<container::Stack>),
+    Hopper(container::Hopper),
+    /// A dropper's 9 slots.
+    Dropper(Vec<container::Stack>),
     /// `PistonMovingBlockEntity`.
     Piston(piston::Moving),
 }
@@ -82,38 +88,43 @@ pub enum BlockEntity {
 impl BlockEntity {
     pub fn ticks(&self) -> bool {
         match self {
-            BlockEntity::Chest | BlockEntity::Comparator(_) => false,
-            BlockEntity::Piston(_) => true,
+            BlockEntity::Chest(_) | BlockEntity::Dropper(_) | BlockEntity::Comparator(_) => false,
+            BlockEntity::Piston(_) | BlockEntity::Hopper(_) => true,
         }
     }
 }
 
 pub fn has_block_entity(kind: Kind) -> bool {
-    matches!(kind, Kind::Chest | Kind::MovingPiston | Kind::Comparator)
+    matches!(kind, Kind::Chest | Kind::MovingPiston | Kind::Comparator | Kind::Hopper | Kind::Dropper)
 }
 
 pub fn new_block_entity(_level: &Level, _pos: Pos, state: StateId) -> Option<BlockEntity> {
     match _level.kind(state) {
-        Kind::Chest => Some(BlockEntity::Chest),
+        Kind::Chest => Some(container::new_chest()),
+        Kind::Hopper => Some(BlockEntity::Hopper(container::Hopper::new())),
+        Kind::Dropper => Some(container::new_dropper()),
         Kind::Comparator => Some(BlockEntity::Comparator(0)),
         _ => None,
     }
 }
 
 pub fn tick_block_entity(level: &mut Level, pos: Pos) {
-    if let Some(BlockEntity::Piston(_)) = level.block_entities.get(&pos) {
-        piston::tick_moving(level, pos);
+    match level.block_entities.get(&pos) {
+        Some(BlockEntity::Piston(_)) => piston::tick_moving(level, pos),
+        Some(BlockEntity::Hopper(_)) => container::push_items_tick(level, pos),
+        _ => {}
     }
 }
 
 /// `hasAnalogOutputSignal`.
 pub fn has_analog_output(level: &Level, state: StateId) -> bool {
-    matches!(level.kind(state), Kind::Chest | Kind::Composter | Kind::Cake)
+    matches!(level.kind(state), Kind::Chest | Kind::Composter | Kind::Cake | Kind::Hopper | Kind::Dropper)
 }
 
-/// `getAnalogOutputSignal`. Chests have no contents in fixtures yet.
-pub fn analog_output(level: &Level, _pos: Pos, state: StateId) -> i32 {
+/// `getAnalogOutputSignal`.
+pub fn analog_output(level: &Level, pos: Pos, state: StateId) -> i32 {
     match level.kind(state) {
+        Kind::Chest | Kind::Hopper | Kind::Dropper => container::analog_output(level, pos, state),
         Kind::Composter => level.int(state, "level"),
         Kind::Cake => (7 - level.int(state, "bites")) * 2,
         _ => 0,
@@ -126,7 +137,7 @@ pub fn analog_output(level: &Level, _pos: Pos, state: StateId) -> i32 {
 pub fn is_conductor(level: &Level, _pos: Pos, state: StateId) -> bool {
     // Pistons are never conductors, extended or not.
     match level.kind(state) {
-        Kind::Solid | Kind::RedstoneLamp | Kind::Slime | Kind::NoteBlock => true,
+        Kind::Solid | Kind::RedstoneLamp | Kind::Slime | Kind::NoteBlock | Kind::Dropper => true,
         Kind::Slab => level.prop(state, "type") == "double",
         _ => false,
     }
@@ -160,7 +171,8 @@ pub fn is_face_sturdy(level: &Level, pos: Pos, state: StateId, dir: Dir) -> bool
         | Kind::Slime
         | Kind::Glass
         | Kind::Observer
-        | Kind::NoteBlock => true,
+        | Kind::NoteBlock
+        | Kind::Dropper => true,
         Kind::Trapdoor => door::trapdoor_face_sturdy(level, state, dir),
         Kind::Slab => match level.prop(state, "type") {
             "double" => true,
@@ -217,6 +229,7 @@ pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId, moved
         Kind::Observer => observer::on_place(level, pos, state, old),
         Kind::PoweredRail => rail::on_place(level, pos, state, old),
         Kind::Water => water::on_place(level, pos, state),
+        Kind::Hopper => container::hopper_on_place(level, pos, state, old),
         _ => {}
     }
 }
@@ -254,6 +267,8 @@ pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId, source: Blo
         Kind::PistonHead => piston::head_neighbor_changed(level, pos, state, source),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::neighbor_changed(level, pos, state),
         Kind::Water => water::neighbor_changed(level, pos, state),
+        Kind::Hopper => container::hopper_neighbor_changed(level, pos, state),
+        Kind::Dropper => container::dropper_neighbor_changed(level, pos, state),
         _ => {}
     }
 }
@@ -296,6 +311,7 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
         Kind::Button => button::tick(level, pos, state),
         Kind::Observer => observer::tick(level, pos, state),
         Kind::Comparator => comparator::tick(level, pos, state),
+        Kind::Dropper => container::dropper_tick(level, pos, state),
         _ => {}
     }
 }

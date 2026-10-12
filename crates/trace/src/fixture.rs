@@ -62,6 +62,25 @@ pub enum Action {
     Destroy,
 }
 
+/// One stack in a container: `count` of item `id` in `slot`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ItemSlot {
+    pub slot: u32,
+    /// An item id such as `stone`; `minecraft:` is implied.
+    pub id: String,
+    pub count: u32,
+}
+
+/// What a container block (chest, hopper, dropper) holds when the fixture is
+/// placed.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Container {
+    pub pos: [i32; 3],
+    pub items: Vec<ItemSlot>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Stimulus {
     /// Applied just before this game tick's world tick runs, which is where
@@ -95,6 +114,8 @@ pub struct FixtureSource {
     pub layers: Vec<Vec<String>>,
     #[serde(default)]
     pub stimuli: Vec<Stimulus>,
+    #[serde(default)]
+    pub containers: Vec<Container>,
 }
 
 fn default_levels() -> Vec<Level> {
@@ -118,6 +139,10 @@ pub struct ResolvedFixture {
     /// Non-air blocks as `[x, y, z, state]`, relative to `origin`.
     pub blocks: Vec<(i32, i32, i32, String)>,
     pub stimuli: Vec<Stimulus>,
+    /// Container contents, placed after the blocks. Item ids are written in
+    /// full (`minecraft:stone`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub containers: Vec<Container>,
 }
 
 pub const RESOLVED_FORMAT: u32 = 1;
@@ -190,6 +215,17 @@ impl FixtureSource {
                 _ => {}
             }
         }
+        for c in &self.containers {
+            ensure!(
+                (0..3).all(|i| (0..size[i]).contains(&c.pos[i])),
+                "{}: container position {:?} is outside the fixture",
+                self.name,
+                c.pos
+            );
+            for item in &c.items {
+                ensure!(item.count > 0, "{}: container at {:?} has an empty stack", self.name, c.pos);
+            }
+        }
         self.transform_list()?;
         Ok(())
     }
@@ -247,6 +283,18 @@ impl FixtureSource {
                     .unwrap(),
             })
             .collect();
+        let containers = self
+            .containers
+            .iter()
+            .map(|c| Container {
+                pos: t.pos(c.pos, size),
+                items: c
+                    .items
+                    .iter()
+                    .map(|i| ItemSlot { slot: i.slot, id: full_item_id(&i.id), count: i.count })
+                    .collect(),
+            })
+            .collect();
         Ok(ResolvedFixture {
             format: RESOLVED_FORMAT,
             id: format!("{}@{t}", self.name),
@@ -259,12 +307,17 @@ impl FixtureSource {
             margin: DEFAULT_MARGIN,
             blocks,
             stimuli,
+            containers,
         })
     }
 
     pub fn resolve_all(&self) -> Result<Vec<ResolvedFixture>> {
         self.transform_list()?.into_iter().map(|t| self.resolve(t)).collect()
     }
+}
+
+fn full_item_id(id: &str) -> String {
+    if id.contains(':') { id.to_string() } else { format!("minecraft:{id}") }
 }
 
 #[cfg(test)]

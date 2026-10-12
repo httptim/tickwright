@@ -97,3 +97,7 @@ water_new_source_slab order
 water_piston_rail order
 water_three_sources_over_hole order
 water_washes_redstone order
+dropper_into_hopper order
+hopper_chain_cooldown order
+hopper_chest_to_chest order
+hopper_locked_by_lever order

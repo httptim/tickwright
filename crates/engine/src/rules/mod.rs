@@ -124,7 +124,7 @@ mod tests {
         assert_eq!(base.kind(id("glass")), Kind::Glass);
         assert_eq!(next.kind(id("glass")), Kind::Solid);
         assert_eq!(next.kind(id("repeater")), Kind::Repeater);
-        assert_eq!(next.kind(id("hopper")), Kind::Other);
+        assert_eq!(next.kind(id("furnace")), Kind::Other);
     }
 
     #[test]

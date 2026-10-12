@@ -135,6 +135,7 @@ fn collision(level: &Level, state: StateId) -> Shape {
         | Kind::RedstoneLamp
         | Kind::Observer
         | Kind::NoteBlock
+        | Kind::Dropper
         | Kind::Slime => Shape::Full,
         Kind::Slab if level.prop(state, "type") == "double" => Shape::Full,
         Kind::Piston | Kind::StickyPiston if !level.flag(state, "extended") => Shape::Full,
@@ -157,7 +158,7 @@ fn face_full(level: &Level, pos: Pos, state: StateId, dir: Dir) -> bool {
             dir == side.opposite()
         }
         Kind::Repeater | Kind::Comparator | Kind::Composter => dir == Dir::Down,
-        Kind::Chest | Kind::Cake | Kind::Honey => false,
+        Kind::Chest | Kind::Cake | Kind::Honey | Kind::Hopper => false,
         _ => super::is_face_sturdy(level, pos, state, dir),
     }
 }

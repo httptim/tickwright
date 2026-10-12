@@ -1,0 +1,65 @@
+{
+  "name": "hopper_chest_to_chest",
+  "description": "A hopper under a chest pulls its items and passes them through a second hopper into another chest. A comparator reads the far chest into a lamp, but stone on top blocks the chest so it reads empty until the stone is broken.",
+  "ticks": 90,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "hopper",
+    "container",
+    "comparator"
+  ],
+  "palette": {
+    "#": "stone",
+    "C": "chest[facing=north,type=single,waterlogged=false]",
+    "h": "hopper[enabled=true,facing=east]",
+    "c": "comparator[facing=west,mode=compare,powered=false]",
+    "L": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "#####"
+    ],
+    [
+      "hhCcL"
+    ],
+    [
+      "C.#.."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 30,
+      "action": "destroy",
+      "pos": [
+        2,
+        2,
+        0
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        0,
+        2,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "stone",
+          "count": 5
+        },
+        {
+          "slot": 3,
+          "id": "dirt",
+          "count": 2
+        }
+      ]
+    }
+  ]
+}

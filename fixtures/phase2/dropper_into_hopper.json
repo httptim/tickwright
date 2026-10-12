@@ -1,0 +1,69 @@
+{
+  "name": "dropper_into_hopper",
+  "description": "A button fires a dropper down into a hopper, which passes the item on into a chest. The button is pressed twice.",
+  "ticks": 60,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "dropper",
+    "hopper",
+    "container"
+  ],
+  "palette": {
+    "#": "stone",
+    "C": "chest[facing=north,type=single,waterlogged=false]",
+    "h": "hopper[enabled=true,facing=east]",
+    "D": "dropper[facing=down,triggered=false]",
+    "b": "stone_button[face=wall,facing=west,powered=false]"
+  },
+  "layers": [
+    [
+      "###"
+    ],
+    [
+      ".hC"
+    ],
+    [
+      "bD."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        2,
+        0
+      ]
+    },
+    {
+      "tick": 30,
+      "action": "use",
+      "pos": [
+        0,
+        2,
+        0
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        1,
+        2,
+        0
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "cobblestone",
+          "count": 3
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "name": "hopper_locked_by_lever",
+  "description": "A loaded hopper empties into a chest. A lever beside it locks it partway through and unlocks it later. A comparator reads the hopper into a lamp.",
+  "ticks": 80,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "hopper",
+    "container",
+    "comparator"
+  ],
+  "palette": {
+    "#": "stone",
+    "C": "chest[facing=north,type=single,waterlogged=false]",
+    "h": "hopper[enabled=true,facing=east]",
+    "l": "lever[face=floor,facing=north,powered=false]",
+    "n": "comparator[facing=north,mode=compare,powered=false]",
+    "L": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "###",
+      "###",
+      "###"
+    ],
+    [
+      "lhC",
+      ".n.",
+      ".L."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 10,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 40,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        1,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "stone",
+          "count": 10
+        }
+      ]
+    }
+  ]
+}
