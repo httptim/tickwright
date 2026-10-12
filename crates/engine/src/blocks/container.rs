@@ -1,9 +1,9 @@
 //! Containers: chests, hoppers and droppers, and the items they move.
 //!
-//! Follows `HopperBlockEntity`, `DropperBlock` and the container block
-//! entities they work on. Only container blocks take part: item entities,
-//! minecarts and composters are not simulated yet, and a double chest acts
-//! as two single chests.
+//! Follows `HopperBlockEntity`, `DropperBlock` and the containers they
+//! work on: container blocks, and chest and hopper minecarts where no
+//! container block is. Composters are not simulated yet, and a double
+//! chest acts as two single chests.
 //!
 //! `BlockEntity.setChanged` is what the trace records for items, with the
 //! container's contents at that moment. Chest and dropper `setItem` and
@@ -16,6 +16,28 @@ use crate::pos::Pos;
 use crate::registry::StateId;
 
 use super::{BlockEntity, Kind};
+use crate::entity::{Data, floor};
+
+/// A container: a container block's block entity, or a chest or hopper
+/// minecart, by its place in the level's entity list.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Inv {
+    Block(Pos),
+    Cart(usize),
+}
+
+impl From<Pos> for Inv {
+    fn from(p: Pos) -> Inv {
+        Inv::Block(p)
+    }
+}
+
+fn cart_items(level: &Level, k: usize) -> Option<&Vec<Stack>> {
+    match &level.entities[k].data {
+        Data::Minecart(m) => m.items.as_ref(),
+        _ => None,
+    }
+}
 
 /// `ItemStack`: `count` of item `id`. A count of zero is `ItemStack.EMPTY`.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -89,7 +111,11 @@ pub fn new_dropper() -> BlockEntity {
 
 // --- container access ----------------------------------------------------------
 
-pub fn items(level: &Level, pos: Pos) -> Option<&Vec<Stack>> {
+pub fn items(level: &Level, inv: impl Into<Inv>) -> Option<&Vec<Stack>> {
+    let pos = match inv.into() {
+        Inv::Block(pos) => pos,
+        Inv::Cart(k) => return cart_items(level, k),
+    };
     match level.block_entities.get(&pos)? {
         BlockEntity::Chest(items) | BlockEntity::Dropper(items) | BlockEntity::ShulkerBox(items) => Some(items),
         BlockEntity::Hopper(h) => Some(&h.items),
@@ -99,7 +125,14 @@ pub fn items(level: &Level, pos: Pos) -> Option<&Vec<Stack>> {
     }
 }
 
-fn items_mut(level: &mut Level, pos: Pos) -> &mut Vec<Stack> {
+fn items_mut(level: &mut Level, inv: Inv) -> &mut Vec<Stack> {
+    let pos = match inv {
+        Inv::Block(pos) => pos,
+        Inv::Cart(k) => match &mut level.entities[k].data {
+            Data::Minecart(m) => return m.items.as_mut().expect("a container minecart"),
+            _ => panic!("no container minecart at {k}"),
+        },
+    };
     match level.block_entities.get_mut(&pos) {
         Some(BlockEntity::Chest(items) | BlockEntity::Dropper(items) | BlockEntity::ShulkerBox(items)) => items,
         Some(BlockEntity::Hopper(h)) => &mut h.items,
@@ -109,8 +142,8 @@ fn items_mut(level: &mut Level, pos: Pos) -> &mut Vec<Stack> {
     }
 }
 
-fn is_hopper(level: &Level, pos: Pos) -> bool {
-    matches!(level.block_entities.get(&pos), Some(BlockEntity::Hopper(_)))
+fn is_hopper(level: &Level, inv: Inv) -> bool {
+    matches!(inv, Inv::Block(pos) if matches!(level.block_entities.get(&pos), Some(BlockEntity::Hopper(_))))
 }
 
 fn hopper(level: &Level, pos: Pos) -> &Hopper {
@@ -127,45 +160,46 @@ fn hopper_mut(level: &mut Level, pos: Pos) -> &mut Hopper {
     }
 }
 
-pub fn size(level: &Level, pos: Pos) -> usize {
-    items(level, pos).map_or(0, Vec::len)
+pub fn size(level: &Level, inv: impl Into<Inv>) -> usize {
+    items(level, inv).map_or(0, Vec::len)
 }
 
-pub(super) fn get_item(level: &Level, pos: Pos, slot: usize) -> Stack {
-    items(level, pos).map(|i| i[slot].clone()).unwrap_or_default()
+pub(super) fn get_item(level: &Level, inv: impl Into<Inv>, slot: usize) -> Stack {
+    items(level, inv).map(|i| i[slot].clone()).unwrap_or_default()
 }
 
-fn is_empty(level: &Level, pos: Pos) -> bool {
-    items(level, pos).is_none_or(|i| i.iter().all(Stack::is_empty))
+fn is_empty(level: &Level, inv: Inv) -> bool {
+    items(level, inv).is_none_or(|i| i.iter().all(Stack::is_empty))
 }
 
 /// `Container.setItem`.
-pub fn set_item(level: &mut Level, pos: Pos, slot: usize, mut stack: Stack) {
+pub fn set_item(level: &mut Level, inv: impl Into<Inv>, slot: usize, mut stack: Stack) {
+    let inv = inv.into();
     let max = stack.max_stack_size();
     stack.count = stack.count.min(max);
     if stack.is_empty() {
         stack = Stack::default();
     }
-    items_mut(level, pos)[slot] = stack;
-    if !is_hopper(level, pos) {
-        set_changed(level, pos);
+    items_mut(level, inv)[slot] = stack;
+    if !is_hopper(level, inv) {
+        set_changed(level, inv);
     }
 }
 
 /// `Container.removeItem` (`ContainerHelper.removeItem`).
-fn remove_item(level: &mut Level, pos: Pos, slot: usize, amount: i32) -> Stack {
+fn remove_item(level: &mut Level, inv: Inv, slot: usize, amount: i32) -> Stack {
     let stack = {
-        let s = &mut items_mut(level, pos)[slot];
+        let s = &mut items_mut(level, inv)[slot];
         if s.is_empty() || amount <= 0 { Stack::default() } else { s.split(amount) }
     };
-    if !stack.is_empty() && !is_hopper(level, pos) {
-        set_changed(level, pos);
+    if !stack.is_empty() && !is_hopper(level, inv) {
+        set_changed(level, inv);
     }
     stack
 }
 
-pub(super) fn set_count(level: &mut Level, pos: Pos, slot: usize, count: i32) {
-    items_mut(level, pos)[slot].count = count;
+pub(super) fn set_count(level: &mut Level, inv: impl Into<Inv>, slot: usize, count: i32) {
+    items_mut(level, inv.into())[slot].count = count;
 }
 
 /// The contents as the trace writes them: `slot:id*count`, space separated.
@@ -180,16 +214,19 @@ pub fn describe(items: &[Stack]) -> String {
 }
 
 /// `BlockEntity.setChanged`: record the contents, then tell comparators.
-pub fn set_changed(level: &mut Level, pos: Pos) {
+/// A minecart's does nothing.
+pub fn set_changed(level: &mut Level, inv: impl Into<Inv>) {
+    let Inv::Block(pos) = inv.into() else { return };
     if let Some(items) = items(level, pos) {
         let detail = describe(items);
         level.record_items(pos, detail);
     }
-    set_changed_static(level, pos);
+    set_changed_static(level, Inv::Block(pos));
 }
 
 /// The static `BlockEntity.setChanged(level, pos, state)`.
-fn set_changed_static(level: &mut Level, pos: Pos) {
+fn set_changed_static(level: &mut Level, inv: Inv) {
+    let Inv::Block(pos) = inv else { return };
     let state = level.get(pos);
     if !level.is_air(state) {
         level.update_neighbour_for_output_signal(pos, level.block(state));
@@ -197,7 +234,7 @@ fn set_changed_static(level: &mut Level, pos: Pos) {
 }
 
 /// `AbstractContainerMenu.getRedstoneSignalFromContainer`.
-fn signal_from_items(items: &[Stack]) -> i32 {
+pub fn signal_from_items(items: &[Stack]) -> i32 {
     let mut f = 0.0f32;
     for s in items.iter().filter(|s| !s.is_empty()) {
         f += s.count as f32 / s.max_stack_size().min(99) as f32;
@@ -218,26 +255,54 @@ pub fn analog_output(level: &Level, pos: Pos, state: StateId) -> i32 {
     items(level, pos).map_or(0, |i| signal_from_items(i))
 }
 
-/// `HopperBlockEntity.getContainerAt` for blocks: a container block entity
-/// at `pos`, if the block there is a container.
-pub(super) fn container_at(level: &Level, pos: Pos) -> Option<Pos> {
+/// `HopperBlockEntity.getContainerAt(level, pos)`: the container block at
+/// `pos`, or else a container minecart in that block's space.
+pub(super) fn container_at(level: &mut Level, pos: Pos) -> Option<Inv> {
+    container_at_xyz(level, pos, pos.x as f64 + 0.5, pos.y as f64 + 0.5, pos.z as f64 + 0.5)
+}
+
+fn container_at_xyz(level: &mut Level, pos: Pos, x: f64, y: f64, z: f64) -> Option<Inv> {
+    block_container(level, pos).or_else(|| entity_container(level, x, y, z))
+}
+
+/// `getBlockContainer`: a container block entity at `pos`, if the block
+/// there is a container.
+fn block_container(level: &Level, pos: Pos) -> Option<Inv> {
     let kind = level.kind_at(pos);
     let ok = matches!(
         kind,
         Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser | Kind::ShulkerBox | Kind::Crafter
     );
-    (ok && items(level, pos).is_some()).then_some(pos)
+    (ok && items(level, pos).is_some()).then_some(Inv::Block(pos))
+}
+
+/// `getEntityContainer`: a container minecart whose box meets the block
+/// space centred on (x, y, z), picked with the level's random source even
+/// when there is only one.
+fn entity_container(level: &mut Level, x: f64, y: f64, z: f64) -> Option<Inv> {
+    let b = Aabb::new(x - 0.5, y - 0.5, z - 0.5, x + 0.5, y + 0.5, z + 0.5);
+    let found: Vec<usize> = (0..level.entities.len())
+        .filter(|&k| {
+            let e = &level.entities[k];
+            !e.removed && cart_items(level, k).is_some() && e.bounding_box().intersects(&b)
+        })
+        .collect();
+    if found.is_empty() {
+        return None;
+    }
+    let i = level.random.next_int_bounded(found.len() as i32) as usize;
+    Some(Inv::Cart(found[i]))
 }
 
 /// `isFullContainer`.
-fn is_full_container(level: &Level, pos: Pos) -> bool {
-    items(level, pos).is_some_and(|i| i.iter().all(|s| s.count >= s.max_stack_size()))
+fn is_full_container(level: &Level, inv: Inv) -> bool {
+    items(level, inv).is_some_and(|i| i.iter().all(|s| s.count >= s.max_stack_size()))
 }
 
 // --- moving items ----------------------------------------------------------------
 
 /// `HopperBlockEntity.addItem(source, destination, stack, direction)`.
-pub(super) fn add_item(level: &mut Level, source: Option<Pos>, dest: Pos, mut stack: Stack) -> Stack {
+pub(super) fn add_item(level: &mut Level, source: Option<Inv>, dest: Inv, mut stack: Stack) -> Stack {
     let n = size(level, dest);
     let mut slot = 0;
     while slot < n && !stack.is_empty() {
@@ -248,9 +313,12 @@ pub(super) fn add_item(level: &mut Level, source: Option<Pos>, dest: Pos, mut st
 }
 
 /// `HopperBlockEntity.tryMoveInItem`.
-fn try_move_in_item(level: &mut Level, source: Option<Pos>, dest: Pos, mut stack: Stack, slot: usize) -> Stack {
+fn try_move_in_item(level: &mut Level, source: Option<Inv>, dest: Inv, mut stack: Stack, slot: usize) -> Stack {
     // `canPlaceItemInContainer`: only the crafter refuses items.
-    if level.kind_at(dest) == Kind::Crafter && !super::crafter::can_place_item(level, dest, slot, &stack) {
+    if let Inv::Block(d) = dest
+        && level.kind_at(d) == Kind::Crafter
+        && !super::crafter::can_place_item(level, d, slot, &stack)
+    {
         return stack;
     }
     let current = get_item(level, dest, slot);
@@ -267,15 +335,19 @@ fn try_move_in_item(level: &mut Level, source: Option<Pos>, dest: Pos, mut stack
         changed = n > 0;
     }
     if changed {
-        if was_empty && is_hopper(level, dest) && !hopper(level, dest).on_custom_cooldown() {
+        if let Inv::Block(d) = dest
+            && was_empty
+            && is_hopper(level, dest)
+            && !hopper(level, d).on_custom_cooldown()
+        {
             let mut skip = 0;
-            if let Some(src) = source
-                && is_hopper(level, src)
-                && hopper(level, dest).ticked_game_time >= hopper(level, src).ticked_game_time
+            if let Some(Inv::Block(src)) = source
+                && is_hopper(level, Inv::Block(src))
+                && hopper(level, d).ticked_game_time >= hopper(level, src).ticked_game_time
             {
                 skip = 1;
             }
-            hopper_mut(level, dest).cooldown = 8 - skip;
+            hopper_mut(level, d).cooldown = 8 - skip;
         }
         set_changed(level, dest);
     }
@@ -312,21 +384,22 @@ fn try_move_items(level: &mut Level, pos: Pos, intake: Intake) -> bool {
         return false;
     }
     let mut changed = false;
-    if !is_empty(level, pos) {
+    let inv = Inv::Block(pos);
+    if !is_empty(level, inv) {
         changed = eject_items(level, pos, state);
     }
-    if !is_full_container(level, pos) {
+    if !is_full_container(level, inv) {
         changed |= match intake {
-            Intake::Above => suck_in_items(level, pos),
+            Intake::Above => suck_in_items(level, inv),
             Intake::Entity => {
                 let k = level.entities.len() - 1;
-                add_item_entity(level, pos, k)
+                add_item_entity(level, inv, k)
             }
         };
     }
     if changed {
         hopper_mut(level, pos).cooldown = 8;
-        set_changed_static(level, pos);
+        set_changed_static(level, inv);
     }
     changed
 }
@@ -349,11 +422,11 @@ pub fn hopper_entity_inside(level: &mut Level, pos: Pos) {
 }
 
 /// `addItem(container, itemEntity)`: as much of the stack as fits.
-fn add_item_entity(level: &mut Level, pos: Pos, k: usize) -> bool {
+fn add_item_entity(level: &mut Level, dest: Inv, k: usize) -> bool {
     let crate::entity::Data::Item(item) = &level.entities[k].data else { return false };
     // Entities keep bare item ids; containers keep namespaced ones.
     let stack = Stack::new(&format!("minecraft:{}", item.stack.id), item.stack.count);
-    let rest = add_item(level, None, pos, stack);
+    let rest = add_item(level, None, dest, stack);
     let e = &mut level.entities[k];
     let crate::entity::Data::Item(item) = &mut e.data else { unreachable!() };
     item.stack.count = rest.count;
@@ -372,51 +445,54 @@ fn eject_items(level: &mut Level, pos: Pos, state: StateId) -> bool {
     if is_full_container(level, dest) {
         return false;
     }
+    let inv = Inv::Block(pos);
     for slot in 0..size(level, pos) {
         let stack = get_item(level, pos, slot);
         if stack.is_empty() {
             continue;
         }
         let count = stack.count;
-        let moving = remove_item(level, pos, slot, 1);
-        let result = add_item(level, Some(pos), dest, moving);
+        let moving = remove_item(level, inv, slot, 1);
+        let result = add_item(level, Some(inv), dest, moving);
         if result.is_empty() {
             set_changed(level, dest);
             return true;
         }
-        restore(level, pos, slot, stack, count);
+        restore(level, inv, slot, stack, count);
     }
     false
 }
 
 /// Put back a stack whose item did not fit: `stack.setCount(count)`, and
 /// `setItem` if removing emptied the slot.
-fn restore(level: &mut Level, pos: Pos, slot: usize, mut stack: Stack, count: i32) {
+fn restore(level: &mut Level, inv: Inv, slot: usize, mut stack: Stack, count: i32) {
     if count == 1 {
         stack.count = count;
-        set_item(level, pos, slot, stack);
+        set_item(level, inv, slot, stack);
     } else {
-        set_count(level, pos, slot, count);
+        set_count(level, inv, slot, count);
     }
 }
 
-/// `suckInItems`: one item from the container above, or else any item
-/// lying in the suck box, unless a full block sits on the hopper.
-fn suck_in_items(level: &mut Level, pos: Pos) -> bool {
-    let Some(source) = container_at(level, pos.above()) else {
-        let above = level.get(pos.above());
-        if level.physics().is_full_block(above) {
+/// `HopperBlockEntity.suckInItems`, for a hopper block or a hopper
+/// minecart: one item from the container above, or else any item lying in
+/// the suck box. A full block on a hopper block stops it taking items.
+fn suck_in_items(level: &mut Level, hopper: Inv) -> bool {
+    // `getLevelX/Y/Z`: a block's middle, or the cart's feet raised by 0.5.
+    let (x, y, z, grid) = match hopper {
+        Inv::Block(p) => (p.x as f64 + 0.5, p.y as f64 + 0.5, p.z as f64 + 0.5, true),
+        Inv::Cart(k) => {
+            let p = level.entities[k].pos;
+            (p.x, p.y + 0.5, p.z, false)
+        }
+    };
+    let above = Pos::new(floor(x), floor(y + 1.0), floor(z));
+    let Some(source) = container_at_xyz(level, above, x, y + 1.0, z) else {
+        if grid && level.physics().is_full_block(level.get(above)) {
             return false;
         }
-        let b = suck_box(pos);
-        let mut items: Vec<usize> = (0..level.entities.len())
-            .filter(|&k| {
-                let e = &level.entities[k];
-                !e.removed && matches!(e.data, crate::entity::Data::Item(_)) && e.bounding_box().intersects(&b)
-            })
-            .collect();
-        items.sort_by_key(|&k| level.entities[k].id);
-        return items.into_iter().any(|k| add_item_entity(level, pos, k));
+        let b = Aabb::new(0.0, 11.0 / 16.0, 0.0, 1.0, 2.0, 1.0).offset(x - 0.5, y - 0.5, z - 0.5);
+        return items_in(level, b).into_iter().any(|k| add_item_entity(level, hopper, k));
     };
     for slot in 0..size(level, source) {
         let stack = get_item(level, source, slot);
@@ -425,7 +501,7 @@ fn suck_in_items(level: &mut Level, pos: Pos) -> bool {
         }
         let count = stack.count;
         let moving = remove_item(level, source, slot, 1);
-        let result = add_item(level, Some(source), pos, moving);
+        let result = add_item(level, Some(source), hopper, moving);
         if result.is_empty() {
             set_changed(level, source);
             return true;
@@ -433,6 +509,29 @@ fn suck_in_items(level: &mut Level, pos: Pos) -> bool {
         restore(level, source, slot, stack, count);
     }
     false
+}
+
+/// Item entities whose boxes meet `b`, oldest first.
+fn items_in(level: &Level, b: Aabb) -> Vec<usize> {
+    let mut items: Vec<usize> = (0..level.entities.len())
+        .filter(|&k| {
+            let e = &level.entities[k];
+            !e.removed && matches!(e.data, Data::Item(_)) && e.bounding_box().intersects(&b)
+        })
+        .collect();
+    items.sort_by_key(|&k| level.entities[k].id);
+    items
+}
+
+/// `MinecartHopper.suckInItems` for the cart at `k`: what a hopper takes,
+/// or else an item touching the cart.
+pub fn hopper_cart_suck(level: &mut Level, k: usize) -> bool {
+    let cart = Inv::Cart(k);
+    if suck_in_items(level, cart) {
+        return true;
+    }
+    let b = level.entities[k].bounding_box().inflate(0.25, 0.0, 0.25);
+    items_in(level, b).into_iter().any(|i| add_item_entity(level, cart, i))
 }
 
 // --- HopperBlock -------------------------------------------------------------------
@@ -480,7 +579,7 @@ pub fn dropper_tick(level: &mut Level, pos: Pos, state: StateId) {
         // Dropped as an item entity, which is not simulated.
         None => Stack { count: stack.count - 1, ..stack.clone() },
         Some(dest) => {
-            let result = add_item(level, Some(pos), dest, Stack { count: 1, ..stack.clone() });
+            let result = add_item(level, Some(Inv::Block(pos)), dest, Stack { count: 1, ..stack.clone() });
             if result.is_empty() { Stack { count: stack.count - 1, ..stack.clone() } } else { stack.clone() }
         }
     };

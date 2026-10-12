@@ -187,6 +187,33 @@ pub fn detector_tick(level: &mut Level, pos: Pos, state: StateId) {
     }
 }
 
+/// `getSearchBB`: the middle of the block, where carts are looked for.
+fn search_box(pos: Pos) -> crate::physics::Aabb {
+    crate::physics::Aabb {
+        min: [pos.x as f64 + 0.2, pos.y as f64, pos.z as f64 + 0.2],
+        max: [pos.x as f64 + 0.8, pos.y as f64 + 0.8, pos.z as f64 + 0.8],
+    }
+}
+
+/// `DetectorRailBlock.getAnalogOutputSignal`: while powered, how full the
+/// first chest or hopper minecart on it is. The engine has no command
+/// block minecarts.
+pub fn detector_analog_output(level: &Level, pos: Pos, state: StateId) -> i32 {
+    if !level.flag(state, "powered") {
+        return 0;
+    }
+    let b = search_box(pos);
+    level
+        .entities
+        .iter()
+        .filter(|e| !e.removed && e.bounding_box().intersects(&b))
+        .find_map(|e| match &e.data {
+            crate::entity::Data::Minecart(m) => m.items.as_deref(),
+            _ => None,
+        })
+        .map_or(0, super::container::signal_from_items)
+}
+
 /// `checkPressed`: powered while a minecart's box meets the middle of the
 /// block.
 fn detector_check_pressed(level: &mut Level, pos: Pos, state: StateId) {
@@ -194,10 +221,7 @@ fn detector_check_pressed(level: &mut Level, pos: Pos, state: StateId) {
         return;
     }
     let was = level.flag(state, "powered");
-    let b = crate::physics::Aabb {
-        min: [pos.x as f64 + 0.2, pos.y as f64, pos.z as f64 + 0.2],
-        max: [pos.x as f64 + 0.8, pos.y as f64 + 0.8, pos.z as f64 + 0.8],
-    };
+    let b = search_box(pos);
     let now = level
         .entities
         .iter()
