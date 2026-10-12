@@ -1,0 +1,15 @@
+[package]
+name = "tickwright-engine"
+description = "Tick-accurate Minecraft: Java Edition redstone simulation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+serde_json.workspace = true
+tickwright-trace = { path = "../trace" }
+
+[dev-dependencies]
+flate2.workspace = true

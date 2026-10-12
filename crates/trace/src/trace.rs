@@ -17,7 +17,7 @@ pub const TRACE_FORMAT: u32 = 1;
 /// Tick phases, in the order 26.3 runs them. Player input lands in `input`,
 /// before the world tick. Unknown phases from future captures parse as
 /// `Other` rather than failing.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Phase {
     Input,
@@ -33,7 +33,7 @@ pub enum Phase {
 }
 
 /// What an entry records.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Kind {
     /// A block changed state. `state` is the new state.

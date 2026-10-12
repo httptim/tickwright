@@ -90,7 +90,7 @@ fn compare_state(expected: &Trace, actual: &Trace, tick: u32) -> Result<(), Dive
 fn per_block(trace: &Trace, tick: u32) -> BTreeMap<[i32; 3], Vec<(Phase, &str)>> {
     let mut out: BTreeMap<[i32; 3], Vec<(Phase, &str)>> = BTreeMap::new();
     for e in trace.entries.iter().filter(|e| e.tick == tick && e.kind == Kind::Set) {
-        out.entry(e.pos).or_default().push((e.phase.clone(), e.state.as_deref().unwrap_or("?")));
+        out.entry(e.pos).or_default().push((e.phase, e.state.as_deref().unwrap_or("?")));
     }
     out
 }

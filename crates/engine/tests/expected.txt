@@ -1,0 +1,5 @@
+# Fixtures the engine must match in every orientation, and the level.
+lever_lamp order
+piston_block_entity order
+piston_immovable order
+piston_push_limit_13 order
