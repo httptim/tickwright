@@ -58,3 +58,19 @@ fn sliding_door_4x4() {
 fn sliding_door_6x6() {
     check("6x6_sliding_door.litematic", "door_6x6_cycle");
 }
+
+#[test]
+fn exports_round_trip_in_every_format() {
+    use tickwright_schematic::Format;
+    use tickwright_trace::Transform;
+    let text = fs::read_to_string(root().join("fixtures/nucleation/door_4x4_vault_inworld.json")).unwrap();
+    let fixture = FixtureSource::from_json(&text).unwrap().resolve(Transform::IDENTITY).unwrap();
+    let s = Schematic::from_fixture(&fixture).unwrap();
+    for f in [Format::Litematic, Format::Sponge, Format::Structure] {
+        let back = Schematic::read(&s.write(f)).unwrap();
+        let again = back.to_fixture(&fixture.name, fixture.ticks).unwrap().resolve(Transform::IDENTITY).unwrap();
+        assert_eq!(again.blocks, fixture.blocks, "{f:?}");
+        assert_eq!(again.containers, fixture.containers, "{f:?}");
+        assert_eq!(again.comparators, fixture.comparators, "{f:?}");
+    }
+}

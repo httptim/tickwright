@@ -17,7 +17,7 @@ use std::collections::BTreeMap;
 
 use anyhow::{Context, Result, bail};
 use tickwright_trace::fixture::{ComparatorOutput, Container, ItemSlot};
-use tickwright_trace::{BlockState, FixtureSource, Level};
+use tickwright_trace::{BlockState, FixtureSource, Level, ResolvedFixture};
 
 use nbt::Tag;
 
@@ -200,6 +200,46 @@ impl Schematic {
             comparators: self.comparators(),
         };
         Ok(fixture)
+    }
+
+    /// A resolved fixture's blocks, container contents and comparator
+    /// outputs, for export.
+    pub fn from_fixture(f: &ResolvedFixture) -> Result<Schematic> {
+        let mut blocks = Vec::with_capacity(f.blocks.len());
+        for (x, y, z, s) in &f.blocks {
+            blocks.push(([*x, *y, *z], BlockState::parse(s).with_context(|| format!("{}: {s}", f.id))?));
+        }
+        let mut s = Schematic::from_blocks(f.size, blocks);
+        for c in &f.containers {
+            let items = c
+                .items
+                .iter()
+                .map(|i| {
+                    let id = if i.id.contains(':') { i.id.clone() } else { format!("minecraft:{}", i.id) };
+                    nbt::compound(vec![
+                        ("Slot", Tag::Byte(i.slot as i8)),
+                        ("id", Tag::String(id)),
+                        ("count", Tag::Int(i.count as i32)),
+                    ])
+                })
+                .collect();
+            let id = s.block(c.pos).id;
+            s.block_entities.push(BlockEntity {
+                pos: c.pos,
+                data: nbt::compound(vec![("id", Tag::String(id)), ("Items", Tag::List(10, items))]),
+            });
+        }
+        for c in &f.comparators {
+            s.block_entities.push(BlockEntity {
+                pos: c.pos,
+                data: nbt::compound(vec![
+                    ("id", Tag::String("minecraft:comparator".into())),
+                    ("OutputSignal", Tag::Int(c.output)),
+                ]),
+            });
+        }
+        s.data_version = Some(DATA_VERSION_26_3);
+        Ok(s.finish())
     }
 
     /// A schematic of a resolved or authored fixture's blocks, for export.
