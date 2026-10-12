@@ -654,21 +654,28 @@ public final class Capture {
      * {@code limit} is negative.
      */
     private static void setMaxChainedUpdates(int limit) {
+        if (limit < 0 && defaultUpdater == null) {
+            return; // never changed
+        }
         try {
             java.lang.reflect.Field f = null;
-            for (java.lang.reflect.Field c : net.minecraft.world.level.Level.class.getDeclaredFields()) {
-                if (c.getType() == NeighborUpdater.class) {
-                    f = c;
+            for (Class<?> c = level.getClass(); c != null && f == null; c = c.getSuperclass()) {
+                for (java.lang.reflect.Field field : c.getDeclaredFields()) {
+                    if (!java.lang.reflect.Modifier.isStatic(field.getModifiers())
+                            && NeighborUpdater.class.isAssignableFrom(field.getType())) {
+                        f = field;
+                    }
                 }
             }
             if (f == null) {
-                throw new IllegalStateException("Level has no NeighborUpdater field");
+                throw new IllegalStateException("the level has no NeighborUpdater field");
             }
             f.setAccessible(true);
             if (defaultUpdater == null) {
                 defaultUpdater = (NeighborUpdater) f.get(level);
             }
             f.set(level, limit < 0 ? defaultUpdater : new CollectingNeighborUpdater(level, limit));
+            System.out.printf("neighbor updater now %s (limit %d)%n", f.get(level).getClass().getSimpleName(), limit);
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("cannot set max-chained-neighbor-updates", e);
         }
