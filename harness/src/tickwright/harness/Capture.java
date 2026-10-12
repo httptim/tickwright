@@ -146,6 +146,14 @@ public final class Capture {
         waitUntilNextTick.setAccessible(true);
         initServer.invoke(server);
         level = server.overworld();
+        // No weather, ever. Rain can start in any world before the first
+        // daylight detector fixture, and "weather clear" then only fades it
+        // out over 100 ticks, dimming the sky the detectors read. The weather
+        // timers also draw from the level's random source when they run out.
+        // The game rule's name changed in 1.21.11; the other one is rejected quietly.
+        command("gamerule advance_weather false");
+        command("gamerule doWeatherCycle false");
+        command("weather clear");
         String mcVersion = SharedConstants.getCurrentVersion().name();
         System.out.printf("Minecraft %s%n", mcVersion);
         if (physics != null) {
@@ -873,7 +881,6 @@ public final class Capture {
 
     private static boolean clockFrozen;
 
-    /** Stop the day-night cycle and the weather, once, for fixtures that read the time of day. */
     private static void randomTicks(int speed) {
         // The game rule's name changed in 1.21.11; the other one is rejected quietly.
         command("gamerule random_tick_speed " + speed);
@@ -882,14 +889,13 @@ public final class Capture {
 
     private static void spawners(boolean on) {
         // The game rules' names changed in 1.21.11; the old ones are rejected quietly.
-        // The weather cycle draws too, whenever one of its timers runs out.
         for (String rule : new String[] {"spawn_phantoms", "doInsomnia", "spawn_patrols", "doPatrolSpawning",
-                "spawn_wandering_traders", "doTraderSpawning", "spawn_mobs", "doMobSpawning",
-                "advance_weather", "doWeatherCycle"}) {
+                "spawn_wandering_traders", "doTraderSpawning", "spawn_mobs", "doMobSpawning"}) {
             command("gamerule " + rule + " " + on);
         }
     }
 
+    /** Stop the day-night cycle, once, for fixtures that read the time of day. */
     private static void freezeClock() {
         if (clockFrozen) {
             return;
@@ -898,7 +904,6 @@ public final class Capture {
         // The game rule's name changed in 1.21.11; the other one is rejected quietly.
         command("gamerule advance_time false");
         command("gamerule doDaylightCycle false");
-        command("weather clear");
     }
 
     /** The features the world was created with, which the captures without experiments use. */
