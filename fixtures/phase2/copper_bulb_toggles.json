@@ -1,0 +1,91 @@
+{
+  "name": "copper_bulb_toggles",
+  "description": "Two waxed copper bulbs: one beside a lever that is flipped on and off twice, one beside a floor button pressed twice. Each rising edge toggles its bulb. A comparator reads the first bulb into a lamp.",
+  "ticks": 60,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "copper_bulb",
+    "comparator"
+  ],
+  "palette": {
+    "#": "stone",
+    "l": "lever[face=floor,facing=north,powered=false]",
+    "B": "waxed_copper_bulb[lit=false,powered=false]",
+    "O": "waxed_oxidized_copper_bulb[lit=false,powered=false]",
+    "c": "comparator[facing=west,mode=compare,powered=false]",
+    "L": "redstone_lamp[lit=false]",
+    "b": "stone_button[face=floor,facing=north,powered=false]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      "lBcL.",
+      ".....",
+      "bO..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 6,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 14,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 3,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 30,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    }
+  ]
+}

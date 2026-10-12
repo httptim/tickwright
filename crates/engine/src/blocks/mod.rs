@@ -10,6 +10,7 @@
 // Dispatch tables grow one arm per block kind as blocks are added.
 #![allow(clippy::single_match, clippy::match_single_binding)]
 
+mod bulb;
 mod button;
 mod comparator;
 pub mod container;
@@ -68,6 +69,9 @@ pub enum Kind {
     Water,
     Hopper,
     Dropper,
+    /// Waxed copper bulbs (unwaxed ones oxidize on random ticks).
+    CopperBulb,
+    Bell,
     Other,
 }
 
@@ -81,6 +85,8 @@ pub enum BlockEntity {
     Hopper(container::Hopper),
     /// A dropper's 9 slots.
     Dropper(Vec<container::Stack>),
+    /// `BellBlockEntity`: only its ticker's place in the list matters here.
+    Bell,
     /// `PistonMovingBlockEntity`.
     Piston(piston::Moving),
 }
@@ -89,13 +95,13 @@ impl BlockEntity {
     pub fn ticks(&self) -> bool {
         match self {
             BlockEntity::Chest(_) | BlockEntity::Dropper(_) | BlockEntity::Comparator(_) => false,
-            BlockEntity::Piston(_) | BlockEntity::Hopper(_) => true,
+            BlockEntity::Piston(_) | BlockEntity::Hopper(_) | BlockEntity::Bell => true,
         }
     }
 }
 
 pub fn has_block_entity(kind: Kind) -> bool {
-    matches!(kind, Kind::Chest | Kind::MovingPiston | Kind::Comparator | Kind::Hopper | Kind::Dropper)
+    matches!(kind, Kind::Chest | Kind::MovingPiston | Kind::Comparator | Kind::Hopper | Kind::Dropper | Kind::Bell)
 }
 
 pub fn new_block_entity(_level: &Level, _pos: Pos, state: StateId) -> Option<BlockEntity> {
@@ -103,6 +109,7 @@ pub fn new_block_entity(_level: &Level, _pos: Pos, state: StateId) -> Option<Blo
         Kind::Chest => Some(container::new_chest()),
         Kind::Hopper => Some(BlockEntity::Hopper(container::Hopper::new())),
         Kind::Dropper => Some(container::new_dropper()),
+        Kind::Bell => Some(BlockEntity::Bell),
         Kind::Comparator => Some(BlockEntity::Comparator(0)),
         _ => None,
     }
@@ -118,13 +125,17 @@ pub fn tick_block_entity(level: &mut Level, pos: Pos) {
 
 /// `hasAnalogOutputSignal`.
 pub fn has_analog_output(level: &Level, state: StateId) -> bool {
-    matches!(level.kind(state), Kind::Chest | Kind::Composter | Kind::Cake | Kind::Hopper | Kind::Dropper)
+    matches!(
+        level.kind(state),
+        Kind::Chest | Kind::Composter | Kind::Cake | Kind::Hopper | Kind::Dropper | Kind::CopperBulb
+    )
 }
 
 /// `getAnalogOutputSignal`.
 pub fn analog_output(level: &Level, pos: Pos, state: StateId) -> i32 {
     match level.kind(state) {
         Kind::Chest | Kind::Hopper | Kind::Dropper => container::analog_output(level, pos, state),
+        Kind::CopperBulb => bulb::bulb_analog_output(level, state),
         Kind::Composter => level.int(state, "level"),
         Kind::Cake => (7 - level.int(state, "bites")) * 2,
         _ => 0,
@@ -172,7 +183,8 @@ pub fn is_face_sturdy(level: &Level, pos: Pos, state: StateId, dir: Dir) -> bool
         | Kind::Glass
         | Kind::Observer
         | Kind::NoteBlock
-        | Kind::Dropper => true,
+        | Kind::Dropper
+        | Kind::CopperBulb => true,
         Kind::Trapdoor => door::trapdoor_face_sturdy(level, state, dir),
         Kind::Slab => match level.prop(state, "type") {
             "double" => true,
@@ -230,6 +242,7 @@ pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId, moved
         Kind::PoweredRail => rail::on_place(level, pos, state, old),
         Kind::Water => water::on_place(level, pos, state),
         Kind::Hopper => container::hopper_on_place(level, pos, state, old),
+        Kind::CopperBulb => bulb::bulb_on_place(level, pos, state, old),
         _ => {}
     }
 }
@@ -269,6 +282,8 @@ pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId, source: Blo
         Kind::Water => water::neighbor_changed(level, pos, state),
         Kind::Hopper => container::hopper_neighbor_changed(level, pos, state),
         Kind::Dropper => container::dropper_neighbor_changed(level, pos, state),
+        Kind::CopperBulb => bulb::bulb_neighbor_changed(level, pos, state),
+        Kind::Bell => bulb::bell_neighbor_changed(level, pos, state),
         _ => {}
     }
 }
@@ -292,6 +307,7 @@ pub fn update_shape(
         Kind::Door => door::door_update_shape(level, pos, state, dir, neighbor, neighbor_state),
         Kind::Comparator | Kind::Cake => survives_on_below(level, state, dir, neighbor, neighbor_state),
         Kind::Water => water::update_shape(level, pos, state, neighbor_state),
+        Kind::Bell => bulb::bell_update_shape(level, pos, state, dir),
         _ => state,
     }
 }
@@ -320,7 +336,7 @@ pub fn trigger_event(level: &mut Level, pos: Pos, state: StateId, a: i32, b: i32
     match level.kind(state) {
         Kind::Piston | Kind::StickyPiston => piston::trigger_event(level, pos, state, a, b),
         // The sound and particles have no effect on the world.
-        Kind::NoteBlock => true,
+        Kind::NoteBlock | Kind::Bell => true,
         _ => false,
     }
 }
