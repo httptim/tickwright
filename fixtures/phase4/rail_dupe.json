@@ -1,0 +1,60 @@
+{
+  "name": "rail_dupe",
+  "description": "A rail duper. A sticky piston pushes two slime blocks with a rail on each. The piston head moves into the first slime's spot and air takes the second's, so each rail's support changes while the piston is still placing its cached copy.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "duplication"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "sticky_piston[extended=false,facing=east]",
+    "S": "slime_block",
+    "C": "rail"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".....",
+      "PS...",
+      ".S...",
+      "....."
+    ],
+    [
+      ".....",
+      ".C...",
+      ".C...",
+      "....."
+    ],
+    [
+      ".....",
+      ".....",
+      ".....",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 5,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "state": "redstone_block"
+    }
+  ],
+  "entities": true
+}
