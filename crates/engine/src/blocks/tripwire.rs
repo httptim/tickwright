@@ -76,6 +76,10 @@ fn check_pressed(level: &mut Level, pos: Pos) {
     }
     if now {
         level.schedule_tick(pos, level.block(state), 10, 0);
+    } else if powered {
+        // Fitted from 26.3 captures: a string that lets go checks once
+        // more on the next tick.
+        level.schedule_tick(pos, level.block(state), 1, 0);
     }
 }
 

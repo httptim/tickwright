@@ -180,17 +180,6 @@ public final class Capture {
             }
         }
         warmUp(new BlockPos(lo[0], lo[1], lo[2]), new BlockPos(hi[0], hi[1], hi[2]));
-        // Terrain near a fixture is in reach of an explosion or a thrown
-        // item but not of the engine, so the whole band is emptied once.
-        int cleared = 0;
-        for (BlockPos p : BlockPos.betweenClosed(new BlockPos(lo[0], lo[1], lo[2]), new BlockPos(hi[0], hi[1], hi[2]))) {
-            if (!level.getBlockState(p).isAir()) {
-                level.setBlock(p, Blocks.AIR.defaultBlockState(), QUIET);
-                level.removeBlockEntity(p);
-                cleared++;
-            }
-        }
-        System.out.printf("cleared %d blocks of terrain%n", cleared);
         strayMinY = lo[1] - 16;
         strayMaxY = hi[1] + 16;
 
@@ -416,6 +405,10 @@ public final class Capture {
         } finally {
             recording = null;
             Hooks.seedThread = null;
+            // Leave nothing behind: the next fixture clears only its own
+            // box, and a build left standing above it is in reach of an
+            // explosion there (tnt_knockback@mr270 broke one).
+            clear(min, max);
             if (trackEntities) {
                 randomTicks(3);
                 spawners(true);
@@ -521,15 +514,6 @@ public final class Capture {
                 }
                 pos = e.pos();
                 detail = e.paramA() + "," + e.paramB();
-            }
-            case "explode_blocks" -> {
-                StringBuilder sb = new StringBuilder();
-                for (Object o : (java.util.List<?>) arg) {
-                    BlockPos b = (BlockPos) o;
-                    sb.append(' ').append(b.getX()).append(',').append(b.getY()).append(',').append(b.getZ());
-                }
-                System.out.printf("DIAG explosion %d:%s%n", ((java.util.List<?>) arg).size(), sb);
-                return;
             }
             default -> {
                 return;
