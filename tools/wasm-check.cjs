@@ -118,6 +118,8 @@ async function main() {
           const pos = [ox + s.pos[0], oy + s.pos[1], oz + s.pos[2]];
           if (s.action === "use") window.cmd({ op: "use", session, pos });
           else if (s.action === "set") window.cmd({ op: "set", session, pos, state: s.state, updates: true });
+          else if (s.action === "place")
+            window.cmd({ op: "place", session, pos, item: s.item, face: s.face, look: s.look, pitch: s.pitch, hit: s.hit, sneak: s.sneak });
           else window.cmd({ op: "destroy", session, pos });
         }
         for (const ev of window.cmd({ op: "step", session }).events) {

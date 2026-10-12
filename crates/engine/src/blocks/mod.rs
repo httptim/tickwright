@@ -21,6 +21,7 @@ mod lever;
 mod note;
 mod observer;
 mod piston;
+pub mod placement;
 mod plain;
 mod rail;
 mod repeater;
@@ -385,8 +386,34 @@ pub fn update_shape(
         Kind::Bell => bulb::bell_update_shape(level, pos, state, dir),
         Kind::Leaves => plain::leaves_update_shape(level, pos, state, neighbor_state),
         Kind::TripwireHook => plain::hook_update_shape(level, pos, state, dir),
+        Kind::Chest => chest_update_shape(level, state, dir, neighbor_state),
         _ => state,
     }
+}
+
+/// `ChestBlock.getConnectedDirection`: where the other half of a double
+/// chest is.
+fn chest_connected_direction(level: &Level, state: StateId) -> Dir {
+    let facing = level.dir(state, "facing");
+    if level.prop(state, "type") == "left" { facing.clockwise() } else { facing.counter_clockwise() }
+}
+
+/// `ChestBlock.updateShape`: a single chest joins a half-chest beside it
+/// that reaches for it; a half whose partner goes becomes single.
+fn chest_update_shape(level: &Level, state: StateId, dir: Dir, neighbor_state: StateId) -> StateId {
+    if level.block(neighbor_state) == level.block(state) && dir.is_horizontal() {
+        let nt = level.prop(neighbor_state, "type");
+        if level.prop(state, "type") == "single"
+            && nt != "single"
+            && level.dir(state, "facing") == level.dir(neighbor_state, "facing")
+            && chest_connected_direction(level, neighbor_state) == dir.opposite()
+        {
+            return level.with(state, "type", if nt == "left" { "right" } else { "left" });
+        }
+    } else if level.prop(state, "type") != "single" && chest_connected_direction(level, state) == dir {
+        return level.with(state, "type", "single");
+    }
+    state
 }
 
 /// `updateIndirectNeighbourShapes`: only dust has any.

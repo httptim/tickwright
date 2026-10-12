@@ -115,7 +115,7 @@ fn missing_connections(level: &Level, mut state: StateId, pos: Pos) -> StateId {
 }
 
 /// `getConnectionState`.
-fn connection_state(level: &Level, state: StateId, pos: Pos) -> StateId {
+pub(super) fn connection_state(level: &Level, state: StateId, pos: Pos) -> StateId {
     let was_dot = is_dot(level, state);
     let base = level.default_state(level.block(state));
     let mut s = missing_connections(level, level.with_int(base, "power", level.int(state, "power")), pos);

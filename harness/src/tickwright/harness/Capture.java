@@ -522,8 +522,67 @@ public final class Capture {
             case "use" -> useBlock(p);
             case "set" -> level.setBlock(p, parse(blocks, s.get("state").getAsString()), NORMAL);
             case "destroy" -> level.destroyBlock(p, false);
+            case "place" -> place(p, s);
             default -> throw new IllegalArgumentException("unknown action " + s.get("action"));
         }
+    }
+
+    private static Direction direction(String name) {
+        for (Direction d : Direction.values()) {
+            if (d.getName().equals(name)) {
+                return d;
+            }
+        }
+        throw new IllegalArgumentException("unknown direction " + name);
+    }
+
+    /** The yaw of a player facing {@code look}, as the engine assumes it. */
+    private static float yaw(String look) {
+        return switch (look) {
+            case "south" -> 0f;
+            case "west" -> 90f;
+            case "north" -> 180f;
+            case "east" -> 270f;
+            default -> throw new IllegalArgumentException("unknown look " + look);
+        };
+    }
+
+    /**
+     * Right-click a face of {@code clicked} holding an item, as a player
+     * would: {@code ItemStack.useOn}, which for a block item runs
+     * {@code BlockItem.place} and so the block's own placement rules.
+     */
+    private static void place(BlockPos clicked, JsonObject s) {
+        Player player = new Player(level, new GameProfile(UUID.randomUUID(), "tickwright")) {
+            @Override
+            public GameType gameMode() {
+                return GameType.CREATIVE;
+            }
+
+            @Override
+            public boolean isClientAuthoritative() {
+                return false;
+            }
+        };
+        // Far above the build, so the player never obstructs a placement.
+        player.setPos(clicked.getX() + 0.5, clicked.getY() + 64, clicked.getZ() + 0.5);
+        // Placement reads both: the body's yaw for the horizontal direction,
+        // the head's (getViewYRot) for the nearest looking direction.
+        player.setYRot(yaw(s.get("look").getAsString()));
+        player.setYHeadRot(yaw(s.get("look").getAsString()));
+        player.setXRot(s.has("pitch") ? s.get("pitch").getAsFloat() : 0f);
+        player.setShiftKeyDown(s.has("sneak") && s.get("sneak").getAsBoolean());
+        String id = s.get("item").getAsString();
+        ItemStack stack = new ItemStack(item(id.contains(":") ? id : "minecraft:" + id));
+        InteractionHand hand = InteractionHand.MAIN_HAND;
+        player.setItemInHand(hand, stack);
+        Direction face = direction(s.get("face").getAsString());
+        // Resolved fixtures always give the click point, in sixteenths.
+        JsonArray h = s.getAsJsonArray("hit");
+        int[] hit = {h.get(0).getAsInt(), h.get(1).getAsInt(), h.get(2).getAsInt()};
+        Vec3 at = new Vec3(clicked.getX() + hit[0] / 16.0, clicked.getY() + hit[1] / 16.0, clicked.getZ() + hit[2] / 16.0);
+        BlockHitResult result = new BlockHitResult(at, face, clicked, false);
+        stack.useOn(new net.minecraft.world.item.context.UseOnContext(player, hand, result));
     }
 
     /**

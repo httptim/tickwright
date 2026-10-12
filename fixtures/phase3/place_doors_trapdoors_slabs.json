@@ -1,0 +1,215 @@
+{
+  "name": "place_doors_trapdoors_slabs",
+  "description": "Doors (single, paired and powered), trapdoors clicked high and low on a wall and on the floor, and slabs placed bottom, top and merged into a double slab.",
+  "ticks": 20,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "placement",
+    "door",
+    "trapdoor",
+    "slab"
+  ],
+  "palette": {
+    "#": "stone"
+  },
+  "layers": [
+    [
+      "#######",
+      "#######",
+      "#######",
+      "#######",
+      "#######",
+      "#######"
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      "....#..",
+      ".......",
+      "......."
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      "....#..",
+      ".......",
+      "......."
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "......."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "place",
+      "pos": [
+        1,
+        0,
+        1
+      ],
+      "item": "oak_door",
+      "face": "up",
+      "look": "north",
+      "pitch": 30
+    },
+    {
+      "tick": 2,
+      "action": "place",
+      "pos": [
+        2,
+        0,
+        1
+      ],
+      "item": "oak_door",
+      "face": "up",
+      "look": "north",
+      "pitch": 30
+    },
+    {
+      "tick": 3,
+      "action": "place",
+      "pos": [
+        4,
+        1,
+        3
+      ],
+      "item": "oak_trapdoor",
+      "face": "west",
+      "look": "east",
+      "hit": [
+        0,
+        12,
+        8
+      ]
+    },
+    {
+      "tick": 4,
+      "action": "place",
+      "pos": [
+        4,
+        2,
+        3
+      ],
+      "item": "oak_trapdoor",
+      "face": "east",
+      "look": "west",
+      "hit": [
+        16,
+        4,
+        8
+      ]
+    },
+    {
+      "tick": 5,
+      "action": "place",
+      "pos": [
+        6,
+        0,
+        1
+      ],
+      "item": "oak_trapdoor",
+      "face": "up",
+      "look": "south",
+      "pitch": 50
+    },
+    {
+      "tick": 6,
+      "action": "place",
+      "pos": [
+        1,
+        0,
+        4
+      ],
+      "item": "stone_slab",
+      "face": "up",
+      "look": "north",
+      "pitch": 50
+    },
+    {
+      "tick": 7,
+      "action": "place",
+      "pos": [
+        1,
+        1,
+        4
+      ],
+      "item": "stone_slab",
+      "face": "up",
+      "look": "north",
+      "pitch": 60
+    },
+    {
+      "tick": 8,
+      "action": "place",
+      "pos": [
+        4,
+        1,
+        3
+      ],
+      "item": "stone_slab",
+      "face": "south",
+      "look": "north",
+      "hit": [
+        8,
+        12,
+        16
+      ]
+    },
+    {
+      "tick": 9,
+      "action": "place",
+      "pos": [
+        6,
+        0,
+        4
+      ],
+      "item": "redstone_block",
+      "face": "up",
+      "look": "west",
+      "pitch": 50
+    },
+    {
+      "tick": 10,
+      "action": "place",
+      "pos": [
+        5,
+        0,
+        4
+      ],
+      "item": "oak_door",
+      "face": "up",
+      "look": "east",
+      "pitch": 30
+    },
+    {
+      "tick": 11,
+      "action": "place",
+      "pos": [
+        3,
+        0,
+        1
+      ],
+      "item": "iron_trapdoor",
+      "face": "up",
+      "look": "west",
+      "pitch": 50,
+      "hit": [
+        8,
+        16,
+        4
+      ]
+    }
+  ]
+}

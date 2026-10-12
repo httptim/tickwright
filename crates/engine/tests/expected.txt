@@ -127,3 +127,8 @@ nucleation_door_4x4_vault_inworld order
 nucleation_door_4x4_vault_stress order
 nucleation_door_6x6_cycle order
 nucleation_door_6x6_inworld order
+place_diodes_and_dust order
+place_doors_trapdoors_slabs order
+place_levers_and_buttons order
+place_pistons_and_observers order
+place_rails_and_more order

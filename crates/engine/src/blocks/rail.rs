@@ -1,10 +1,9 @@
 //! `PoweredRailBlock` (powered and activator rails) with the parts of
 //! `BaseRailBlock` they use.
 //!
-//! Rail shapes are taken as placed: `RailState`, which bends and connects
-//! rails when one is placed, is not here yet. For the straight lines these
-//! rails form it changes nothing, but a rail placed by a stimulus next to
-//! others would not reconnect them.
+//! `RailState`, which turns a newly placed rail toward its neighbours and
+//! turns them toward it, is here for straight rails (every rail the engine
+//! simulates is straight; plain rails, which bend, are not supported yet).
 
 use crate::level::{Level, flags};
 use crate::pos::{Dir, Pos};
@@ -140,38 +139,22 @@ pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId, moved_by_pi
 }
 
 /// `BaseRailBlock.onPlace`: a fresh rail runs `updateState`, which reshapes
-/// it (`updateDir`) and then sends itself a neighbor update carrying the
-/// new shape, so it checks its power at once.
+/// it and its neighbours (`updateDir`, `RailState.place`) and then sends
+/// itself a neighbor update carrying the new shape, so it checks its power
+/// at once.
 ///
-/// `RailState` is not simulated. The one reshaping that matters here is a
-/// slope placed before the rail it climbs to: the game flattens it until that
-/// rail arrives, so its missing high-side support does not remove it
-/// (`powered_rail_slope`). The flattened shape is used for the update only.
-///
-/// When only `powered` changes, the rail updates the neighbors above it (if
-/// sloped), its own and those below it, in that order, before the write's
-/// own updates go out: the same updates as removing it.
+/// When the rail only changes state (power, or a shape `RailState` gives
+/// it), it updates the neighbors above it (if it was sloped), its own and
+/// those below it, in that order, before the write's own updates go out:
+/// the same updates as removing it.
 pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId) {
     let block = level.block(state);
     if !level.is(old, block) {
-        let placed = flatten_lone_slope(level, pos, state);
+        let placed = RailState::new(level, pos, state).place(level, level.has_neighbor_signal(pos), true);
         level.neighbor_changed_state(pos, placed, block, false);
-    } else if level.flag(old, "powered") != level.flag(state, "powered") {
-        removal_updates(level, pos, state, block);
+    } else if old != state {
+        removal_updates(level, pos, old, block);
     }
-}
-
-/// A slope with no rail above its high side, as `updateDir` would flatten it.
-fn flatten_lone_slope(level: &Level, pos: Pos, state: StateId) -> StateId {
-    let (high, flat) = match level.prop(state, "shape") {
-        "ascending_east" => (Dir::East, "east_west"),
-        "ascending_west" => (Dir::West, "east_west"),
-        "ascending_north" => (Dir::North, "north_south"),
-        "ascending_south" => (Dir::South, "north_south"),
-        _ => return state,
-    };
-    let above = pos.above().offset(high);
-    if level.kind_at(above) == Kind::PoweredRail { state } else { level.with(state, "shape", flat) }
 }
 
 fn removal_updates(level: &mut Level, pos: Pos, state: StateId, block: crate::registry::BlockId) {
@@ -185,5 +168,165 @@ fn removal_updates(level: &mut Level, pos: Pos, state: StateId, block: crate::re
 pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateId, moved_by_piston: bool) {
     if !moved_by_piston {
         removal_updates(level, pos, state, level.block(state));
+    }
+}
+
+/// `BaseRailBlock.isRail`.
+fn is_rail(level: &Level, pos: Pos) -> bool {
+    level.kind_at(pos) == Kind::PoweredRail
+}
+
+/// `RailState`: a rail and the positions its shape connects to.
+struct RailState {
+    pos: Pos,
+    state: StateId,
+    connections: Vec<Pos>,
+}
+
+impl RailState {
+    fn new(level: &Level, pos: Pos, state: StateId) -> RailState {
+        let mut r = RailState { pos, state, connections: Vec::new() };
+        r.update_connections(level.prop(state, "shape"));
+        r
+    }
+
+    fn update_connections(&mut self, shape: &str) {
+        let p = self.pos;
+        let (n, s, w, e) = (p.offset(Dir::North), p.offset(Dir::South), p.offset(Dir::West), p.offset(Dir::East));
+        self.connections = match shape {
+            "north_south" => vec![n, s],
+            "east_west" => vec![w, e],
+            "ascending_east" => vec![w, e.above()],
+            "ascending_west" => vec![w.above(), e],
+            "ascending_north" => vec![n.above(), s],
+            "ascending_south" => vec![n, s.above()],
+            "south_east" => vec![e, s],
+            "south_west" => vec![w, s],
+            "north_west" => vec![w, n],
+            _ => vec![e, n],
+        };
+    }
+
+    /// `getRail`: a rail at `pos`, or just above or below it.
+    fn get_rail(level: &Level, pos: Pos) -> Option<RailState> {
+        [pos, pos.above(), pos.below()]
+            .into_iter()
+            .find(|&p| is_rail(level, p))
+            .map(|p| RailState::new(level, p, level.get(p)))
+    }
+
+    fn has_connection(&self, p: Pos) -> bool {
+        self.connections.iter().any(|c| c.x == p.x && c.z == p.z)
+    }
+
+    fn connects_to(&self, other: &RailState) -> bool {
+        self.has_connection(other.pos)
+    }
+
+    fn can_connect_to(&self, other: &RailState) -> bool {
+        self.connects_to(other) || self.connections.len() != 2
+    }
+
+    /// `removeSoftConnections`: drop connections to rails that do not
+    /// connect back.
+    fn remove_soft_connections(&mut self, level: &Level) {
+        let me = RailState { pos: self.pos, state: self.state, connections: Vec::new() };
+        self.connections.retain(|&c| RailState::get_rail(level, c).is_some_and(|r| r.connects_to(&me)));
+    }
+
+    fn has_neighbor_rail(&self, level: &Level, pos: Pos) -> bool {
+        match RailState::get_rail(level, pos) {
+            Some(mut r) => {
+                r.remove_soft_connections(level);
+                r.can_connect_to(self)
+            }
+            None => false,
+        }
+    }
+
+    /// `connectTo` for a straight rail.
+    fn connect_to(&mut self, level: &mut Level, other: &RailState) {
+        self.connections.push(other.pos);
+        let p = self.pos;
+        let (n, s, w, e) = (p.offset(Dir::North), p.offset(Dir::South), p.offset(Dir::West), p.offset(Dir::East));
+        let mut shape = None;
+        if self.has_connection(n) || self.has_connection(s) {
+            shape = Some("north_south");
+        }
+        if self.has_connection(w) || self.has_connection(e) {
+            shape = Some("east_west");
+        }
+        let shape = ascend(level, shape, n, s, w, e).unwrap_or("north_south");
+        self.state = level.with(self.state, "shape", shape);
+        level.set_block(self.pos, self.state, flags::ALL);
+    }
+
+    /// `place` for a straight rail: its new shape, written, and its
+    /// neighbours turned toward it. Returns the rail's new state.
+    fn place(mut self, level: &mut Level, _powered: bool, always_place: bool) -> StateId {
+        let p = self.pos;
+        let (n, s, w, e) = (p.offset(Dir::North), p.offset(Dir::South), p.offset(Dir::West), p.offset(Dir::East));
+        let (bn, bs, bw, be) = (
+            self.has_neighbor_rail(level, n),
+            self.has_neighbor_rail(level, s),
+            self.has_neighbor_rail(level, w),
+            self.has_neighbor_rail(level, e),
+        );
+        let (ns, ew) = (bn || bs, bw || be);
+        let current = level.prop(self.state, "shape");
+        let mut shape = None;
+        if ns && !ew {
+            shape = Some("north_south");
+        }
+        if ew && !ns {
+            shape = Some("east_west");
+        }
+        if shape.is_none() {
+            shape = if ns && ew {
+                Some(current)
+            } else if ns {
+                Some("north_south")
+            } else if ew {
+                Some("east_west")
+            } else {
+                None
+            };
+        }
+        let shape = ascend(level, shape, n, s, w, e).unwrap_or(current);
+        self.update_connections(shape);
+        self.state = level.with(self.state, "shape", shape);
+        if always_place || level.get(p) != self.state {
+            level.set_block(p, self.state, flags::ALL);
+            for c in self.connections.clone() {
+                if let Some(mut r) = RailState::get_rail(level, c) {
+                    r.remove_soft_connections(level);
+                    if r.can_connect_to(&self) {
+                        r.connect_to(level, &self);
+                    }
+                }
+            }
+        }
+        self.state
+    }
+}
+
+/// A flat shape turned into a slope toward a rail one block up.
+fn ascend(level: &Level, shape: Option<&'static str>, n: Pos, s: Pos, w: Pos, e: Pos) -> Option<&'static str> {
+    match shape {
+        Some("north_south") => Some(if is_rail(level, s.above()) {
+            "ascending_south"
+        } else if is_rail(level, n.above()) {
+            "ascending_north"
+        } else {
+            "north_south"
+        }),
+        Some("east_west") => Some(if is_rail(level, w.above()) {
+            "ascending_west"
+        } else if is_rail(level, e.above()) {
+            "ascending_east"
+        } else {
+            "east_west"
+        }),
+        other => other,
     }
 }

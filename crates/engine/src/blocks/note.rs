@@ -25,7 +25,7 @@ fn instrument(level: &Level, state: StateId) -> &'static str {
 
 /// `setInstrument`: from the block below. Mob heads above, the only blocks
 /// that play on top of a note block, are not in the engine yet.
-fn with_instrument(level: &Level, pos: Pos, state: StateId) -> StateId {
+pub(super) fn with_instrument(level: &Level, pos: Pos, state: StateId) -> StateId {
     let below = level.get(pos.below());
     level.with(state, "instrument", instrument(level, below))
 }
