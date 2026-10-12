@@ -1,0 +1,56 @@
+{
+  "name": "tnt_summoned",
+  "description": "TNT with a 20-tick fuse is summoned on an obsidian floor among oak planks, explodes, breaks the planks and throws their items.",
+  "ticks": 60,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "tnt",
+    "explosion"
+  ],
+  "palette": {
+    "#": "obsidian",
+    "p": "oak_planks"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      "p...p",
+      ".....",
+      ".....",
+      ".....",
+      "p...p"
+    ],
+    [
+      "..p..",
+      ".....",
+      "p...p",
+      ".....",
+      "..p.."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        2.5,
+        1.0,
+        2.5
+      ],
+      "nbt": "{fuse:20}"
+    }
+  ],
+  "entities": true
+}

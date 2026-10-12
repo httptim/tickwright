@@ -1,0 +1,24 @@
+{
+  "name": "rng_baseline",
+  "description": "Nothing happens on a stone slab, to show how often the game draws from the level's random source on a quiet tick.",
+  "ticks": 20,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "rng"
+  ],
+  "palette": {
+    "#": "stone"
+  },
+  "layers": [
+    [
+      "###"
+    ]
+  ],
+  "stimuli": [],
+  "entities": true
+}

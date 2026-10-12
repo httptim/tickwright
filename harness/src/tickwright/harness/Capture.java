@@ -224,6 +224,10 @@ public final class Capture {
         final BlockPos min;
         final BlockPos max;
         final JsonArray entries = new JsonArray();
+        final JsonArray entities = new JsonArray();
+        final JsonArray rng = new JsonArray();
+        /** Entity ids in the order they first appeared, numbered from 0. */
+        final Map<Integer, Integer> entityNumbers = new java.util.HashMap<>();
         int tick;
         String lastKey;
 
@@ -264,6 +268,13 @@ public final class Capture {
         if (fixture.has("experiments")) {
             // Experimental redstone picks random orientations where nothing
             // gives one; a fixed seed keeps the capture repeatable.
+            level.getRandom().setSeed(id.hashCode());
+        }
+        boolean trackEntities = fixture.has("entities") && fixture.get("entities").getAsBoolean();
+        if (trackEntities) {
+            // Entities draw from the level's random source when they spawn
+            // and when explosions sample rays; a fixed seed keeps the
+            // capture repeatable.
             level.getRandom().setSeed(id.hashCode());
         }
         setMaxChainedUpdates(fixture.has("max_chained_updates")
@@ -350,6 +361,9 @@ public final class Capture {
 
         Recording rec = new Recording(origin, min, max);
         recording = rec;
+        if (trackEntities) {
+            noteRng(rec, 0);
+        }
         try {
             for (int t = 1; t <= ticks; t++) {
                 rec.tick = t;
@@ -363,6 +377,10 @@ public final class Capture {
                     inInput = false;
                 }
                 tick();
+                if (trackEntities) {
+                    snapshotEntities(rec, t);
+                    noteRng(rec, t);
+                }
             }
         } finally {
             recording = null;
@@ -385,6 +403,10 @@ public final class Capture {
         trace.add("levels", levels);
         trace.add("initial", initial);
         trace.add("entries", rec.entries);
+        if (trackEntities) {
+            trace.add("entities", rec.entities);
+            trace.add("rng", rec.rng);
+        }
         return trace;
     }
 
@@ -577,7 +599,127 @@ public final class Capture {
                 setPage(lectern, s.get("page").getAsInt());
             }
             case "time" -> command("time set " + s.get("time").getAsLong());
+            case "summon" -> summon(s, origin);
             default -> throw new IllegalArgumentException("unknown action " + s.get("action"));
+        }
+    }
+
+    /** An exact decimal for a double, which the command parser reads back to the same double. */
+    private static String exact(double v) {
+        return new java.math.BigDecimal(v).toPlainString();
+    }
+
+    /** {@code /summon} at an exact point, with an exact starting velocity. */
+    private static void summon(JsonObject s, BlockPos origin) {
+        JsonArray at = s.getAsJsonArray("at");
+        String x = exact(origin.getX() + at.get(0).getAsDouble());
+        String y = exact(origin.getY() + at.get(1).getAsDouble());
+        String z = exact(origin.getZ() + at.get(2).getAsDouble());
+        List<String> parts = new ArrayList<>();
+        if (s.has("nbt")) {
+            String nbt = s.get("nbt").getAsString().strip();
+            String inner = nbt.substring(1, nbt.length() - 1).strip();
+            if (!inner.isEmpty()) {
+                parts.add(inner);
+            }
+        }
+        if (s.has("motion")) {
+            JsonArray m = s.getAsJsonArray("motion");
+            parts.add("Motion:[" + exact(m.get(0).getAsDouble()) + "d," + exact(m.get(1).getAsDouble()) + "d,"
+                    + exact(m.get(2).getAsDouble()) + "d]");
+        }
+        String cmd = "summon " + s.get("entity").getAsString() + " " + x + " " + y + " " + z
+                + (parts.isEmpty() ? "" : " {" + String.join(",", parts) + "}");
+        int before = entityCount();
+        command(cmd);
+        int after = entityCount();
+        if (after <= before) {
+            throw new IllegalStateException("summon made no entity: " + cmd);
+        }
+    }
+
+    private static int entityCount() {
+        int n = 0;
+        for (Entity ignored : level.getAllEntities()) {
+            n++;
+        }
+        return n;
+    }
+
+    /** Every entity in the box at the end of tick {@code t}, in order of first appearance. */
+    private static void snapshotEntities(Recording rec, int t) {
+        AABB box = new AABB(rec.min.getX(), rec.min.getY(), rec.min.getZ(),
+                rec.max.getX() + 1, rec.max.getY() + 1, rec.max.getZ() + 1);
+        List<Entity> found = new ArrayList<>(level.getEntitiesOfClass(Entity.class, box));
+        found.sort(Comparator.comparingInt(Entity::getId));
+        for (Entity e : found) {
+            if (e instanceof Player) {
+                continue;
+            }
+            int n = rec.entityNumbers.computeIfAbsent(e.getId(), k -> rec.entityNumbers.size());
+            JsonObject o = new JsonObject();
+            o.addProperty("tick", t);
+            o.addProperty("n", n);
+            o.addProperty("type", BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).toString());
+            JsonArray pos = new JsonArray();
+            pos.add(e.getX() - rec.origin.getX());
+            pos.add(e.getY() - rec.origin.getY());
+            pos.add(e.getZ() - rec.origin.getZ());
+            o.add("pos", pos);
+            Vec3 v = e.getDeltaMovement();
+            JsonArray motion = new JsonArray();
+            motion.add(v.x);
+            motion.add(v.y);
+            motion.add(v.z);
+            o.add("motion", motion);
+            String detail = entityDetail(e);
+            if (detail != null) {
+                o.addProperty("detail", detail);
+            }
+            rec.entities.add(o);
+        }
+    }
+
+    private static String entityDetail(Entity e) {
+        if (e instanceof net.minecraft.world.entity.item.ItemEntity item) {
+            ItemStack stack = item.getItem();
+            return BuiltInRegistries.ITEM.getKey(stack.getItem()) + "*" + stack.getCount();
+        }
+        if (e instanceof net.minecraft.world.entity.item.PrimedTnt tnt) {
+            return "fuse=" + tnt.getFuse();
+        }
+        if (e instanceof net.minecraft.world.entity.item.FallingBlockEntity falling) {
+            return BlockStateParser.serialize(falling.getBlockState());
+        }
+        return null;
+    }
+
+    private static java.lang.reflect.Field rngSeed;
+
+    /** The level random source's internal seed, after tick {@code t}. */
+    private static void noteRng(Recording rec, int t) {
+        Object random = level.getRandom();
+        try {
+            if (rngSeed == null) {
+                for (Class<?> c = random.getClass(); c != null && rngSeed == null; c = c.getSuperclass()) {
+                    for (java.lang.reflect.Field f : c.getDeclaredFields()) {
+                        if (f.getType() == java.util.concurrent.atomic.AtomicLong.class) {
+                            f.setAccessible(true);
+                            rngSeed = f;
+                            break;
+                        }
+                    }
+                }
+                if (rngSeed == null) {
+                    throw new IllegalStateException("no seed field in " + random.getClass());
+                }
+            }
+            JsonArray a = new JsonArray();
+            a.add(t);
+            a.add(((java.util.concurrent.atomic.AtomicLong) rngSeed.get(random)).get());
+            rec.rng.add(a);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("cannot read the level's random source", e);
         }
     }
 

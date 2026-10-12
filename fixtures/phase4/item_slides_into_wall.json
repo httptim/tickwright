@@ -1,0 +1,48 @@
+{
+  "name": "item_slides_into_wall",
+  "description": "A stone item is thrown along a stone floor, bounces, slides with friction and stops against a wall.",
+  "ticks": 80,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "item"
+  ],
+  "palette": {
+    "#": "stone"
+  },
+  "layers": [
+    [
+      "########",
+      "########",
+      "########"
+    ],
+    [
+      "........",
+      "........",
+      "#######."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        0.5,
+        1.0,
+        0.5
+      ],
+      "motion": [
+        0.4,
+        0.25,
+        0.15
+      ],
+      "nbt": "{Item:{id:\"stone\",count:3},PickupDelay:10}"
+    }
+  ],
+  "entities": true
+}

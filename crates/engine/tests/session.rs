@@ -61,6 +61,7 @@ fn session_matches_fixture_runs() {
                     }
                     Action::Page => session.turn_page(pos, s.page.unwrap() as i32),
                     Action::Time => session.set_day_time(s.time.unwrap()),
+                    Action::Summon => unreachable!("the engine refuses fixtures with entities"),
                 }
             }
             for e in session.step().iter().filter(|e| inside(e.pos)) {

@@ -56,6 +56,32 @@ impl Transform {
         [x, y, z]
     }
 
+    /// Where an exact point inside a box of `size` lands: the continuous
+    /// form of [`Transform::pos`], so a block's center stays its center.
+    pub fn point(self, [x, y, z]: [f64; 3], [sx, _sy, sz]: [i32; 3]) -> [f64; 3] {
+        let (mut x, mut z, mut w, mut d) = (x, z, sx as f64, sz as f64);
+        if self.mirror_x {
+            x = w - x;
+        }
+        for _ in 0..self.quarter_turns {
+            (x, z) = (d - z, x);
+            (w, d) = (d, w);
+        }
+        [x, y, z]
+    }
+
+    /// How a velocity turns with the box.
+    pub fn vector(self, [x, y, z]: [f64; 3]) -> [f64; 3] {
+        let (mut x, mut z) = (x, z);
+        if self.mirror_x {
+            x = -x;
+        }
+        for _ in 0..self.quarter_turns {
+            (x, z) = (-z, x);
+        }
+        [x, y, z]
+    }
+
     /// A point inside one block, in sixteenths from its least corner.
     pub fn sixteenths(self, [x, y, z]: [i32; 3]) -> [i32; 3] {
         let (mut x, mut z) = (x, z);

@@ -59,6 +59,8 @@ pub fn run(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace> {
         levels: vec![TraceLevel::State, TraceLevel::Phase, TraceLevel::Order],
         initial,
         entries,
+        entities: Vec::new(),
+        rng: Vec::new(),
     })
 }
 
@@ -92,6 +94,9 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
     let uses_day_time = |s: &str| s.starts_with("daylight_detector") || s.starts_with("minecraft:daylight_detector");
     if fixture.day_time.is_none() && fixture.blocks.iter().any(|b| uses_day_time(&b.3)) {
         bail!("{}: a daylight detector needs the fixture's day_time", fixture.id);
+    }
+    if fixture.entities || fixture.stimuli.iter().any(|s| s.action == Action::Summon) {
+        bail!("{}: entities are not simulated by the engine yet", fixture.id);
     }
     let mut level = Level::new(rules);
     if let Some(t) = fixture.day_time {
@@ -184,6 +189,7 @@ fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result
                 blocks::lectern::set_page(level, pos, s.page.context("page stimulus without a page")? as i32)
             }
             Action::Time => level.day_time = s.time.context("time stimulus without a time")?,
+            Action::Summon => bail!("{}: entities are not simulated by the engine yet", fixture.id),
         }
     }
     Ok(())

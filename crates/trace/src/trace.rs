@@ -75,6 +75,24 @@ pub struct Entry {
     pub detail: Option<String>,
 }
 
+/// One entity at the end of a tick: what it is, where, and how fast it
+/// moves. Coordinates are exact, relative to the fixture origin.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EntityRow {
+    pub tick: u32,
+    /// Which entity: entities are numbered from 0 in the order they appear.
+    pub n: u32,
+    /// The entity type, such as `minecraft:tnt`.
+    #[serde(rename = "type")]
+    pub kind: String,
+    pub pos: [f64; 3],
+    pub motion: [f64; 3],
+    /// What else matters for the type: an item's stack, a TNT's fuse, a
+    /// falling block's state.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Trace {
     pub format: u32,
@@ -92,6 +110,15 @@ pub struct Trace {
     /// started from the same world, and gives unchanged blocks their state.
     pub initial: Vec<(i32, i32, i32, String)>,
     pub entries: Vec<Entry>,
+    /// Every entity in the observed box at the end of each tick, for
+    /// fixtures that track entities.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub entities: Vec<EntityRow>,
+    /// The level random source's seed after the fixture is set up (tick 0)
+    /// and at the end of each tick, as `[tick, seed]`: where the game drew
+    /// random numbers. Only fixtures that track entities record it.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub rng: Vec<(u32, i64)>,
 }
 
 impl Trace {

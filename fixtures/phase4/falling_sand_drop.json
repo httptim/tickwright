@@ -1,0 +1,50 @@
+{
+  "name": "falling_sand_drop",
+  "description": "Sand loses the block under it and falls four blocks onto a stone floor, where it lands as a block again.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "falling_block"
+  ],
+  "palette": {
+    "#": "stone",
+    "s": "sand"
+  },
+  "layers": [
+    [
+      "###"
+    ],
+    [
+      "..."
+    ],
+    [
+      "..."
+    ],
+    [
+      "..."
+    ],
+    [
+      ".#."
+    ],
+    [
+      ".s."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "destroy",
+      "pos": [
+        1,
+        4,
+        0
+      ]
+    }
+  ],
+  "entities": true
+}

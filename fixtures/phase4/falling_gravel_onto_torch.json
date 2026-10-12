@@ -1,0 +1,64 @@
+{
+  "name": "falling_gravel_onto_torch",
+  "description": "Gravel falls onto a torch and breaks into an item, which pops out with a random velocity.",
+  "ticks": 60,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "falling_block",
+    "item"
+  ],
+  "palette": {
+    "#": "stone",
+    "g": "gravel",
+    "t": "torch"
+  },
+  "layers": [
+    [
+      "###",
+      "###",
+      "###"
+    ],
+    [
+      "...",
+      ".t.",
+      "..."
+    ],
+    [
+      "...",
+      "...",
+      "..."
+    ],
+    [
+      "...",
+      "...",
+      "..."
+    ],
+    [
+      "...",
+      ".#.",
+      "..."
+    ],
+    [
+      "...",
+      ".g.",
+      "..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "destroy",
+      "pos": [
+        1,
+        4,
+        1
+      ]
+    }
+  ],
+  "entities": true
+}
