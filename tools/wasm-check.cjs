@@ -1,6 +1,8 @@
 // Runs every resolved fixture through the WebAssembly engine inside headless
 // Chromium and checks each trace is byte-for-byte the trace the native engine
-// wrote (`tickwright run`).
+// wrote (`tickwright run`). It then drives each fixture again through the
+// editor's session commands, click by click and tick by tick, and checks the
+// session records the same events.
 //
 //   node tools/wasm-check.cjs <engine.wasm> <resolved dir> <native traces dir> [bench fixture]
 //
@@ -51,6 +53,44 @@ async function main() {
       e.dealloc(out, len + 5);
       return { status, text, ms };
     };
+    window.cmd = (command) => {
+      const [p, l] = put(JSON.stringify(command));
+      const out = e.session(p, l);
+      const view = new DataView(e.memory.buffer);
+      const len = view.getUint32(out, true);
+      const status = view.getUint8(out + 4);
+      const text = dec.decode(new Uint8Array(e.memory.buffer, out + 5, len));
+      e.dealloc(p, l);
+      e.dealloc(out, len + 5);
+      if (status !== 0) throw new Error(text);
+      return JSON.parse(text);
+    };
+    // Play a resolved fixture through a session; return its events inside the
+    // fixture's box, relative to the origin, as a trace would hold them.
+    window.sessionEvents = (fixtureText, version) => {
+      const f = JSON.parse(fixtureText);
+      const { session } = window.cmd({ op: "open", version, fixture: f });
+      const [ox, oy, oz] = f.origin;
+      const m = f.margin;
+      const inside = (p) =>
+        p[0] - ox >= -m && p[0] - ox < f.size[0] + m &&
+        p[1] - oy >= -m && p[1] - oy < f.size[1] + m &&
+        p[2] - oz >= -m && p[2] - oz < f.size[2] + m;
+      const out = [];
+      for (let t = 1; t <= f.ticks; t++) {
+        for (const s of f.stimuli.filter((s) => s.tick === t)) {
+          const pos = [ox + s.pos[0], oy + s.pos[1], oz + s.pos[2]];
+          if (s.action === "use") window.cmd({ op: "use", session, pos });
+          else if (s.action === "set") window.cmd({ op: "set", session, pos, state: s.state, updates: true });
+          else window.cmd({ op: "destroy", session, pos });
+        }
+        for (const ev of window.cmd({ op: "step", session }).events) {
+          if (inside(ev.pos)) out.push({ ...ev, pos: [ev.pos[0] - ox, ev.pos[1] - oy, ev.pos[2] - oz] });
+        }
+      }
+      window.cmd({ op: "close", session });
+      return out;
+    };
     window.benchFixture = (fixture, version) => {
       const [fp, fl] = put(fixture);
       const [vp, vl] = put(version);
@@ -91,6 +131,14 @@ async function main() {
     if (native !== r.text) {
       console.log(`${f}: browser trace differs from the native trace`);
       failed++;
+      continue;
+    }
+    const events = await page.evaluate(([fx, v]) => window.sessionEvents(fx, v), [fixture, version]);
+    // The session answers with keys in a different order, so compare fields.
+    const flat = (es) => JSON.stringify(es.map((e) => [e.tick, e.phase, e.kind, e.pos, e.state, e.detail]));
+    if (flat(events) !== flat(JSON.parse(native).entries)) {
+      console.log(`${f}: the editor session's events differ from the fixture run's`);
+      failed++;
     }
   }
   if (benchPath) {
@@ -106,7 +154,7 @@ async function main() {
     }
   }
   await browser.close();
-  console.log(`${files.length - failed - refused} of ${files.length - refused} fixtures gave identical traces in the browser (${refused} refused by both), ${totalMs.toFixed(0)} ms in wasm`);
+  console.log(`${files.length - failed - refused} of ${files.length - refused} fixtures gave identical traces in the browser, as fixture runs and as editor sessions (${refused} refused by both), ${totalMs.toFixed(0)} ms in wasm`);
   process.exit(failed ? 1 : 0);
 }
 

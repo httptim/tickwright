@@ -102,7 +102,7 @@ pub fn new_dropper() -> BlockEntity {
 
 // --- container access ----------------------------------------------------------
 
-pub(super) fn items(level: &Level, pos: Pos) -> Option<&Vec<Stack>> {
+pub fn items(level: &Level, pos: Pos) -> Option<&Vec<Stack>> {
     match level.block_entities.get(&pos)? {
         BlockEntity::Chest(items) | BlockEntity::Dropper(items) | BlockEntity::ShulkerBox(items) => Some(items),
         BlockEntity::Hopper(h) => Some(&h.items),
@@ -136,7 +136,7 @@ fn hopper_mut(level: &mut Level, pos: Pos) -> &mut Hopper {
     }
 }
 
-pub(super) fn size(level: &Level, pos: Pos) -> usize {
+pub fn size(level: &Level, pos: Pos) -> usize {
     items(level, pos).map_or(0, Vec::len)
 }
 
