@@ -41,9 +41,11 @@ const MAX_LINES: usize = 12;
 /// Compare at `level` and every level below it. `Ok(())` means identical.
 pub fn compare(expected: &Trace, actual: &Trace, level: Level) -> Result<(), Divergence> {
     compare_world(expected, actual, 0)?;
+    compare_entities_at(expected, actual, 0)?;
     let ticks = expected.ticks.max(actual.ticks);
     for tick in 1..=ticks {
         compare_state(expected, actual, tick)?;
+        compare_entities_at(expected, actual, tick)?;
         if level >= Level::Phase {
             compare_phase(expected, actual, tick)?;
         }
@@ -55,16 +57,22 @@ pub fn compare(expected: &Trace, actual: &Trace, level: Level) -> Result<(), Div
 }
 
 /// Compare the entities at the end of every tick, exactly: same entities,
-/// types, positions, velocities and details.
+/// types, ids, positions, velocities and details.
 pub fn compare_entities(expected: &Trace, actual: &Trace) -> Result<(), Divergence> {
     let ticks = expected.ticks.max(actual.ticks);
     for tick in 1..=ticks {
-        let a: Vec<_> = expected.entities.iter().filter(|e| e.tick == tick).collect();
-        let b: Vec<_> = actual.entities.iter().filter(|e| e.tick == tick).collect();
-        if a == b {
-            continue;
-        }
-        let mut lines = Vec::new();
+        compare_entities_at(expected, actual, tick)?;
+    }
+    Ok(())
+}
+
+/// The entities and the level random's seed at the end of `tick`. Traces
+/// without entity tracking have neither, so this passes for them.
+fn compare_entities_at(expected: &Trace, actual: &Trace, tick: u32) -> Result<(), Divergence> {
+    let a: Vec<_> = expected.entities.iter().filter(|e| e.tick == tick).collect();
+    let b: Vec<_> = actual.entities.iter().filter(|e| e.tick == tick).collect();
+    let mut lines = Vec::new();
+    if a != b {
         let ns: std::collections::BTreeSet<u32> = a.iter().chain(&b).map(|e| e.n).collect();
         for n in ns {
             let x = a.iter().find(|e| e.n == n);
@@ -73,8 +81,9 @@ pub fn compare_entities(expected: &Trace, actual: &Trace) -> Result<(), Divergen
                 let show = |e: Option<&&crate::trace::EntityRow>| match e {
                     None => "none".to_string(),
                     Some(e) => format!(
-                        "{} at {:?} moving {:?}{}",
+                        "{} #{} at {:?} moving {:?}{}",
                         e.kind,
+                        e.id,
                         e.pos,
                         e.motion,
                         e.detail.as_deref().map(|d| format!(" ({d})")).unwrap_or_default()
@@ -87,9 +96,12 @@ pub fn compare_entities(expected: &Trace, actual: &Trace) -> Result<(), Divergen
                 break;
             }
         }
-        return Err(Divergence { level: Level::State, tick, lines });
     }
-    Ok(())
+    let seed = |t: &Trace| t.rng.iter().find(|r| r.0 == tick).map(|r| r.1);
+    if !expected.rng.is_empty() && seed(expected) != seed(actual) {
+        lines.push(format!("random seed: expected {:?}, got {:?}", seed(expected), seed(actual)));
+    }
+    finish(Level::State, tick, lines)
 }
 
 const AIR: &str = "minecraft:air";

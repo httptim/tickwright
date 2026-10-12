@@ -140,7 +140,7 @@ fn empty_water(level: &mut Level, pos: Pos) -> bool {
         return true;
     }
     if replaceable && !liquid {
-        level.destroy_block(pos, MAX_RECURSION);
+        level.destroy_block(pos, true, MAX_RECURSION);
     }
     let source = water::legacy_block(level, water::SOURCE);
     level.set_block(pos, source, flags::ALL_IMMEDIATE) || water::fluid_state(level, state).is_source()

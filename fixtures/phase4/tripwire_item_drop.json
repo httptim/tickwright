@@ -1,7 +1,7 @@
 {
   "name": "tripwire_item_drop",
-  "description": "An item dropped onto armed string trips the hooks; they release ten ticks after it rolls off.",
-  "ticks": 80,
+  "description": "Strung hooks arm when the middle string goes in; an item dropped onto the string trips them, and they release ten ticks after it rolls off.",
+  "ticks": 40,
   "levels": [
     "state",
     "phase",
@@ -14,33 +14,43 @@
   "palette": {
     "#": "stone",
     "L": "redstone_lamp[lit=false]",
-    "h": "tripwire_hook[attached=true,facing=east,powered=false]",
-    "H": "tripwire_hook[attached=true,facing=west,powered=false]",
-    "s": "tripwire[attached=true,disarmed=false,east=true,north=false,powered=false,south=false,west=true]"
+    "h": "tripwire_hook[attached=false,facing=east,powered=false]",
+    "H": "tripwire_hook[attached=false,facing=west,powered=false]",
+    "s": "tripwire[attached=false,disarmed=false,east=true,north=false,powered=false,south=false,west=true]"
   },
   "layers": [
     [
       "#L###L#"
     ],
     [
-      "#hsssH#"
+      "#hs.sH#"
     ]
   ],
   "stimuli": [
+    {
+      "tick": 1,
+      "action": "set",
+      "pos": [
+        3,
+        1,
+        0
+      ],
+      "state": "tripwire[attached=false,disarmed=false,east=true,north=false,powered=false,south=false,west=true]"
+    },
     {
       "tick": 2,
       "action": "summon",
       "entity": "item",
       "at": [
         3.5,
-        1.6,
+        1.2,
         0.5
       ],
       "nbt": "{Item:{id:\"stone\",count:1}}",
       "motion": [
         0.0,
         0.0,
-        0.3
+        0.15
       ]
     }
   ],

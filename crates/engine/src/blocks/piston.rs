@@ -365,6 +365,9 @@ fn move_blocks(level: &mut Level, piston: Pos, dir: Dir, extending: bool, is_sti
 
     for &p in to_destroy.iter().rev() {
         let s = level.get(p);
+        if level.simulate_entities {
+            level.drop_resources(p, s);
+        }
         level.set_block(p, level.air, flags::KNOWN_SHAPE | flags::CLIENTS);
         to_update.push(s);
     }
@@ -443,7 +446,7 @@ pub fn head_neighbor_changed(level: &mut Level, pos: Pos, state: StateId, source
 pub fn head_affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateId) {
     let base = pos.offset(level.dir(state, "facing").opposite());
     if is_fitting_base(level, state, level.get(base)) {
-        level.destroy_block(base, crate::level::MAX_RECURSION);
+        level.destroy_block(base, true, crate::level::MAX_RECURSION);
     }
 }
 

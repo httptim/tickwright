@@ -6,10 +6,13 @@
 
 pub mod bench;
 pub mod blocks;
+pub mod entity;
 pub mod game_event;
 pub mod items;
 pub mod level;
+pub mod loot;
 pub mod orientation;
+pub mod physics;
 pub mod pos;
 pub mod random;
 pub mod record;

@@ -18,8 +18,10 @@ pub mod crafter;
 pub mod daylight;
 pub mod dispenser;
 mod door;
+mod falling;
 mod lamp;
 pub mod lectern;
+pub mod plate;
 mod sculk;
 mod shelf;
 pub use sculk::post as post_game_event;
@@ -101,6 +103,17 @@ pub enum Kind {
     SculkSensor,
     CalibratedSculkSensor,
     Shelf,
+    /// Sand, gravel and the like: they fall when nothing holds them up.
+    FallingBlock,
+    Tnt,
+    /// Plain torches, which only need support.
+    Torch,
+    WallTorch,
+    /// Wooden and stone pressure plates: on or off.
+    PressurePlate,
+    /// Light and heavy weighted pressure plates: power from how many
+    /// entities are on them.
+    WeightedPlate,
     Other,
 }
 
@@ -257,7 +270,9 @@ pub fn is_conductor(level: &Level, _pos: Pos, state: StateId) -> bool {
         | Kind::Target
         | Kind::Jukebox
         | Kind::ShulkerBox
-        | Kind::Crafter => true,
+        | Kind::Crafter
+        | Kind::FallingBlock
+        | Kind::Tnt => true,
         Kind::Slab => level.prop(state, "type") == "double",
         _ => false,
     }
@@ -284,6 +299,8 @@ pub fn is_signal_source(level: &Level, state: StateId) -> bool {
                 | Kind::DaylightDetector
                 | Kind::SculkSensor
                 | Kind::CalibratedSculkSensor
+                | Kind::PressurePlate
+                | Kind::WeightedPlate
         ),
     }
 }
@@ -308,7 +325,9 @@ pub fn is_face_sturdy(level: &Level, pos: Pos, state: StateId, dir: Dir) -> bool
         | Kind::Jukebox
         | Kind::ShulkerBox
         | Kind::CopperBulb
-        | Kind::Crafter => true,
+        | Kind::Crafter
+        | Kind::FallingBlock
+        | Kind::Tnt => true,
         Kind::Trapdoor => door::trapdoor_face_sturdy(level, state, dir),
         Kind::Slab => match level.prop(state, "type") {
             "double" => true,
@@ -334,6 +353,7 @@ pub fn get_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i32 {
         Kind::Target => plain::target_signal(level, state),
         Kind::TripwireHook => plain::hook_signal(level, state),
         Kind::Lectern => lectern::get_signal(level, state),
+        Kind::PressurePlate | Kind::WeightedPlate => plate::signal(level, state),
         Kind::DaylightDetector => daylight::get_signal(level, state),
         Kind::SculkSensor | Kind::CalibratedSculkSensor => sculk::get_signal(level, state, dir),
         Kind::Observer => observer::get_signal(level, state, dir),
@@ -355,6 +375,7 @@ pub fn get_direct_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i
         Kind::Comparator => comparator::get_signal(level, pos, state, dir),
         Kind::TripwireHook => plain::hook_direct_signal(level, state, dir),
         Kind::Lectern => lectern::get_direct_signal(level, state, dir),
+        Kind::PressurePlate | Kind::WeightedPlate => plate::get_direct_signal(level, state, dir),
         Kind::SculkSensor | Kind::CalibratedSculkSensor => sculk::get_direct_signal(level, state, dir),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::get_direct_signal(level, pos, state, dir),
         _ => 0,
@@ -377,6 +398,8 @@ pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId, moved
         Kind::CopperBulb => bulb::bulb_on_place(level, pos, state, old),
         Kind::Tripwire => tripwire::on_place(level, pos, state, old),
         Kind::Shelf => shelf::on_place(level, pos, state, old),
+        Kind::FallingBlock => falling::on_place(level, pos, state),
+        Kind::Tnt => falling::tnt_on_place(level, pos, state, old),
         _ => {}
     }
 }
@@ -396,6 +419,9 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
             torch::affect_neighbors_after_removal(level, pos, state, moved_by_piston)
         }
         Kind::Lectern => lectern::affect_neighbors_after_removal(level, pos, state),
+        Kind::PressurePlate | Kind::WeightedPlate => {
+            plate::affect_neighbors_after_removal(level, pos, state, moved_by_piston)
+        }
         Kind::Tripwire => tripwire::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
         Kind::SculkSensor | Kind::CalibratedSculkSensor => sculk::affect_neighbors_after_removal(level, pos, state),
         Kind::TripwireHook => tripwire::hook_affect_neighbors_after_removal(level, pos, state, moved_by_piston),
@@ -439,6 +465,7 @@ pub fn neighbor_changed(
         Kind::Bell => bulb::bell_neighbor_changed(level, pos, state),
         Kind::Crafter => crafter::neighbor_changed(level, pos, state),
         Kind::Shelf => shelf::neighbor_changed(level, pos, state),
+        Kind::Tnt => falling::tnt_neighbor_changed(level, pos),
         _ => {}
     }
 }
@@ -456,7 +483,11 @@ pub fn update_shape(
         Kind::Repeater => repeater::update_shape(level, pos, state, dir, neighbor, neighbor_state),
         Kind::PistonHead => piston::head_update_shape(level, pos, state, dir),
         Kind::Lever | Kind::Button => face_attached_update_shape(level, pos, state, dir),
-        Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::update_shape(level, pos, state, dir),
+        Kind::RedstoneTorch | Kind::RedstoneWallTorch | Kind::Torch | Kind::WallTorch => {
+            torch::update_shape(level, pos, state, dir)
+        }
+        Kind::FallingBlock => falling::update_shape(level, pos, state),
+        Kind::PressurePlate | Kind::WeightedPlate => plate::update_shape(level, pos, state, dir),
         Kind::Observer => observer::update_shape(level, pos, state, dir),
         Kind::NoteBlock => note::update_shape(level, pos, state, dir),
         Kind::Door => door::door_update_shape(level, pos, state, dir, neighbor, neighbor_state),
@@ -518,6 +549,9 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
         Kind::TripwireHook => tripwire::hook_tick(level, pos, state),
         Kind::SculkSensor | Kind::CalibratedSculkSensor => sculk::tick(level, pos, state),
         Kind::Leaves => plain::leaves_tick(level, pos, state),
+        Kind::FallingBlock => falling::tick(level, pos, state),
+        Kind::PressurePlate | Kind::WeightedPlate => plate::tick(level, pos, state),
+        Kind::Tripwire => tripwire::tick(level, pos, state),
         _ => {}
     }
 }
@@ -528,6 +562,15 @@ pub fn trigger_event(level: &mut Level, pos: Pos, state: StateId, a: i32, b: i32
         // The sound and particles have no effect on the world.
         Kind::NoteBlock | Kind::Bell => true,
         _ => false,
+    }
+}
+
+/// `entityInside`: an entity's box is inside the block's space.
+pub fn entity_inside(level: &mut Level, pos: Pos, state: StateId) {
+    match level.kind(state) {
+        Kind::PressurePlate | Kind::WeightedPlate => plate::entity_inside(level, pos, state),
+        Kind::Tripwire => tripwire::entity_inside(level, pos, state),
+        _ => {}
     }
 }
 

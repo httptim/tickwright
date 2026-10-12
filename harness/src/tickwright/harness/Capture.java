@@ -180,6 +180,17 @@ public final class Capture {
             }
         }
         warmUp(new BlockPos(lo[0], lo[1], lo[2]), new BlockPos(hi[0], hi[1], hi[2]));
+        // Terrain near a fixture is in reach of an explosion or a thrown
+        // item but not of the engine, so the whole band is emptied once.
+        int cleared = 0;
+        for (BlockPos p : BlockPos.betweenClosed(new BlockPos(lo[0], lo[1], lo[2]), new BlockPos(hi[0], hi[1], hi[2]))) {
+            if (!level.getBlockState(p).isAir()) {
+                level.setBlock(p, Blocks.AIR.defaultBlockState(), QUIET);
+                level.removeBlockEntity(p);
+                cleared++;
+            }
+        }
+        System.out.printf("cleared %d blocks of terrain%n", cleared);
         strayMinY = lo[1] - 16;
         strayMaxY = hi[1] + 16;
 
@@ -293,6 +304,9 @@ public final class Capture {
             // block left there that ticks randomly (copper, grass) draws from
             // the level's random source at times no fixture controls.
             randomTicks(0);
+            // The phantom and patrol spawners count down and then draw from
+            // the level's random source, whether or not anything spawns.
+            spawners(false);
         }
         setMaxChainedUpdates(fixture.has("max_chained_updates")
                 ? fixture.get("max_chained_updates").getAsInt() : -1);
@@ -404,6 +418,7 @@ public final class Capture {
             Hooks.seedThread = null;
             if (trackEntities) {
                 randomTicks(3);
+                spawners(true);
             }
         }
 
@@ -869,6 +884,14 @@ public final class Capture {
         // The game rule's name changed in 1.21.11; the other one is rejected quietly.
         command("gamerule random_tick_speed " + speed);
         command("gamerule randomTickSpeed " + speed);
+    }
+
+    private static void spawners(boolean on) {
+        // The game rules' names changed in 1.21.11; the old ones are rejected quietly.
+        for (String rule : new String[] {"spawn_phantoms", "doInsomnia", "spawn_patrols", "doPatrolSpawning",
+                "spawn_wandering_traders", "doTraderSpawning", "spawn_mobs", "doMobSpawning"}) {
+            command("gamerule " + rule + " " + on);
+        }
     }
 
     private static void freezeClock() {

@@ -11,7 +11,9 @@ use anyhow::{Context, Result, bail};
 use tickwright_trace::{Action, Level as TraceLevel, ResolvedFixture, TRACE_FORMAT, Trace};
 
 use crate::blocks::{self, Kind};
+use crate::entity;
 use crate::level::{Level, flags};
+use crate::physics::Vec3;
 use crate::pos::Pos;
 use crate::record::Recorder;
 use crate::rules::Rules;
@@ -39,10 +41,23 @@ pub fn run(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace> {
     initial.sort();
 
     level.recorder = Some(Recorder::new(origin, min, max));
+    let mut entities = Vec::new();
+    let mut rng = Vec::new();
+    let mut numbers: Vec<i32> = Vec::new();
+    if fixture.entities {
+        rng.push((0, level.random.internal()));
+    }
     for t in 1..=fixture.ticks {
         level.recorder.as_mut().unwrap().tick = t;
         apply_stimuli(&mut level, fixture, t)?;
         level.tick();
+        if let Some(what) = &level.unsupported {
+            bail!("{}: {what} is not simulated by the engine yet", fixture.id);
+        }
+        if fixture.entities {
+            snapshot_entities(&level, origin, min, max, t, &mut numbers, &mut entities);
+            rng.push((t, level.random.internal()));
+        }
     }
 
     let entries = level.recorder.take().unwrap().entries;
@@ -59,9 +74,45 @@ pub fn run(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace> {
         levels: vec![TraceLevel::State, TraceLevel::Phase, TraceLevel::Order],
         initial,
         entries,
-        entities: Vec::new(),
-        rng: Vec::new(),
+        entities,
+        rng,
     })
+}
+
+/// What the harness records after each tick: every entity whose box meets
+/// the fixture's, by id, numbered in the order they first appeared.
+fn snapshot_entities(
+    level: &Level,
+    origin: Pos,
+    min: Pos,
+    max: Pos,
+    tick: u32,
+    numbers: &mut Vec<i32>,
+    out: &mut Vec<tickwright_trace::EntityRow>,
+) {
+    for e in entity::entities_in(level, min, max) {
+        let n = match numbers.iter().position(|&id| id == e.id) {
+            Some(n) => n,
+            None => {
+                numbers.push(e.id);
+                numbers.len() - 1
+            }
+        };
+        out.push(tickwright_trace::EntityRow {
+            tick,
+            n: n as u32,
+            id: e.id,
+            kind: e.type_name().to_string(),
+            pos: [e.pos.x - origin.x as f64, e.pos.y - origin.y as f64, e.pos.z - origin.z as f64],
+            motion: [e.motion.x, e.motion.y, e.motion.z],
+            detail: e.detail(level),
+        });
+    }
+}
+
+/// `String.hashCode`.
+fn java_string_hash(s: &str) -> i32 {
+    s.encode_utf16().fold(0i32, |h, c| h.wrapping_mul(31).wrapping_add(c as i32))
 }
 
 /// Run a fixture without recording anything, for benchmarks.
@@ -95,10 +146,17 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
     if fixture.day_time.is_none() && fixture.blocks.iter().any(|b| uses_day_time(&b.3)) {
         bail!("{}: a daylight detector needs the fixture's day_time", fixture.id);
     }
-    if fixture.entities || fixture.stimuli.iter().any(|s| s.action == Action::Summon) {
-        bail!("{}: entities are not simulated by the engine yet", fixture.id);
+    if !fixture.entities && fixture.stimuli.iter().any(|s| s.action == Action::Summon) {
+        bail!("{}: summoning needs \"entities\": true", fixture.id);
     }
     let mut level = Level::new(rules);
+    if fixture.entities {
+        // The harness seeds the level's random source with the fixture's id
+        // and numbers entities from 1.
+        level.simulate_entities = true;
+        level.random.set_seed(java_string_hash(&fixture.id) as i64);
+        level.entity_counter = 0;
+    }
     if let Some(t) = fixture.day_time {
         level.day_time = t;
     }
@@ -169,6 +227,12 @@ fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result
     for s in fixture.stimuli.iter().filter(|s| s.tick == t) {
         let [x, y, z] = s.pos;
         let pos = Pos::new(ox + x, oy + y, oz + z);
+        if matches!(s.action, Action::Use | Action::Place) && level.simulate_entities {
+            // The harness makes a new player to click with, which takes an
+            // entity id and a seed for its random source.
+            level.entity_counter += 1;
+            level.next_unique_seed();
+        }
         match s.action {
             Action::Use => {
                 let state = level.get(pos);
@@ -179,7 +243,7 @@ fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result
                 level.set_block(pos, level.reg.parse(text)?, flags::ALL);
             }
             Action::Destroy => {
-                level.destroy_block(pos, crate::level::MAX_RECURSION);
+                level.destroy_block(pos, false, crate::level::MAX_RECURSION);
             }
             Action::Place => {
                 let p = s.place.as_ref().context("place stimulus without item, face and look")?;
@@ -189,7 +253,12 @@ fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result
                 blocks::lectern::set_page(level, pos, s.page.context("page stimulus without a page")? as i32)
             }
             Action::Time => level.day_time = s.time.context("time stimulus without a time")?,
-            Action::Summon => bail!("{}: entities are not simulated by the engine yet", fixture.id),
+            Action::Summon => {
+                let sm = s.summon.as_ref().context("summon stimulus without an entity")?;
+                let at = Vec3::new(ox as f64 + sm.at[0], oy as f64 + sm.at[1], oz as f64 + sm.at[2]);
+                let motion = sm.motion.map(|m| Vec3::new(m[0], m[1], m[2]));
+                entity::summon(level, &sm.entity, at, motion, sm.nbt.as_deref()).with_context(|| fixture.id.clone())?;
+            }
         }
     }
     Ok(())

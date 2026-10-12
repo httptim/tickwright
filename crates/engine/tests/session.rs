@@ -34,6 +34,9 @@ fn session_matches_fixture_runs() {
     for path in fixture_files() {
         let source = FixtureSource::from_json(&fs::read_to_string(&path).unwrap()).unwrap();
         let fixture = source.resolve(Transform::IDENTITY).unwrap();
+        if fixture.entities {
+            continue; // sessions don't simulate entities yet
+        }
         let Ok(trace) = tickwright_engine::run::run(&fixture, VERSION) else {
             continue; // uses blocks the engine refuses
         };
@@ -61,7 +64,7 @@ fn session_matches_fixture_runs() {
                     }
                     Action::Page => session.turn_page(pos, s.page.unwrap() as i32),
                     Action::Time => session.set_day_time(s.time.unwrap()),
-                    Action::Summon => unreachable!("the engine refuses fixtures with entities"),
+                    Action::Summon => unreachable!("entity fixtures are skipped"),
                 }
             }
             for e in session.step().iter().filter(|e| inside(e.pos)) {
