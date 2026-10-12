@@ -57,7 +57,8 @@ jobs:
       - name: Print unrotated traces
         if: always()
         run: |
-          for t in harness/work/traces/*@r0.json; do
+          for t in harness/work/traces/{torch_inverter,repeater_lock,piston_push,sticky_piston_pulse_1}@r0.json; do
+            [ -f "$t" ] || continue
             echo "::group::$(basename "$t" .json)"
             jq -c '{initial: .initial | length, levels}, (.entries[] | [.tick, .phase, .kind, .pos, (.state // .detail)])' "$t"
             echo "::endgroup::"
@@ -86,3 +87,12 @@ jobs:
           name: traces-${{ env.MC_VERSION }}
           path: harness/work/traces/
           if-no-files-found: ignore
+      - name: Capture summary
+        if: always()
+        run: |
+          log=harness/work/capture.log
+          [ -f "$log" ] || exit 0
+          grep -E '^(agent patched|Minecraft|entries by|captured|block writes)' "$log" || true
+          grep -A 25 -m 3 ' FAILED: ' "$log" || true
+          du -sh harness/work/traces || true
+

@@ -66,7 +66,7 @@ rm -rf "$WORK/traces"
 java -javaagent:"$WORK/agent.jar" -cp "$WORK/classes:$WORK/agent.jar:$CP" \
     tickwright.harness.Capture \
     --fixtures "$WORK/resolved" --out "$WORK/traces" --universe "$WORK/universe" "$@" \
-    2>&1 | grep -vE 'Saving |chunks are saved|dimensions are saved|Preparing '
+    2>&1 | grep -vE 'Saving |chunks are saved|dimensions are saved|Preparing |\[ \]$' | tee "$WORK/capture.log"
 
 # --- check the traces parse ---------------------------------------------------
 echo "==> checking traces"
