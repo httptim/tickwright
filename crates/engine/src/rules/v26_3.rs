@@ -14,7 +14,7 @@ fn block(name: &str) -> Option<Kind> {
         | "diamond_block" | "bedrock" => Kind::Solid,
         n if n.ends_with("_concrete") => Kind::Solid,
         "lever" => Kind::Lever,
-        "stone_button" | "polished_blackstone_button" => Kind::StoneButton,
+        n if n.ends_with("_button") => Kind::Button,
         n if n == "glass" || n == "tinted_glass" || n.ends_with("_stained_glass") => Kind::Glass,
         "stone_slab" | "smooth_stone_slab" | "cobblestone_slab" | "oak_slab" => Kind::Slab,
         "redstone_block" => Kind::RedstoneBlock,
@@ -34,6 +34,9 @@ fn block(name: &str) -> Option<Kind> {
         "comparator" => Kind::Comparator,
         "composter" => Kind::Composter,
         "cake" => Kind::Cake,
+        "note_block" => Kind::NoteBlock,
+        n if n.ends_with("_trapdoor") => Kind::Trapdoor,
+        n if n.ends_with("_door") => Kind::Door,
         _ => return None,
     })
 }

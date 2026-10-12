@@ -1,0 +1,51 @@
+{
+  "name": "piston_breaks_button",
+  "description": "A piston extends into a stone button on the floor in front of it and breaks it, which unpowers the lamp it was holding on.",
+  "ticks": 16,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "button",
+    "piston"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "piston[extended=false,facing=east]",
+    "B": "stone_button[face=floor,facing=east,powered=false]",
+    "L": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "###",
+      "..."
+    ],
+    [
+      "PBL",
+      "..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 4,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    }
+  ]
+}

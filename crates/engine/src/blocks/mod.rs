@@ -12,8 +12,10 @@
 
 mod button;
 mod comparator;
+mod door;
 mod lamp;
 mod lever;
+mod note;
 mod observer;
 mod piston;
 mod repeater;
@@ -30,8 +32,8 @@ pub enum Kind {
     /// A full, opaque block with no behaviour: stone, obsidian and the like.
     Solid,
     Lever,
-    /// A button arrows cannot press: stone or polished blackstone.
-    StoneButton,
+    /// Any button; how long it stays pressed depends on its material.
+    Button,
     /// Full, see-through, not a conductor: glass and stained glass.
     Glass,
     Slab,
@@ -54,6 +56,9 @@ pub enum Kind {
     /// state: composters and cakes.
     Composter,
     Cake,
+    NoteBlock,
+    Door,
+    Trapdoor,
     Other,
 }
 
@@ -115,7 +120,7 @@ pub fn analog_output(level: &Level, _pos: Pos, state: StateId) -> i32 {
 pub fn is_conductor(level: &Level, _pos: Pos, state: StateId) -> bool {
     // Pistons are never conductors, extended or not.
     match level.kind(state) {
-        Kind::Solid | Kind::RedstoneLamp | Kind::Slime => true,
+        Kind::Solid | Kind::RedstoneLamp | Kind::Slime | Kind::NoteBlock => true,
         Kind::Slab => level.prop(state, "type") == "double",
         _ => false,
     }
@@ -128,7 +133,7 @@ pub fn is_signal_source(level: &Level, state: StateId) -> bool {
         k => matches!(
             k,
             Kind::Lever
-                | Kind::StoneButton
+                | Kind::Button
                 | Kind::RedstoneBlock
                 | Kind::RedstoneTorch
                 | Kind::RedstoneWallTorch
@@ -143,7 +148,14 @@ pub fn is_signal_source(level: &Level, state: StateId) -> bool {
 /// block's support shape covers its whole `dir` face.
 pub fn is_face_sturdy(level: &Level, pos: Pos, state: StateId, dir: Dir) -> bool {
     match level.kind(state) {
-        Kind::Solid | Kind::RedstoneLamp | Kind::RedstoneBlock | Kind::Slime | Kind::Glass | Kind::Observer => true,
+        Kind::Solid
+        | Kind::RedstoneLamp
+        | Kind::RedstoneBlock
+        | Kind::Slime
+        | Kind::Glass
+        | Kind::Observer
+        | Kind::NoteBlock => true,
+        Kind::Trapdoor => door::trapdoor_face_sturdy(level, state, dir),
         Kind::Slab => match level.prop(state, "type") {
             "double" => true,
             "top" => dir == Dir::Up,
@@ -163,7 +175,7 @@ pub fn is_face_sturdy(level: &Level, pos: Pos, state: StateId, dir: Dir) -> bool
 /// the block on its `dir.opposite()` side.
 pub fn get_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i32 {
     match level.kind(state) {
-        Kind::Lever | Kind::StoneButton => lever::get_signal(level, pos, state, dir),
+        Kind::Lever | Kind::Button => lever::get_signal(level, pos, state, dir),
         Kind::RedstoneBlock => 15,
         Kind::Observer => observer::get_signal(level, state, dir),
         Kind::Comparator => comparator::get_signal(level, pos, state, dir),
@@ -177,7 +189,7 @@ pub fn get_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i32 {
 /// `getDirectSignal`: strong power.
 pub fn get_direct_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i32 {
     match level.kind(state) {
-        Kind::Lever | Kind::StoneButton => lever::get_direct_signal(level, pos, state, dir),
+        Kind::Lever | Kind::Button => lever::get_direct_signal(level, pos, state, dir),
         Kind::RedstoneWire => wire::get_direct_signal(level, pos, state, dir),
         Kind::Repeater => repeater::get_signal(level, pos, state, dir),
         Kind::Observer => observer::get_signal(level, state, dir),
@@ -204,7 +216,7 @@ pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId, moved
 pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateId, moved_by_piston: bool) {
     match level.kind(state) {
         Kind::Lever => lever::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
-        Kind::StoneButton => button::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
+        Kind::Button => button::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
         Kind::RedstoneWire => wire::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
         Kind::Repeater | Kind::Comparator => {
             repeater::affect_neighbors_after_removal(level, pos, state, moved_by_piston)
@@ -225,6 +237,9 @@ pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId, source: Blo
         Kind::RedstoneWire => wire::neighbor_changed(level, pos, state),
         Kind::Repeater => repeater::neighbor_changed(level, pos, state),
         Kind::Comparator => comparator::neighbor_changed(level, pos, state),
+        Kind::NoteBlock => note::neighbor_changed(level, pos, state),
+        Kind::Trapdoor => door::trapdoor_neighbor_changed(level, pos, state),
+        Kind::Door => door::door_neighbor_changed(level, pos, state, source),
         Kind::Piston | Kind::StickyPiston => piston::neighbor_changed(level, pos, state),
         Kind::PistonHead => piston::head_neighbor_changed(level, pos, state, source),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::neighbor_changed(level, pos, state),
@@ -244,9 +259,11 @@ pub fn update_shape(
         Kind::RedstoneWire => wire::update_shape(level, pos, state, dir, neighbor, neighbor_state),
         Kind::Repeater => repeater::update_shape(level, pos, state, dir, neighbor, neighbor_state),
         Kind::PistonHead => piston::head_update_shape(level, pos, state, dir),
-        Kind::Lever | Kind::StoneButton => face_attached_update_shape(level, pos, state, dir),
+        Kind::Lever | Kind::Button => face_attached_update_shape(level, pos, state, dir),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::update_shape(level, pos, state, dir),
         Kind::Observer => observer::update_shape(level, pos, state, dir),
+        Kind::NoteBlock => note::update_shape(level, pos, state, dir),
+        Kind::Door => door::door_update_shape(level, pos, state, dir, neighbor, neighbor_state),
         Kind::Comparator | Kind::Cake => survives_on_below(level, state, dir, neighbor, neighbor_state),
         _ => state,
     }
@@ -264,7 +281,7 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
         Kind::RedstoneLamp => lamp::tick(level, pos, state),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::tick(level, pos, state),
         Kind::Repeater => repeater::tick(level, pos, state),
-        Kind::StoneButton => button::tick(level, pos, state),
+        Kind::Button => button::tick(level, pos, state),
         Kind::Observer => observer::tick(level, pos, state),
         Kind::Comparator => comparator::tick(level, pos, state),
         _ => {}
@@ -274,6 +291,8 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
 pub fn trigger_event(level: &mut Level, pos: Pos, state: StateId, a: i32, b: i32) -> bool {
     match level.kind(state) {
         Kind::Piston | Kind::StickyPiston => piston::trigger_event(level, pos, state, a, b),
+        // The sound and particles have no effect on the world.
+        Kind::NoteBlock => true,
         _ => false,
     }
 }
@@ -282,9 +301,12 @@ pub fn trigger_event(level: &mut Level, pos: Pos, state: StateId, a: i32, b: i32
 pub fn use_without_item(level: &mut Level, pos: Pos, state: StateId) {
     match level.kind(state) {
         Kind::Lever => lever::pull(level, pos, state),
-        Kind::StoneButton => button::press(level, pos, state),
+        Kind::Button => button::press(level, pos, state),
         Kind::Repeater => repeater::use_without_item(level, pos, state),
         Kind::Comparator => comparator::use_without_item(level, pos, state),
+        Kind::NoteBlock => note::use_without_item(level, pos, state),
+        Kind::Trapdoor => door::trapdoor_use(level, pos, state),
+        Kind::Door => door::door_use(level, pos, state),
         _ => {}
     }
 }

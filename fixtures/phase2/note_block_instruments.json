@@ -1,0 +1,106 @@
+{
+  "name": "note_block_instruments",
+  "description": "A note block on glass plays when a lever powers it. The glass is swapped for stone, which changes the instrument, then a block above silences it.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "note_block"
+  ],
+  "palette": {
+    "g": "glass",
+    "#": "stone",
+    "N": "note_block[instrument=hat,note=0,powered=false]",
+    "V": "lever[face=floor,facing=east,powered=false]"
+  },
+  "layers": [
+    [
+      "g#"
+    ],
+    [
+      "NV"
+    ],
+    [
+      ".."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 6,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 8,
+      "action": "set",
+      "pos": [
+        0,
+        0,
+        0
+      ],
+      "state": "stone"
+    },
+    {
+      "tick": 10,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 14,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 16,
+      "action": "set",
+      "pos": [
+        0,
+        2,
+        0
+      ],
+      "state": "stone"
+    },
+    {
+      "tick": 18,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 22,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}

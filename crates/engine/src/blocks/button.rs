@@ -1,13 +1,19 @@
-//! `ButtonBlock`, for the buttons arrows cannot press (stone and polished
-//! blackstone), which stay pressed for 20 game ticks.
+//! `ButtonBlock`. Stone and polished blackstone buttons stay pressed for 20
+//! game ticks, wooden ones for 30. Wooden buttons can also be held down by
+//! arrows, but there are no entities yet, so nothing keeps them pressed.
 
 use super::connected_direction;
 use crate::level::{Level, flags};
 use crate::pos::Pos;
 use crate::registry::StateId;
 
-/// `BlockSetType.STONE.ticksToStayPressed`.
-const TICKS_TO_STAY_PRESSED: i32 = 20;
+/// `BlockSetType.ticksToStayPressed`.
+fn ticks_to_stay_pressed(level: &Level, state: StateId) -> i32 {
+    match level.reg.name(state) {
+        "minecraft:stone_button" | "minecraft:polished_blackstone_button" => 20,
+        _ => 30,
+    }
+}
 
 /// `useWithoutItem`: press, unless already pressed.
 pub fn press(level: &mut Level, pos: Pos, state: StateId) {
@@ -16,10 +22,10 @@ pub fn press(level: &mut Level, pos: Pos, state: StateId) {
     }
     level.set_block(pos, level.with_bool(state, "powered", true), flags::ALL);
     update_neighbours(level, pos, state);
-    level.schedule_tick(pos, level.block(state), TICKS_TO_STAY_PRESSED, 0);
+    level.schedule_tick(pos, level.block(state), ticks_to_stay_pressed(level, state), 0);
 }
 
-/// `tick` and `checkPressed`: nothing keeps a stone button pressed.
+/// `tick` and `checkPressed`: with no arrows, nothing keeps a button pressed.
 pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
     if level.flag(state, "powered") {
         level.set_block(pos, level.with_bool(state, "powered", false), flags::ALL);

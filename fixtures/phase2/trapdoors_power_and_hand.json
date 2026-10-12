@@ -1,0 +1,87 @@
+{
+  "name": "trapdoors_power_and_hand",
+  "description": "An oak trapdoor and an iron trapdoor each beside a lever. Both open and close with the lever; clicking afterwards opens only the oak one.",
+  "ticks": 24,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "trapdoor"
+  ],
+  "palette": {
+    "#": "stone",
+    "V": "lever[face=floor,facing=east,powered=false]",
+    "T": "oak_trapdoor[facing=north,half=bottom,open=false,powered=false,waterlogged=false]",
+    "I": "iron_trapdoor[facing=north,half=bottom,open=false,powered=false,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "##",
+      "..",
+      "##"
+    ],
+    [
+      "VT",
+      "..",
+      "VI"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 8,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 8,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 14,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 14,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        2
+      ]
+    }
+  ]
+}
