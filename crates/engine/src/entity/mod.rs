@@ -312,7 +312,7 @@ fn spawn(level: &mut Level, name: &str, tag: &snbt::Tag, at: Vec3, motion: Optio
                 cancel_drop: num("CancelDrop").is_some_and(|v| v != 0.0),
             })
         }
-        _ => Data::Minecart(minecart::Minecart { furnace: name == "furnace_minecart" }),
+        _ => Data::Minecart(minecart::Minecart::new(name == "furnace_minecart")),
     };
     let mut e = Entity::new(level, data, at);
     if let Some(m) = motion {
@@ -702,7 +702,9 @@ fn collide(level: &Level, e: &Entity, movement: Vec3) -> Vec3 {
         return movement;
     }
     let b = e.bounding_box();
-    let shapes = block_collisions(level, b.expand_towards(movement));
+    let area = b.expand_towards(movement);
+    let mut shapes = entity_collisions(level, e, area);
+    shapes.extend(block_collisions(level, area));
     if shapes.is_empty() {
         return movement;
     }
@@ -716,6 +718,24 @@ fn collide(level: &Level, e: &Entity, movement: Vec3) -> Vec3 {
         }
     }
     result
+}
+
+/// `Level.getEntityCollisions`: the boxes of entities others can't pass
+/// through, of which the engine has minecarts. They come before the blocks.
+fn entity_collisions(level: &Level, e: &Entity, area: Aabb) -> Vec<(Pos, Vec<Aabb>)> {
+    let size = (0..3).map(|a| area.max[a] - area.min[a]).sum::<f64>() / 3.0;
+    if size < 1.0E-7 {
+        return Vec::new();
+    }
+    let area = area.inflate(1.0E-7, 1.0E-7, 1.0E-7);
+    level
+        .entities
+        .iter()
+        .filter(|o| !o.removed && o.id != e.id && matches!(o.data, Data::Minecart(_)))
+        .map(|o| o.bounding_box())
+        .filter(|ob| ob.intersects(&area))
+        .map(|ob| (Pos::new(0, 0, 0), vec![ob]))
+        .collect()
 }
 
 /// `Shapes.collide`.

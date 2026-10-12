@@ -35,7 +35,7 @@ all eight orientations and must match at the order level
 | `push-limit` | yes | `phase1/piston_push_limit_12`, `phase1/piston_push_limit_13` | covered |
 | `headless-pistons` | yes | | needs TNT (phase 4) |
 | `powered-rail-order` | yes | `phase2/powered_rail_slope`, `phase2/activator_rail_chain`, `nucleation/rails_chain` | covered |
-| `minecart-improvements` | opt-in | | needs minecarts (phase 4) |
+| `minecart-improvements` | opt-in | | not simulated: the engine runs the default minecart physics (`OldMinecartBehavior`), which 26.3 worlds use unless the experiment is on |
 | `crafter-no-qc` | yes | | the crafter is not simulated yet |
 | `be-tick-order` | yes | `phase2/hoppers_share_hopper`, `phase2/hopper_chain_cooldown`, `nucleation/hopper_race` | covered |
 | `comparator-quirks` | unverified | `phase2/comparator_reads_composter`, `phase2/comparator_reads_cake`, `phase2/hopper_chest_to_chest` | covered for composters, cakes and blocked chests |

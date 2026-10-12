@@ -198,6 +198,9 @@ detector_rail_passing order
 piston_push_item order
 piston_push_tnt_up order
 piston_push_minecart order
+minecarts_head_on order
+minecart_bumps_parked order
+furnace_minecart_bump order
 sticky_slime_item order
 rail_dupe order
 tnt_dupe_coral order

@@ -180,7 +180,7 @@ impl Session {
     }
 
     /// The first thing the run met that the engine can't simulate exactly,
-    /// as a sentence such as "minecarts pushing each other is not simulated
+    /// as a sentence such as "an item inside a block is not simulated
     /// by the engine yet". From that tick on the session may differ from the
     /// game. Rewinding to before it clears it.
     pub fn unsupported(&self) -> Option<String> {
@@ -466,11 +466,11 @@ mod tests {
     #[test]
     fn a_step_reports_what_it_could_not_simulate() {
         let mut s = Session::new("26.3").unwrap();
-        s.summon("minecart", [0.5, 0.0, 0.5], None, None).unwrap();
-        s.summon("minecart", [0.6, 0.0, 0.5], None, None).unwrap();
+        s.set_block(Pos::new(0, 0, 0), "stone", Placement::Quiet).unwrap();
+        s.summon("item", [0.5, 0.5, 0.5], None, Some(r#"{Item:{id:"stone",count:1}}"#)).unwrap();
         assert_eq!(s.unsupported(), None);
         s.step();
-        assert_eq!(s.unsupported().as_deref(), Some("minecarts pushing each other is not simulated by the engine yet"));
+        assert_eq!(s.unsupported().as_deref(), Some("an item inside a block is not simulated by the engine yet"));
         s.rewind(0).unwrap();
         assert_eq!(s.unsupported(), None);
     }
