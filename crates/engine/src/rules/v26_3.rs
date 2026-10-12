@@ -60,6 +60,7 @@ fn block(name: &str) -> Option<Kind> {
         | "waxed_oxidized_copper_bulb" => Kind::CopperBulb,
         "bell" => Kind::Bell,
         "crafter" => Kind::Crafter,
+        "lectern" => Kind::Lectern,
         n if n.ends_with("_trapdoor") => Kind::Trapdoor,
         n if n.ends_with("_door") => Kind::Door,
         _ => return None,

@@ -148,3 +148,5 @@ exp_piston_destroys_wire order
 exp_repeater_lock_race order
 exp_torch_clock_burnout order
 exp_torch_inverter order
+crafter_cake_remainders order
+lectern_pages order

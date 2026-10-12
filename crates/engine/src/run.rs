@@ -88,8 +88,8 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
     }
     let blocks = fixture.blocks.iter().map(|(x, y, z, s)| Ok((Pos::new(ox + x, oy + y, oz + z), supported(s)?)));
     let blocks: Result<Vec<_>> = blocks.collect();
-    if !fixture.lecterns.is_empty() || fixture.day_time.is_some() {
-        bail!("{}: lecterns and the time of day are not supported by the engine yet", fixture.id);
+    if fixture.day_time.is_some() {
+        bail!("{}: the time of day is not supported by the engine yet", fixture.id);
     }
     let mut level = Level::new(rules);
     for e in &fixture.experiments {
@@ -127,6 +127,15 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
             Some(blocks::BlockEntity::Comparator(output)) => *output = c.output,
             _ => bail!("{}: no comparator at {:?}", fixture.id, c.pos),
         }
+    }
+    // Books on lecterns: `setBook`, then `setPage`.
+    for l in &fixture.lecterns {
+        let pos = Pos::new(ox + l.pos[0], oy + l.pos[1], oz + l.pos[2]);
+        if level.kind_at(pos) != Kind::Lectern {
+            bail!("{}: no lectern at {:?}", fixture.id, l.pos);
+        }
+        blocks::lectern::set_book(&mut level, pos, l.pages as i32);
+        blocks::lectern::set_page(&mut level, pos, l.page as i32);
     }
     Ok(level)
 }
@@ -166,7 +175,10 @@ fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result
                 let p = s.place.as_ref().context("place stimulus without item, face and look")?;
                 blocks::placement::place(level, &p.item, click(pos, p)?).with_context(|| fixture.id.clone())?;
             }
-            Action::Page | Action::Time => bail!("{}: {:?} stimuli are not supported yet", fixture.id, s.action),
+            Action::Page => {
+                blocks::lectern::set_page(level, pos, s.page.context("page stimulus without a page")? as i32)
+            }
+            Action::Time => bail!("{}: time stimuli are not supported yet", fixture.id),
         }
     }
     Ok(())

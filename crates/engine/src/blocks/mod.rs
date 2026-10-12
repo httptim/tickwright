@@ -18,6 +18,7 @@ pub mod crafter;
 pub mod dispenser;
 mod door;
 mod lamp;
+pub mod lectern;
 mod lever;
 mod note;
 mod observer;
@@ -89,6 +90,7 @@ pub enum Kind {
     CopperBulb,
     Bell,
     Crafter,
+    Lectern,
     Other,
 }
 
@@ -111,14 +113,17 @@ pub enum BlockEntity {
     /// `PistonMovingBlockEntity`.
     Piston(piston::Moving),
     Crafter(crafter::Crafter),
+    Lectern(lectern::Lectern),
 }
 
 impl BlockEntity {
     pub fn ticks(&self) -> bool {
         match self {
-            BlockEntity::Chest(_) | BlockEntity::Dropper(_) | BlockEntity::Comparator(_) | BlockEntity::Jukebox => {
-                false
-            }
+            BlockEntity::Chest(_)
+            | BlockEntity::Dropper(_)
+            | BlockEntity::Comparator(_)
+            | BlockEntity::Jukebox
+            | BlockEntity::Lectern(_) => false,
             BlockEntity::Piston(_)
             | BlockEntity::Hopper(_)
             | BlockEntity::Bell
@@ -142,6 +147,7 @@ pub fn has_block_entity(kind: Kind) -> bool {
             | Kind::ShulkerBox
             | Kind::Jukebox
             | Kind::Crafter
+            | Kind::Lectern
     )
 }
 
@@ -155,6 +161,7 @@ pub fn new_block_entity(_level: &Level, _pos: Pos, state: StateId) -> Option<Blo
         Kind::Jukebox => Some(BlockEntity::Jukebox),
         Kind::Comparator => Some(BlockEntity::Comparator(0)),
         Kind::Crafter => Some(BlockEntity::Crafter(crafter::Crafter::new())),
+        Kind::Lectern => Some(BlockEntity::Lectern(lectern::Lectern::default())),
         _ => None,
     }
 }
@@ -183,6 +190,7 @@ pub fn has_analog_output(level: &Level, state: StateId) -> bool {
             | Kind::Jukebox
             | Kind::CopperBulb
             | Kind::Crafter
+            | Kind::Lectern
     )
 }
 
@@ -194,6 +202,7 @@ pub fn analog_output(level: &Level, pos: Pos, state: StateId) -> i32 {
         }
         Kind::CopperBulb => bulb::bulb_analog_output(level, state),
         Kind::Crafter => crafter::analog_output(level, pos),
+        Kind::Lectern => lectern::analog_output(level, pos, state),
         Kind::Composter => level.int(state, "level"),
         Kind::Cake => (7 - level.int(state, "bites")) * 2,
         _ => 0,
@@ -240,6 +249,7 @@ pub fn is_signal_source(level: &Level, state: StateId) -> bool {
                 | Kind::Target
                 | Kind::Jukebox
                 | Kind::TripwireHook
+                | Kind::Lectern
         ),
     }
 }
@@ -289,6 +299,7 @@ pub fn get_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i32 {
         Kind::RedstoneBlock => 15,
         Kind::Target => plain::target_signal(level, state),
         Kind::TripwireHook => plain::hook_signal(level, state),
+        Kind::Lectern => lectern::get_signal(level, state),
         Kind::Observer => observer::get_signal(level, state, dir),
         Kind::Comparator => comparator::get_signal(level, pos, state, dir),
         Kind::Repeater => repeater::get_signal(level, pos, state, dir),
@@ -307,6 +318,7 @@ pub fn get_direct_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i
         Kind::Observer => observer::get_signal(level, state, dir),
         Kind::Comparator => comparator::get_signal(level, pos, state, dir),
         Kind::TripwireHook => plain::hook_direct_signal(level, state, dir),
+        Kind::Lectern => lectern::get_direct_signal(level, state, dir),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::get_direct_signal(level, pos, state, dir),
         _ => 0,
     }
@@ -344,6 +356,7 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => {
             torch::affect_neighbors_after_removal(level, pos, state, moved_by_piston)
         }
+        Kind::Lectern => lectern::affect_neighbors_after_removal(level, pos, state),
         // `Containers.updateNeighboursAfterDestroy`.
         Kind::Chest
         | Kind::Barrel
@@ -457,6 +470,7 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
         Kind::Dropper => container::dropper_tick(level, pos, state),
         Kind::Dispenser => dispenser::tick(level, pos, state),
         Kind::Crafter => crafter::tick(level, pos, state),
+        Kind::Lectern => lectern::tick(level, pos, state),
         Kind::Leaves => plain::leaves_tick(level, pos, state),
         _ => {}
     }
