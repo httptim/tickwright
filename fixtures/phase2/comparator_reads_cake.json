@@ -1,0 +1,49 @@
+{
+  "name": "comparator_reads_cake",
+  "description": "A comparator reads a whole cake as 14, then 8 after three bites, then nothing once the cake is gone.",
+  "ticks": 24,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "comparator"
+  ],
+  "palette": {
+    "#": "stone",
+    "K": "cake[bites=0]",
+    "C": "comparator[facing=west,mode=compare,powered=false]",
+    "-": "redstone_wire[east=side,north=none,power=0,south=none,west=side]",
+    "L": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "####"
+    ],
+    [
+      "KC-L"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "state": "cake[bites=3]"
+    },
+    {
+      "tick": 10,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}

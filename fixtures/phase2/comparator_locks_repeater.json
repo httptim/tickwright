@@ -1,0 +1,72 @@
+{
+  "name": "comparator_locks_repeater",
+  "description": "A powered comparator pointing into a repeater's side locks it, so the repeater ignores its own input until the comparator turns off.",
+  "ticks": 34,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "comparator",
+    "repeater"
+  ],
+  "palette": {
+    "#": "stone",
+    "V": "lever[face=floor,facing=east,powered=false]",
+    "U": "lever[face=floor,facing=north,powered=false]",
+    "R": "repeater[delay=1,facing=west,locked=false,powered=false]",
+    "C": "comparator[facing=south,mode=compare,powered=false]",
+    "L": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "###",
+      "###",
+      "###"
+    ],
+    [
+      "VRL",
+      ".C.",
+      ".U."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 8,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 14,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 22,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}

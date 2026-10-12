@@ -11,6 +11,7 @@
 #![allow(clippy::single_match, clippy::match_single_binding)]
 
 mod button;
+mod comparator;
 mod lamp;
 mod lever;
 mod observer;
@@ -48,12 +49,19 @@ pub enum Kind {
     Honey,
     Chest,
     Observer,
+    Comparator,
+    /// Blocks whose only behaviour here is an analog output read from their
+    /// state: composters and cakes.
+    Composter,
+    Cake,
     Other,
 }
 
 /// Block entity data. Only what phase 1 needs.
 #[derive(Clone, Debug)]
 pub enum BlockEntity {
+    /// `ComparatorBlockEntity`: the output strength.
+    Comparator(i32),
     /// A chest: present only because it makes the block immovable.
     Chest,
     /// `PistonMovingBlockEntity`.
@@ -63,19 +71,20 @@ pub enum BlockEntity {
 impl BlockEntity {
     pub fn ticks(&self) -> bool {
         match self {
-            BlockEntity::Chest => false,
+            BlockEntity::Chest | BlockEntity::Comparator(_) => false,
             BlockEntity::Piston(_) => true,
         }
     }
 }
 
 pub fn has_block_entity(kind: Kind) -> bool {
-    matches!(kind, Kind::Chest | Kind::MovingPiston)
+    matches!(kind, Kind::Chest | Kind::MovingPiston | Kind::Comparator)
 }
 
 pub fn new_block_entity(_level: &Level, _pos: Pos, state: StateId) -> Option<BlockEntity> {
     match _level.kind(state) {
         Kind::Chest => Some(BlockEntity::Chest),
+        Kind::Comparator => Some(BlockEntity::Comparator(0)),
         _ => None,
     }
 }
@@ -86,8 +95,18 @@ pub fn tick_block_entity(level: &mut Level, pos: Pos) {
     }
 }
 
-pub fn has_analog_output(_level: &Level, _state: StateId) -> bool {
-    false
+/// `hasAnalogOutputSignal`.
+pub fn has_analog_output(level: &Level, state: StateId) -> bool {
+    matches!(level.kind(state), Kind::Chest | Kind::Composter | Kind::Cake)
+}
+
+/// `getAnalogOutputSignal`. Chests have no contents in fixtures yet.
+pub fn analog_output(level: &Level, _pos: Pos, state: StateId) -> i32 {
+    match level.kind(state) {
+        Kind::Composter => level.int(state, "level"),
+        Kind::Cake => (7 - level.int(state, "bites")) * 2,
+        _ => 0,
+    }
 }
 
 // --- signals -----------------------------------------------------------------
@@ -115,6 +134,7 @@ pub fn is_signal_source(level: &Level, state: StateId) -> bool {
                 | Kind::RedstoneWallTorch
                 | Kind::Repeater
                 | Kind::Observer
+                | Kind::Comparator
         ),
     }
 }
@@ -146,6 +166,7 @@ pub fn get_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i32 {
         Kind::Lever | Kind::StoneButton => lever::get_signal(level, pos, state, dir),
         Kind::RedstoneBlock => 15,
         Kind::Observer => observer::get_signal(level, state, dir),
+        Kind::Comparator => comparator::get_signal(level, pos, state, dir),
         Kind::Repeater => repeater::get_signal(level, pos, state, dir),
         Kind::RedstoneWire => wire::get_signal(level, pos, state, dir),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::get_signal(level, pos, state, dir),
@@ -160,6 +181,7 @@ pub fn get_direct_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i
         Kind::RedstoneWire => wire::get_direct_signal(level, pos, state, dir),
         Kind::Repeater => repeater::get_signal(level, pos, state, dir),
         Kind::Observer => observer::get_signal(level, state, dir),
+        Kind::Comparator => comparator::get_signal(level, pos, state, dir),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::get_direct_signal(level, pos, state, dir),
         _ => 0,
     }
@@ -171,7 +193,7 @@ pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId, moved
     let _ = moved_by_piston;
     match level.kind(state) {
         Kind::RedstoneWire => wire::on_place(level, pos, state, old),
-        Kind::Repeater => repeater::on_place(level, pos, state),
+        Kind::Repeater | Kind::Comparator => repeater::on_place(level, pos, state),
         Kind::Piston | Kind::StickyPiston => piston::on_place(level, pos, state, old),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::on_place(level, pos, state),
         Kind::Observer => observer::on_place(level, pos, state, old),
@@ -184,7 +206,9 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
         Kind::Lever => lever::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
         Kind::StoneButton => button::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
         Kind::RedstoneWire => wire::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
-        Kind::Repeater => repeater::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
+        Kind::Repeater | Kind::Comparator => {
+            repeater::affect_neighbors_after_removal(level, pos, state, moved_by_piston)
+        }
         Kind::PistonHead => piston::head_affect_neighbors_after_removal(level, pos, state),
         Kind::Observer => observer::affect_neighbors_after_removal(level, pos, state),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => {
@@ -200,6 +224,7 @@ pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId, source: Blo
         Kind::RedstoneLamp => lamp::neighbor_changed(level, pos, state),
         Kind::RedstoneWire => wire::neighbor_changed(level, pos, state),
         Kind::Repeater => repeater::neighbor_changed(level, pos, state),
+        Kind::Comparator => comparator::neighbor_changed(level, pos, state),
         Kind::Piston | Kind::StickyPiston => piston::neighbor_changed(level, pos, state),
         Kind::PistonHead => piston::head_neighbor_changed(level, pos, state, source),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::neighbor_changed(level, pos, state),
@@ -222,6 +247,7 @@ pub fn update_shape(
         Kind::Lever | Kind::StoneButton => face_attached_update_shape(level, pos, state, dir),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::update_shape(level, pos, state, dir),
         Kind::Observer => observer::update_shape(level, pos, state, dir),
+        Kind::Comparator | Kind::Cake => survives_on_below(level, state, dir, neighbor, neighbor_state),
         _ => state,
     }
 }
@@ -240,6 +266,7 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
         Kind::Repeater => repeater::tick(level, pos, state),
         Kind::StoneButton => button::tick(level, pos, state),
         Kind::Observer => observer::tick(level, pos, state),
+        Kind::Comparator => comparator::tick(level, pos, state),
         _ => {}
     }
 }
@@ -257,6 +284,7 @@ pub fn use_without_item(level: &mut Level, pos: Pos, state: StateId) {
         Kind::Lever => lever::pull(level, pos, state),
         Kind::StoneButton => button::press(level, pos, state),
         Kind::Repeater => repeater::use_without_item(level, pos, state),
+        Kind::Comparator => comparator::use_without_item(level, pos, state),
         _ => {}
     }
 }
@@ -271,6 +299,12 @@ pub fn connected_direction(level: &Level, state: StateId) -> Dir {
         "floor" => Dir::Up,
         _ => level.dir(state, "facing"),
     }
+}
+
+/// `updateShape` for blocks that need a sturdy top below them: diodes and
+/// cakes break when it goes.
+fn survives_on_below(level: &Level, state: StateId, dir: Dir, below: Pos, below_state: StateId) -> StateId {
+    if dir == Dir::Down && !is_face_sturdy(level, below, below_state, Dir::Up) { level.air } else { state }
 }
 
 /// `FaceAttachedHorizontalDirectionalBlock.updateShape`: a lever or button
