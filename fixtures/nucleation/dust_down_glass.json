@@ -1,0 +1,42 @@
+{
+  "name": "nucleation_dust_down_glass",
+  "description": "The asymmetry from the wire evaluator's bytecode: climbing reads need a conductor step, descending reads need a non-conductor \u2014 so the lower wire behind glass stays dark and only the upper wire's drop is captured. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 12,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "glass",
+    "B": "redstone_wire[east=up,north=none,power=0,south=none,west=side]",
+    "C": "redstone_wire[east=side,north=none,power=15,south=none,west=side]",
+    "D": "redstone_block"
+  },
+  "layers": [
+    [
+      "##.."
+    ],
+    [
+      ".BA."
+    ],
+    [
+      "..CD"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "destroy",
+      "pos": [
+        3,
+        2,
+        0
+      ]
+    }
+  ]
+}

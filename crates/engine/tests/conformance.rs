@@ -85,12 +85,21 @@ fn engine_matches_the_game() {
     let show = std::env::var("TICKWRIGHT_SHOW").ok();
     // fixture name -> per orientation, the highest level matched (None = not even state).
     let mut results: BTreeMap<String, Vec<(String, Option<Level>)>> = BTreeMap::new();
+    let mut unsupported: BTreeMap<String, String> = BTreeMap::new();
     for path in &traces {
         let game = load_trace(path);
         let (name, transform) = game.fixture.split_once('@').unwrap();
         let fixture = fixtures.get(name).unwrap_or_else(|| panic!("no fixture {name}"));
         let resolved = fixture.resolve(transform.parse().unwrap()).unwrap();
-        let ours = tickwright_engine::run::run(&resolved, VERSION).unwrap();
+        // Builds with blocks the engine doesn't simulate yet are listed as
+        // unsupported; they are ground truth for later phases.
+        let ours = match tickwright_engine::run::run(&resolved, VERSION) {
+            Ok(trace) => trace,
+            Err(e) => {
+                unsupported.entry(name.to_string()).or_insert_with(|| format!("{e:#}"));
+                continue;
+            }
+        };
         let mut best = None;
         let mut first_failure = None;
         for level in [Level::State, Level::Phase, Level::Order] {
@@ -112,7 +121,7 @@ fn engine_matches_the_game() {
     }
 
     let mut failures = Vec::new();
-    println!("\n{:<28} {:>6} {:>6} {:>6}   (orientations matching, of 8)", "fixture", "state", "phase", "order");
+    println!("\n{:<36} {:>6} {:>6} {:>6}   (orientations matching, of 8)", "fixture", "state", "phase", "order");
     let mut totals = [0; 3];
     let mut count = 0;
     for (name, runs) in &results {
@@ -122,7 +131,7 @@ fn engine_matches_the_game() {
             totals[i] += row[i];
         }
         count += runs.len();
-        println!("{name:<28} {:>6} {:>6} {:>6}", row[0], row[1], row[2]);
+        println!("{name:<36} {:>6} {:>6} {:>6}", row[0], row[1], row[2]);
         if let Some(&level) = expected.get(name) {
             for (t, b) in runs {
                 if !b.is_some_and(|b| b >= level) {
@@ -131,6 +140,16 @@ fn engine_matches_the_game() {
             }
         }
     }
-    println!("{:<28} {:>6} {:>6} {:>6}   of {count}", "total", totals[0], totals[1], totals[2]);
+    println!("{:<36} {:>6} {:>6} {:>6}   of {count}", "total", totals[0], totals[1], totals[2]);
+    if !unsupported.is_empty() {
+        println!("\nnot simulated yet:");
+        for (name, why) in &unsupported {
+            let why = why.split_once(": ").map_or(why.as_str(), |(_, w)| w);
+            println!("  {name:<36} {why}");
+            if expected.contains_key(name) {
+                failures.push(format!("{name}: {why}"));
+            }
+        }
+    }
     assert!(failures.is_empty(), "regressions:\n{}", failures.join("\n"));
 }

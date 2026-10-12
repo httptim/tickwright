@@ -1,0 +1,58 @@
+{
+  "name": "nucleation_water_hole",
+  "description": "The slope search: a T-junction whose east arm has a floor hole three blocks out and whose south arm is flat. Vanilla's four-deep hole scan sends every drop east \u2014 the south arm never floods \u2014 and the flow ends by falling into the hole as level=8 falling water on tick 29. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 41,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "water[level=0]"
+  },
+  "layers": [
+    [
+      "########",
+      "########",
+      "########",
+      "########",
+      "########"
+    ],
+    [
+      "########",
+      "######.#",
+      "########",
+      "########",
+      "########"
+    ],
+    [
+      "########",
+      "#A#....#",
+      "###.####",
+      "###.####",
+      "########"
+    ],
+    [
+      "........",
+      "........",
+      "........",
+      "........",
+      "........"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "destroy",
+      "pos": [
+        2,
+        2,
+        1
+      ]
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "name": "nucleation_dust_line",
+  "description": "The wire network settles synchronously; the piston at the end never fires because its placement-queued extend event fails dispatch re-validation once the dust is dark \u2014 a three-mechanism interaction the golden captures in a single tick. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 12,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "redstone_block",
+    "B": "redstone_wire[east=side,north=none,power=15,south=none,west=side]",
+    "C": "redstone_wire[east=side,north=none,power=14,south=none,west=side]",
+    "D": "redstone_wire[east=side,north=none,power=13,south=none,west=side]",
+    "E": "redstone_wire[east=side,north=none,power=12,south=none,west=side]",
+    "F": "piston[extended=false,facing=up]"
+  },
+  "layers": [
+    [
+      "#####F"
+    ],
+    [
+      "ABCDE."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}

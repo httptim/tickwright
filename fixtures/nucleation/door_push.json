@@ -1,0 +1,167 @@
+{
+  "name": "nucleation_door_push",
+  "description": "Five lanes, one capture, and the same answer in every one: a door is `PushReaction.DESTROY`. Whichever half the piston reaches is broken rather than carried, and the untouched half breaks with it because a door half cannot survive its partner's absence.    z=0   normal piston at the LOWER half of an oak door   z=3   normal piston at the UPPER half of an oak door   z=6   normal piston at the lower half of an IRON door   z=9   sticky piston: the push destroys, so the retract pulls nothing   z=12  a slime array carrying a companion block, both halves at once  Every destination cell is floored, so \"the door is gone\" cannot be confused with \"the door landed somewhere it could not stand\". Iron and oak behave identically, which is why one lane of each suffices.  This overturned the engine: doors were modelled as ordinary pushable material, and carried the door forward in all five lanes. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 22,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "piston[extended=false,facing=east]",
+    "B": "oak_door[facing=north,half=lower,hinge=left,open=false,powered=false]",
+    "C": "oak_door[facing=north,half=upper,hinge=left,open=false,powered=false]",
+    "D": "iron_door[facing=north,half=lower,hinge=left,open=false,powered=false]",
+    "E": "iron_door[facing=north,half=upper,hinge=left,open=false,powered=false]",
+    "F": "sticky_piston[extended=false,facing=east]",
+    "G": "slime_block"
+  },
+  "layers": [
+    [
+      ".#####.",
+      ".......",
+      ".......",
+      ".#####.",
+      ".......",
+      ".......",
+      ".#####.",
+      ".......",
+      ".......",
+      ".#####.",
+      ".......",
+      ".......",
+      ".#####."
+    ],
+    [
+      ".AB....",
+      ".......",
+      ".......",
+      "..B....",
+      ".......",
+      ".......",
+      ".AD....",
+      ".......",
+      ".......",
+      ".FB....",
+      ".......",
+      ".......",
+      ".AGB..."
+    ],
+    [
+      "..C....",
+      ".......",
+      ".......",
+      ".AC....",
+      ".......",
+      ".......",
+      "..E....",
+      ".......",
+      ".......",
+      "..C....",
+      ".......",
+      ".......",
+      "..#C..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 3,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 3,
+      "action": "set",
+      "pos": [
+        0,
+        2,
+        3
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 3,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        6
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 3,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        9
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 3,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        12
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 9,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 9,
+      "action": "destroy",
+      "pos": [
+        0,
+        2,
+        3
+      ]
+    },
+    {
+      "tick": 9,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        6
+      ]
+    },
+    {
+      "tick": 9,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        9
+      ]
+    },
+    {
+      "tick": 9,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        12
+      ]
+    }
+  ]
+}

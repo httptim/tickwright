@@ -130,13 +130,6 @@ public final class Capture {
         String mcVersion = SharedConstants.getCurrentVersion().name();
         System.out.printf("Minecraft %s%n", mcVersion);
 
-        // Bring every chunk near the default origin to full ticking once, up
-        // front, so the first fixture in a new chunk does not wait on loading.
-        warmUp(new BlockPos(-32, 90, -32), new BlockPos(31, 130, 31));
-
-        Hooks.setListener = Capture::beforeSet;
-        Hooks.eventListener = Capture::onEvent;
-
         List<Path> files;
         try (Stream<Path> s = Files.list(fixtures)) {
             files = s.filter(p -> p.toString().endsWith(".json"))
@@ -147,6 +140,27 @@ public final class Capture {
         if (files.isEmpty()) {
             throw new IllegalStateException("no resolved fixtures in " + fixtures);
         }
+
+        // Bring every chunk any fixture touches to full ticking once, up
+        // front. Chunks first asked for between fixtures sometimes never
+        // became entity-ticking (a 30-block build reaching x = 32 failed in
+        // two of three runs), while the up-front warm-up always has.
+        int[] lo = {-32, 90, -32};
+        int[] hi = {31, 130, 31};
+        for (Path file : files) {
+            JsonObject f = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
+            int[] o = ints(f.getAsJsonArray("origin"));
+            int[] size = ints(f.getAsJsonArray("size"));
+            int margin = f.get("margin").getAsInt();
+            for (int i = 0; i < 3; i++) {
+                lo[i] = Math.min(lo[i], o[i] - margin);
+                hi[i] = Math.max(hi[i], o[i] + size[i] - 1 + margin);
+            }
+        }
+        warmUp(new BlockPos(lo[0], lo[1], lo[2]), new BlockPos(hi[0], hi[1], hi[2]));
+
+        Hooks.setListener = Capture::beforeSet;
+        Hooks.eventListener = Capture::onEvent;
         Files.createDirectories(out);
 
         Map<String, Integer> phaseCounts = new TreeMap<>();

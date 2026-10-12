@@ -1,0 +1,63 @@
+{
+  "name": "nucleation_piston_race_quiet",
+  "description": "The placement-order discriminator. Two opposed pistons, each already powered by its own redstone block, one gap between them: both resolve in `onPlace`, so whichever is placed first queues its block event first and takes the gap. Nothing else can break the tie \u2014 knownShape placement runs no update pass at all.  Vanilla's *bottom* piston (y=1) wins, which is the direct evidence that the placement walk ascends y, matching `buildInfoList`'s comparators. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 14,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "redstone_block",
+    "B": "piston[extended=false,facing=up]",
+    "C": "white_concrete",
+    "D": "piston[extended=false,facing=down]"
+  },
+  "layers": [
+    [
+      "###",
+      "###",
+      "###"
+    ],
+    [
+      "...",
+      "AB.",
+      "..."
+    ],
+    [
+      "...",
+      ".C.",
+      "..."
+    ],
+    [
+      "...",
+      "...",
+      "..."
+    ],
+    [
+      "...",
+      ".C.",
+      "..."
+    ],
+    [
+      "...",
+      "AD.",
+      "..."
+    ],
+    [
+      "...",
+      "...",
+      "..."
+    ],
+    [
+      "...",
+      "...",
+      "..."
+    ]
+  ],
+  "stimuli": []
+}

@@ -1,0 +1,37 @@
+{
+  "name": "nucleation_button_lamp",
+  "description": "Click at tick 2: button and lamp on the same tick (lamps light immediately), button releases at tick 21 (a boundary-scheduled 20), lamp dims four ticks later. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 37,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "stone_button[face=floor,facing=east,powered=false]",
+    "B": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "##"
+    ],
+    [
+      "AB"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 3,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "name": "nucleation_trapdoor_push",
+  "description": "Trapdoors are movable (no getPistonPushReaction override): the push carries the trapdoor with its properties, and the retract leaves it. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 22,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "oak_trapdoor[facing=north,half=bottom,open=false,powered=false,waterlogged=false]",
+    "A": "iron_trapdoor[facing=south,half=top,open=false,powered=false,waterlogged=false]",
+    "B": "piston[extended=false,facing=east]"
+  },
+  "layers": [
+    [
+      "..#.",
+      "....",
+      "B#.."
+    ],
+    [
+      ".A..",
+      "....",
+      "...."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 3,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        2
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 9,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    }
+  ]
+}

@@ -48,3 +48,16 @@ torch_burnout_9 order
 torch_clock_burnout order
 torch_inverter order
 torch_tower order
+nucleation_button_ceiling order
+nucleation_button_lamp order
+nucleation_button_wall order
+nucleation_dust_down_glass order
+nucleation_dust_down_stone order
+nucleation_dust_line order
+nucleation_dust_softpower order
+nucleation_lever_lamp order
+nucleation_piston_handoff order
+nucleation_piston_race_quiet order
+nucleation_slime_drag order
+nucleation_slime_extender order
+nucleation_wire_corner_pull order

@@ -64,17 +64,30 @@ async function main() {
   }, fs.readFileSync(wasmPath).toString("base64"));
 
   let failed = 0;
+  let refused = 0;
   let totalMs = 0;
   for (const f of files) {
     const fixture = fs.readFileSync(path.join(resolvedDir, f), "utf8");
     const r = await page.evaluate(([fx, v]) => window.runFixture(fx, v), [fixture, version]);
     totalMs += r.ms;
+    const nativePath = path.join(nativeDir, f);
+    const hasNative = fs.existsSync(nativePath);
     if (r.status !== 0) {
-      console.log(`${f}: engine error: ${r.text}`);
+      // Blocks the engine doesn't support yet are refused natively too.
+      if (hasNative) {
+        console.log(`${f}: engine error: ${r.text}`);
+        failed++;
+      } else {
+        refused++;
+      }
+      continue;
+    }
+    if (!hasNative) {
+      console.log(`${f}: ran in the browser but was refused natively`);
       failed++;
       continue;
     }
-    const native = fs.readFileSync(path.join(nativeDir, f), "utf8");
+    const native = fs.readFileSync(nativePath, "utf8");
     if (native !== r.text) {
       console.log(`${f}: browser trace differs from the native trace`);
       failed++;
@@ -93,7 +106,7 @@ async function main() {
     }
   }
   await browser.close();
-  console.log(`${files.length - failed} of ${files.length} fixtures gave identical traces in the browser (${totalMs.toFixed(0)} ms in wasm)`);
+  console.log(`${files.length - failed - refused} of ${files.length - refused} fixtures gave identical traces in the browser (${refused} refused by both), ${totalMs.toFixed(0)} ms in wasm`);
   process.exit(failed ? 1 : 0);
 }
 

@@ -1,0 +1,57 @@
+{
+  "name": "nucleation_piston_handoff",
+  "description": "A 0-tick generator, reduced from the 4x4 vault door's corner: dust strongly powers a concrete block, the concrete powers the sticky piston on top of it, and that piston pushes a redstone block one south. The redstone block was quasi-powering a second sticky piston below, which now retracts and pulls the concrete out from under the first \u2014 ending its pulse before the push completes.  Vanilla's answer is the 0-tick: the redstone block *teleports* one block in the same tick, with no `moving_piston` stage, because the retract finds an extending moving block two ahead and `finalTick`s it in place.  Every step of that chain is a separate vanilla behaviour, and the last one to arrive was the notification pass over the positions a *pull* vacates \u2014 without it the upper piston never hears its pulse end and the block completes an ordinary two-tick move instead. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 23,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "cyan_concrete",
+    "B": "redstone_wire[east=side,north=none,power=0,south=none,west=side]",
+    "C": "lever[face=floor,facing=west,powered=false]",
+    "D": "sticky_piston[extended=false,facing=south]",
+    "E": "redstone_block",
+    "F": "piston_head[facing=north,short=false,type=sticky]",
+    "G": "sticky_piston[extended=true,facing=north]"
+  },
+  "layers": [
+    [
+      "####",
+      "####",
+      "####",
+      "####",
+      "####"
+    ],
+    [
+      "....",
+      ".ABC",
+      ".F..",
+      ".G..",
+      "...."
+    ],
+    [
+      "....",
+      ".D..",
+      ".E..",
+      "....",
+      "...."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 4,
+      "action": "use",
+      "pos": [
+        3,
+        1,
+        1
+      ]
+    }
+  ]
+}

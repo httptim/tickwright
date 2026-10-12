@@ -115,14 +115,24 @@ fn run(cli: Cli) -> Result<ExitCode> {
         Command::Run { inputs, out, mc_version } => {
             let files = collect_json(&inputs)?;
             fs::create_dir_all(&out)?;
+            let mut refused = 0;
             for file in &files {
                 let text = fs::read_to_string(file).with_context(|| format!("reading {}", file.display()))?;
                 let fixture: ResolvedFixture =
                     serde_json::from_str(&text).with_context(|| format!("in {}", file.display()))?;
-                let trace = tickwright_engine::run::run(&fixture, &mc_version)?;
-                fs::write(out.join(format!("{}.json", fixture.id)), serde_json::to_string(&trace)? + "\n")?;
+                // A build with blocks the engine doesn't simulate yet gets no
+                // trace; the browser check expects the same refusal there.
+                match tickwright_engine::run::run(&fixture, &mc_version) {
+                    Ok(trace) => {
+                        fs::write(out.join(format!("{}.json", fixture.id)), serde_json::to_string(&trace)? + "\n")?
+                    }
+                    Err(e) => {
+                        eprintln!("skipped {}: {e:#}", fixture.id);
+                        refused += 1;
+                    }
+                }
             }
-            println!("ran {} fixture(s) into {}", files.len(), out.display());
+            println!("ran {} fixture(s) into {}, {refused} refused", files.len() - refused, out.display());
             Ok(ExitCode::SUCCESS)
         }
         Command::Bench { rings, length, ticks, write } => {

@@ -1,0 +1,51 @@
+{
+  "name": "nucleation_flying_kick",
+  "description": "Engine B, quiet placement, redstone-block kick at t2 removed at t4 \u2014 then 70 ticks of unassisted flight, block for block against the game. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 86,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "observer[facing=west,powered=false]",
+    "A": "slime_block",
+    "B": "sticky_piston[extended=false,facing=west]",
+    "C": "sticky_piston[extended=false,facing=east]",
+    "D": "observer[facing=east,powered=false]"
+  },
+  "layers": [
+    [
+      ".#AB..........................",
+      "..CAD........................."
+    ],
+    [
+      "..............................",
+      ".............................."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 3,
+      "action": "set",
+      "pos": [
+        2,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 5,
+      "action": "destroy",
+      "pos": [
+        2,
+        1,
+        1
+      ]
+    }
+  ]
+}

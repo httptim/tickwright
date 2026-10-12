@@ -1,0 +1,50 @@
+{
+  "name": "nucleation_wire_corner_pull",
+  "description": "Nucleation's wire_corner_pull build. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 24,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "lever[face=floor,facing=west,powered=true]",
+    "B": "sticky_piston[extended=true,facing=east]",
+    "C": "piston_head[facing=east,short=false,type=sticky]",
+    "D": "redstone_block",
+    "E": "redstone_wire[east=none,north=side,power=15,south=none,west=side]",
+    "F": "redstone_wire[east=none,north=side,power=14,south=side,west=none]"
+  },
+  "layers": [
+    [
+      "######",
+      "######",
+      "######"
+    ],
+    [
+      "....F.",
+      "#BCDE.",
+      "......"
+    ],
+    [
+      "......",
+      "A.....",
+      "......"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 11,
+      "action": "use",
+      "pos": [
+        0,
+        2,
+        1
+      ]
+    }
+  ]
+}

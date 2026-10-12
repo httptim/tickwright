@@ -1,0 +1,52 @@
+{
+  "name": "nucleation_manual_engine_settle",
+  "description": "The first real community schematic: a 2-step slimestone flying-machine engine (`tools/gametest/samples/manual_engine.litematic`). Placement pulses its observers, which acts as one trigger: the machine advances two full 9-game-tick steps \u2014 pistons, slime adhesion, moved observers re-pulsing \u2014 and stops at tick 21. Twenty-one ticks of interlocking behaviour, with no actuation at all.  The ticking bounds mirror the capture: its origin sat exactly on a chunk corner, so blocks the machine pushes to x < 0 land in a chunk that is loaded but not block-entity-ticking. Their moving_piston placeholders freeze there \u2014 and, being immovable, they are what *stops* the machine after its second step. Without the bounds the engine happily resolves them and the machine takes a third step vanilla never took. (From Nucleation, MIT, (c) 2025 Schem-at. Nucleation's placement updates set it going; here its redstone blocks are placed on the first tick instead.)",
+  "ticks": 33,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "observer[facing=north,powered=false]",
+    "A": "white_stained_glass",
+    "B": "piston[extended=false,facing=west]",
+    "C": "piston[extended=false,facing=south]",
+    "D": "sticky_piston[extended=false,facing=east]",
+    "E": "slime_block",
+    "F": "note_block[instrument=harp,note=5,powered=false]",
+    "G": "observer[facing=up,powered=false]"
+  },
+  "layers": [
+    [
+      "#AA.B",
+      ".CADE",
+      "...EF"
+    ],
+    [
+      "....G",
+      "...GE",
+      "...EB"
+    ],
+    [
+      ".....",
+      ".....",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "set",
+      "pos": [
+        3,
+        2,
+        2
+      ],
+      "state": "redstone_block"
+    }
+  ]
+}

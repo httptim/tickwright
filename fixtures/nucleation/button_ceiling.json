@@ -1,0 +1,51 @@
+{
+  "name": "nucleation_button_ceiling",
+  "description": "The other half of the same rule: `face=ceiling` attaches upward. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "stone_button[face=ceiling,facing=north,powered=false]",
+    "B": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "###",
+      "###",
+      "###"
+    ],
+    [
+      "...",
+      "A..",
+      "..."
+    ],
+    [
+      "...",
+      "#..",
+      "..."
+    ],
+    [
+      "...",
+      "B..",
+      "..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 6,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        1
+      ]
+    }
+  ]
+}

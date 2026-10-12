@@ -1,0 +1,41 @@
+{
+  "name": "nucleation_button_wall",
+  "description": "A button is a strong-power source through its *attachment* face, exactly like a lever \u2014 `ButtonBlock.getDirectSignal` answers 15 for `getConnectedDirection(state)`, which is UP for `face=floor`, DOWN for `face=ceiling` and `facing` for `face=wall`. Captured across all six orientations in `button_strong.snbt`: each pressed button lights exactly one lamp, the one beyond its support block, and a glass support relays nothing (it is not a redstone conductor). The engine used to fill `strong_into` for buttons only when `face=floor`, so a wall button powered nothing through its wall and the lamp here never lit. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "stone_button[face=wall,facing=west,powered=false]",
+    "B": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "###",
+      "###",
+      "###"
+    ],
+    [
+      "...",
+      "A#B",
+      "..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 6,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        1
+      ]
+    }
+  ]
+}

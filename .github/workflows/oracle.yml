@@ -95,4 +95,20 @@ jobs:
           grep -E '^(agent patched|Minecraft|entries by|captured|block writes)' "$log" || true
           grep -A 25 -m 3 ' FAILED: ' "$log" || true
           du -sh harness/work/traces || true
-
+      - name: Explain a failed capture
+        if: failure()
+        run: |
+          log=harness/work/capture.log
+          [ -f "$log" ] || exit 0
+          # Annotations can be read through the API when the log can't.
+          python3 - "$log" <<'PY'
+          import sys
+          lines = open(sys.argv[1], errors="replace").read().splitlines()
+          def note(chunk):
+              print("::error::" + "%0A".join(l.replace("%", "%25") for l in chunk))
+          failed = [i for i, l in enumerate(lines) if " FAILED: " in l][:5]
+          for i in failed:
+              note(lines[i : i + 12])
+          if not failed:
+              note(lines[-15:])
+          PY
