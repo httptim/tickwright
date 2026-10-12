@@ -1,0 +1,49 @@
+{
+  "name": "sticky_piston_pulse_2",
+  "description": "A 2 game tick pulse into a sticky piston. Pulses shorter than the extension leave the block behind (block spitting, MC-5726).",
+  "ticks": 16,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "piston",
+    "sticky",
+    "spit"
+  ],
+  "palette": {
+    "#": "stone",
+    "L": "lever[face=floor,facing=north,powered=false]",
+    "P": "sticky_piston[extended=false,facing=east]",
+    "s": "stone"
+  },
+  "layers": [
+    [
+      "##.."
+    ],
+    [
+      "LPs."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 4,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}

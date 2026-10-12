@@ -1,0 +1,318 @@
+//! Fixtures: a small build, the inputs applied to it, and how long to watch.
+//!
+//! Fixtures are written by hand as layered ASCII art with a palette, because
+//! that is the easiest way to review a redstone build in a pull request:
+//!
+//! ```json
+//! {
+//!   "name": "torch_inverter",
+//!   "ticks": 10,
+//!   "palette": { "#": "stone", "L": "lever[face=floor,facing=north,powered=false]" },
+//!   "layers": [
+//!     ["###"],
+//!     ["L.."]
+//!   ],
+//!   "stimuli": [ { "tick": 2, "action": "use", "pos": [0, 1, 0] } ]
+//! }
+//! ```
+//!
+//! `layers[y][z]` is a row, and each character in it is one block along x.
+//! `.` is air. The capture harness reads the *resolved* form instead: one
+//! explicit block list per orientation, so it needs no ASCII parsing and no
+//! knowledge of how block states rotate.
+
+use std::collections::BTreeMap;
+
+use anyhow::{Context, Result, bail, ensure};
+use serde::{Deserialize, Serialize};
+
+use crate::state::BlockState;
+use crate::transform::Transform;
+
+/// Where every fixture is placed in the world unless it says otherwise.
+///
+/// The absolute position matters: default dust updates its neighbors in an
+/// order derived from block coordinates, so a trace is only comparable with
+/// a simulation run at the same origin.
+pub const DEFAULT_ORIGIN: [i32; 3] = [0, 100, 0];
+
+/// Blocks of air cleared and observed around the fixture, so changes it
+/// causes just outside its box (a pushed block, a broken torch) are seen.
+pub const DEFAULT_MARGIN: i32 = 3;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Level {
+    /// Every block's state at the end of each game tick.
+    State,
+    /// Each block's changes within a tick, tagged with the tick phase.
+    Phase,
+    /// Every update, scheduled tick and block event, in the game's order.
+    Order,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Action {
+    /// Right-click the block with an empty hand, as a player would.
+    Use,
+    /// Set the block state with normal updates, as a player placing it.
+    Set,
+    /// Break the block without drops, with normal updates.
+    Destroy,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Stimulus {
+    /// Applied just before this game tick's world tick runs, which is where
+    /// player input lands in the real game. Tick 1 is the first tick.
+    pub tick: u32,
+    pub action: Action,
+    pub pos: [i32; 3],
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state: Option<String>,
+}
+
+/// A fixture as written by hand.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FixtureSource {
+    pub name: String,
+    #[serde(default)]
+    pub description: String,
+    /// Game ticks to record.
+    pub ticks: u32,
+    #[serde(default = "default_levels")]
+    pub levels: Vec<Level>,
+    /// Orientations to capture. Defaults to all eight.
+    #[serde(default)]
+    pub transforms: Option<Vec<String>>,
+    #[serde(default)]
+    pub origin: Option<[i32; 3]>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    pub palette: BTreeMap<String, String>,
+    pub layers: Vec<Vec<String>>,
+    #[serde(default)]
+    pub stimuli: Vec<Stimulus>,
+}
+
+fn default_levels() -> Vec<Level> {
+    vec![Level::State, Level::Phase]
+}
+
+/// A fixture in one orientation, with every block spelled out. This is the
+/// file the capture harness and the engine both load.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ResolvedFixture {
+    pub format: u32,
+    /// `<name>@<transform>`, also the trace's file stem.
+    pub id: String,
+    pub name: String,
+    pub transform: String,
+    pub ticks: u32,
+    pub levels: Vec<Level>,
+    pub origin: [i32; 3],
+    pub size: [i32; 3],
+    pub margin: i32,
+    /// Non-air blocks as `[x, y, z, state]`, relative to `origin`.
+    pub blocks: Vec<(i32, i32, i32, String)>,
+    pub stimuli: Vec<Stimulus>,
+}
+
+pub const RESOLVED_FORMAT: u32 = 1;
+
+impl FixtureSource {
+    pub fn from_json(text: &str) -> Result<Self> {
+        let f: FixtureSource = serde_json::from_str(text)?;
+        f.validate()?;
+        Ok(f)
+    }
+
+    pub fn size(&self) -> [i32; 3] {
+        let depth = self.layers.iter().map(Vec::len).max().unwrap_or(0);
+        let width = self.layers.iter().flatten().map(|row| row.chars().count()).max().unwrap_or(0);
+        [width as i32, self.layers.len() as i32, depth as i32]
+    }
+
+    fn validate(&self) -> Result<()> {
+        ensure!(!self.name.is_empty(), "fixture has no name");
+        ensure!(
+            self.name.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_'),
+            "fixture name {:?} must be lowercase letters, digits and underscores",
+            self.name
+        );
+        ensure!(self.ticks > 0, "{}: ticks must be at least 1", self.name);
+        ensure!(!self.layers.is_empty(), "{}: no layers", self.name);
+        let [w, _, d] = self.size();
+        for (y, layer) in self.layers.iter().enumerate() {
+            ensure!(layer.len() as i32 == d, "{}: layer {y} has {} rows, expected {d}", self.name, layer.len());
+            for (z, row) in layer.iter().enumerate() {
+                ensure!(
+                    row.chars().count() as i32 == w,
+                    "{}: layer {y} row {z} is {} wide, expected {w}",
+                    self.name,
+                    row.chars().count()
+                );
+                for c in row.chars() {
+                    if c != '.' && !self.palette.contains_key(&c.to_string()) {
+                        bail!("{}: layer {y} row {z} uses {c:?}, which is not in the palette", self.name);
+                    }
+                }
+            }
+        }
+        for (key, state) in &self.palette {
+            ensure!(key.chars().count() == 1, "{}: palette key {key:?} must be one character", self.name);
+            ensure!(key != ".", "{}: '.' is reserved for air", self.name);
+            BlockState::parse(state).with_context(|| format!("{}: palette entry {key:?}", self.name))?;
+        }
+        let size = self.size();
+        for s in &self.stimuli {
+            ensure!(
+                s.tick >= 1 && s.tick <= self.ticks,
+                "{}: stimulus at tick {} is outside 1..={}",
+                self.name,
+                s.tick,
+                self.ticks
+            );
+            ensure!(
+                (0..3).all(|i| (0..size[i]).contains(&s.pos[i])),
+                "{}: stimulus position {:?} is outside the fixture",
+                self.name,
+                s.pos
+            );
+            match (&s.action, &s.state) {
+                (Action::Set, None) => bail!("{}: a set stimulus needs a state", self.name),
+                (Action::Set, Some(st)) => {
+                    BlockState::parse(st)?;
+                }
+                (_, Some(_)) => bail!("{}: only set stimuli take a state", self.name),
+                _ => {}
+            }
+        }
+        self.transform_list()?;
+        Ok(())
+    }
+
+    pub fn transform_list(&self) -> Result<Vec<Transform>> {
+        match &self.transforms {
+            None => Ok(Transform::all().to_vec()),
+            Some(list) => list.iter().map(|s| s.parse()).collect(),
+        }
+    }
+
+    /// The blocks in the authored orientation, as `(pos, state)`.
+    fn blocks(&self) -> Result<Vec<([i32; 3], BlockState)>> {
+        let mut out = Vec::new();
+        for (y, layer) in self.layers.iter().enumerate() {
+            for (z, row) in layer.iter().enumerate() {
+                for (x, c) in row.chars().enumerate() {
+                    if c == '.' {
+                        continue;
+                    }
+                    let state = BlockState::parse(&self.palette[&c.to_string()])?;
+                    if !state.is_air() {
+                        out.push(([x as i32, y as i32, z as i32], state));
+                    }
+                }
+            }
+        }
+        Ok(out)
+    }
+
+    pub fn resolve(&self, t: Transform) -> Result<ResolvedFixture> {
+        let size = self.size();
+        let mut blocks: Vec<(i32, i32, i32, String)> = self
+            .blocks()?
+            .into_iter()
+            .map(|(p, s)| {
+                let [x, y, z] = t.pos(p, size);
+                (x, y, z, t.state(&s).to_string())
+            })
+            .collect();
+        // Deterministic order: y, then z, then x.
+        blocks.sort_by_key(|b| (b.1, b.2, b.0));
+        let stimuli = self
+            .stimuli
+            .iter()
+            .map(|s| Stimulus {
+                tick: s.tick,
+                action: s.action.clone(),
+                pos: t.pos(s.pos, size),
+                state: s
+                    .state
+                    .as_deref()
+                    .map(|st| BlockState::parse(st).map(|b| t.state(&b).to_string()))
+                    .transpose()
+                    .unwrap(),
+            })
+            .collect();
+        Ok(ResolvedFixture {
+            format: RESOLVED_FORMAT,
+            id: format!("{}@{t}", self.name),
+            name: self.name.clone(),
+            transform: t.to_string(),
+            ticks: self.ticks,
+            levels: self.levels.clone(),
+            origin: self.origin.unwrap_or(DEFAULT_ORIGIN),
+            size: t.size(size),
+            margin: DEFAULT_MARGIN,
+            blocks,
+            stimuli,
+        })
+    }
+
+    pub fn resolve_all(&self) -> Result<Vec<ResolvedFixture>> {
+        self.transform_list()?.into_iter().map(|t| self.resolve(t)).collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const INVERTER: &str = r###"{
+        "name": "torch_inverter",
+        "ticks": 10,
+        "palette": {
+            "#": "stone",
+            "L": "lever[face=floor,facing=north,powered=false]",
+            "T": "redstone_wall_torch[facing=east,lit=true]"
+        },
+        "layers": [
+            ["##."],
+            ["L#T"]
+        ],
+        "stimuli": [ { "tick": 2, "action": "use", "pos": [0, 1, 0] } ]
+    }"###;
+
+    #[test]
+    fn parses_and_resolves_all_orientations() {
+        let f = FixtureSource::from_json(INVERTER).unwrap();
+        assert_eq!(f.size(), [3, 2, 1]);
+        let all = f.resolve_all().unwrap();
+        assert_eq!(all.len(), 8);
+        let r0 = &all[0];
+        assert_eq!(r0.id, "torch_inverter@r0");
+        assert_eq!(r0.blocks.len(), 5);
+        assert_eq!(r0.blocks[4], (2, 1, 0, "minecraft:redstone_wall_torch[facing=east,lit=true]".into()));
+        let r90 = &all[1];
+        assert_eq!(r90.size, [1, 2, 3]);
+        assert!(r90.blocks.contains(&(0, 1, 2, "minecraft:redstone_wall_torch[facing=south,lit=true]".into())));
+        assert_eq!(r90.stimuli[0].pos, [0, 1, 0]);
+    }
+
+    #[test]
+    fn rejects_unknown_palette_chars_and_ragged_rows() {
+        let bad = INVERTER.replace("\"L#T\"", "\"L#X\"");
+        assert!(FixtureSource::from_json(&bad).is_err());
+        let ragged = INVERTER.replace("\"##.\"", "\"##\"");
+        assert!(FixtureSource::from_json(&ragged).is_err());
+    }
+
+    #[test]
+    fn rejects_stimuli_outside_the_run() {
+        let late = INVERTER.replace("\"tick\": 2", "\"tick\": 11");
+        assert!(FixtureSource::from_json(&late).is_err());
+    }
+}

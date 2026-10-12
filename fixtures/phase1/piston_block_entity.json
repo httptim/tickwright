@@ -1,0 +1,34 @@
+{
+  "name": "piston_block_entity",
+  "description": "A piston facing a chest cannot extend, because Java blocks with block entities are immovable.",
+  "ticks": 12,
+  "tags": [
+    "piston",
+    "immovable"
+  ],
+  "palette": {
+    "#": "stone",
+    "L": "lever[face=floor,facing=north,powered=false]",
+    "P": "piston[extended=false,facing=east]",
+    "s": "chest[facing=north,type=single,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "##.."
+    ],
+    [
+      "LPs."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}
