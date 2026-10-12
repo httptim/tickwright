@@ -4,7 +4,7 @@
 
 The first argument is the server jar (the inner one the bundler unpacks) or a
 directory holding its `data/minecraft/...` tree. The reports directory is the
-`--reports` output, whose items.json gives every item's stack size. Writes
+`--reports` output, whose item report gives every item's stack size. Writes
 <output dir>/materials.json, which crates/materials embeds and the Fabric mod
 can read as is.
 
@@ -412,15 +412,33 @@ def condense(props, rows):
     raise AssertionError("unreachable: all properties always determine the list")
 
 
+def item_stack_sizes(reports):
+    """Every item's stack size from the item report: one items.json in older
+    versions, one file per item under <namespace>/.../item/ in newer ones."""
+    def components(v):
+        return v.get("components", v)
+
+    single = reports / "items.json"
+    if single.exists():
+        report = json.loads(single.read_text())
+        return {k if ":" in k else f"minecraft:{k}": components(v)["minecraft:max_stack_size"] for k, v in report.items()}
+    stacks = {}
+    for f in sorted(reports.glob("*/**/item/*.json")):
+        ns = f.relative_to(reports).parts[0]
+        v = components(json.loads(f.read_text()))
+        if "minecraft:max_stack_size" in v:
+            stacks[f"{ns}:{f.stem}"] = v["minecraft:max_stack_size"]
+    if not stacks:
+        dirs = sorted({str(d.relative_to(reports)) for d in reports.glob("*/*/*") if d.is_dir()})
+        raise Unknown(f"no item report in {reports}; its directories: {' '.join(dirs[:40])}")
+    return stacks
+
+
 def main(jar, reports, out):
     src = Source(jar)
     out = Path(out)
     blocks = json.loads((out / "blocks.json").read_text())
-    report = json.loads((Path(reports) / "items.json").read_text())
-    stacks = {}
-    for item, v in report.items():
-        components = v.get("components", v)
-        stacks[item if ":" in item else f"minecraft:{item}"] = components["minecraft:max_stack_size"]
+    stacks = item_stack_sizes(Path(reports))
     items = set(stacks)
 
     rows = []
