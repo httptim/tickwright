@@ -177,6 +177,16 @@ impl Session {
         out
     }
 
+    /// Every non-air block as it was just after tick `t` (tick 0 is the
+    /// build), before any edits made after that tick. `None` when tick `t`
+    /// has not run.
+    pub fn blocks_at(&self, t: u32) -> Option<Vec<(Pos, String)>> {
+        let level = self.checkpoints.get(t as usize)?;
+        let mut out: Vec<(Pos, String)> = level.non_air().map(|(p, s)| (p, level.reg.format(s))).collect();
+        out.sort_by_key(|(p, _)| (p.y, p.z, p.x));
+        Some(out)
+    }
+
     pub fn block(&self, pos: Pos) -> String {
         self.level.reg.format(self.level.get(pos))
     }
@@ -230,6 +240,12 @@ mod tests {
         s.rewind(1).unwrap();
         assert_eq!(s.block(Pos::new(1, 1, 0)), "minecraft:redstone_lamp[lit=false]");
         assert_eq!(s.tick(), 1);
+        let lamp = |blocks: Vec<(Pos, String)>| blocks.into_iter().find(|(p, _)| *p == Pos::new(1, 1, 0)).unwrap().1;
+        s.use_block(Pos::new(0, 1, 0));
+        s.step();
+        assert_eq!(lamp(s.blocks_at(1).unwrap()), "minecraft:redstone_lamp[lit=false]");
+        assert_eq!(lamp(s.blocks_at(2).unwrap()), "minecraft:redstone_lamp[lit=true]");
+        assert!(s.blocks_at(3).is_none());
     }
 
     #[test]
