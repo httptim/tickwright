@@ -1,0 +1,130 @@
+{
+  "name": "arrow_hits",
+  "description": "Arrows shot at things: one square into a target block and one low and off its centre (each lights a lamp for as long as the target stays powered), one into a wooden button on a wall (the button stays pressed while the arrow is in it), one in an arc onto a wooden pressure plate, and one straight down into the floor, where it sticks.",
+  "ticks": 60,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "arrow",
+    "target",
+    "button",
+    "plate"
+  ],
+  "palette": {
+    "#": "stone",
+    "T": "target[power=0]",
+    "L": "redstone_lamp[lit=false]",
+    "b": "oak_button[face=wall,facing=west,powered=false]",
+    "p": "oak_pressure_plate[powered=false]"
+  },
+  "layers": [
+    [
+      "###########",
+      "###########",
+      "###########",
+      "###########",
+      "###########",
+      "###########",
+      "###########",
+      "###########",
+      "###########",
+      "###########",
+      "###########"
+    ],
+    [
+      "...........",
+      "........TL.",
+      "...........",
+      "........TL.",
+      "...........",
+      ".......b#L.",
+      "...........",
+      ".......pL..",
+      "...........",
+      "...........",
+      "..........."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "arrow",
+      "at": [
+        1.5,
+        1.5,
+        1.5
+      ],
+      "motion": [
+        2.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "arrow",
+      "at": [
+        1.5,
+        1.2,
+        3.3
+      ],
+      "motion": [
+        2.0,
+        0.05,
+        0.0
+      ]
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "arrow",
+      "at": [
+        1.5,
+        1.25,
+        5.5
+      ],
+      "motion": [
+        1.5,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "arrow",
+      "at": [
+        1.5,
+        3.0,
+        7.5
+      ],
+      "motion": [
+        0.4,
+        0.2,
+        0.0
+      ]
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "arrow",
+      "at": [
+        3.5,
+        4.0,
+        9.5
+      ],
+      "motion": [
+        0.0,
+        -1.0,
+        0.0
+      ]
+    }
+  ],
+  "entities": true
+}

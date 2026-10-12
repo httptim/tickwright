@@ -1,0 +1,88 @@
+{
+  "name": "arrow_flight",
+  "description": "Arrows flying through open air: a long arc that lands on the floor, a fast one that hits a stone wall and sticks in it, and one shot straight up that comes back down.",
+  "ticks": 100,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "arrow"
+  ],
+  "palette": {
+    "#": "stone"
+  },
+  "layers": [
+    [
+      "####################",
+      "####################",
+      "####################",
+      "####################",
+      "####################"
+    ],
+    [
+      "...................#",
+      "...................#",
+      "...................#",
+      "...................#",
+      "...................#"
+    ],
+    [
+      "...................#",
+      "...................#",
+      "...................#",
+      "...................#",
+      "...................#"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "arrow",
+      "at": [
+        1.5,
+        1.5,
+        0.5
+      ],
+      "motion": [
+        0.6,
+        0.5,
+        0.0
+      ]
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "arrow",
+      "at": [
+        1.5,
+        2.25,
+        2.5
+      ],
+      "motion": [
+        3.0,
+        0.1,
+        0.0
+      ]
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "arrow",
+      "at": [
+        1.5,
+        1.5,
+        4.5
+      ],
+      "motion": [
+        0.0,
+        1.2,
+        0.0
+      ]
+    }
+  ],
+  "entities": true
+}
