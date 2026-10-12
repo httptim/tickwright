@@ -10,6 +10,7 @@
 
 mod lamp;
 mod lever;
+mod repeater;
 mod torch;
 mod wire;
 
@@ -135,6 +136,7 @@ pub fn get_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i32 {
     match level.kind(state) {
         Kind::Lever => lever::get_signal(level, pos, state, dir),
         Kind::RedstoneBlock => 15,
+        Kind::Repeater => repeater::get_signal(level, pos, state, dir),
         Kind::RedstoneWire => wire::get_signal(level, pos, state, dir),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::get_signal(level, pos, state, dir),
         _ => 0,
@@ -146,6 +148,7 @@ pub fn get_direct_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i
     match level.kind(state) {
         Kind::Lever => lever::get_direct_signal(level, pos, state, dir),
         Kind::RedstoneWire => wire::get_direct_signal(level, pos, state, dir),
+        Kind::Repeater => repeater::get_signal(level, pos, state, dir),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::get_direct_signal(level, pos, state, dir),
         _ => 0,
     }
@@ -157,6 +160,7 @@ pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId, moved
     let _ = moved_by_piston;
     match level.kind(state) {
         Kind::RedstoneWire => wire::on_place(level, pos, state, old),
+        Kind::Repeater => repeater::on_place(level, pos, state),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::on_place(level, pos, state),
         _ => {}
     }
@@ -166,6 +170,7 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
     match level.kind(state) {
         Kind::Lever => lever::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
         Kind::RedstoneWire => wire::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
+        Kind::Repeater => repeater::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => {
             torch::affect_neighbors_after_removal(level, pos, state, moved_by_piston)
         }
@@ -178,6 +183,7 @@ pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId, source: Blo
     match level.kind(state) {
         Kind::RedstoneLamp => lamp::neighbor_changed(level, pos, state),
         Kind::RedstoneWire => wire::neighbor_changed(level, pos, state),
+        Kind::Repeater => repeater::neighbor_changed(level, pos, state),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::neighbor_changed(level, pos, state),
         _ => {}
     }
@@ -193,6 +199,7 @@ pub fn update_shape(
 ) -> StateId {
     match level.kind(state) {
         Kind::RedstoneWire => wire::update_shape(level, pos, state, dir, neighbor, neighbor_state),
+        Kind::Repeater => repeater::update_shape(level, pos, state, dir, neighbor, neighbor_state),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::update_shape(level, pos, state, dir),
         _ => state,
     }
@@ -209,6 +216,7 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
     match level.kind(state) {
         Kind::RedstoneLamp => lamp::tick(level, pos, state),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::tick(level, pos, state),
+        Kind::Repeater => repeater::tick(level, pos, state),
         _ => {}
     }
 }
@@ -222,6 +230,7 @@ pub fn trigger_event(level: &mut Level, pos: Pos, state: StateId, a: i32, b: i32
 pub fn use_without_item(level: &mut Level, pos: Pos, state: StateId) {
     match level.kind(state) {
         Kind::Lever => lever::pull(level, pos, state),
+        Kind::Repeater => repeater::use_without_item(level, pos, state),
         _ => {}
     }
 }

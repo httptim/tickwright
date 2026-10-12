@@ -10,3 +10,10 @@ torch_burnout_7 order
 torch_burnout_8 order
 torch_burnout_9 order
 torch_inverter order
+repeater_lock order
+repeater_lock_race order
+repeater_pulse_1 order
+repeater_pulse_2 order
+repeater_pulse_3 order
+repeater_pulse_5 order
+repeater_pulse_9 order
