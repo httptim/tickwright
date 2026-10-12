@@ -200,6 +200,7 @@ fn can_survive(level: &Level, pos: Pos, state: StateId) -> bool {
         | Kind::Comparator
         | Kind::Cake
         | Kind::PoweredRail
+        | Kind::DetectorRail
         | Kind::Rail
         | Kind::RedstoneTorch
         | Kind::Torch
@@ -317,7 +318,7 @@ fn state_for_placement(level: &Level, ctx: &Context) -> Option<StateId> {
                 level.with(s, "type", "top")
             }
         }
-        Kind::PoweredRail => {
+        Kind::PoweredRail | Kind::DetectorRail => {
             let h = ctx.horizontal();
             level.with(base, "shape", if h.axis() == 0 { "east_west" } else { "north_south" })
         }

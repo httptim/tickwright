@@ -79,6 +79,7 @@ pub enum Kind {
     Trapdoor,
     /// Powered and activator rails.
     PoweredRail,
+    DetectorRail,
     /// Plain rails, which can bend.
     Rail,
     /// Water, source or flowing.
@@ -247,6 +248,7 @@ pub fn has_analog_output(level: &Level, state: StateId) -> bool {
             | Kind::SculkSensor
             | Kind::CalibratedSculkSensor
             | Kind::Shelf
+            | Kind::DetectorRail
     )
 }
 
@@ -263,6 +265,8 @@ pub fn analog_output(level: &Level, pos: Pos, state: StateId) -> i32 {
         Kind::SculkSensor | Kind::CalibratedSculkSensor => sculk::analog_output(level, pos, state),
         Kind::Composter => level.int(state, "level"),
         Kind::Cake => (7 - level.int(state, "bites")) * 2,
+        // A detector rail reads container and command block minecarts,
+        // which the engine doesn't have; plain ones give 0.
         _ => 0,
     }
 }
@@ -317,6 +321,7 @@ pub fn is_signal_source(level: &Level, state: StateId) -> bool {
                 | Kind::CalibratedSculkSensor
                 | Kind::PressurePlate
                 | Kind::WeightedPlate
+                | Kind::DetectorRail
         ),
     }
 }
@@ -372,6 +377,7 @@ pub fn get_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i32 {
         Kind::TripwireHook => plain::hook_signal(level, state),
         Kind::Lectern => lectern::get_signal(level, state),
         Kind::PressurePlate | Kind::WeightedPlate => plate::signal(level, state),
+        Kind::DetectorRail => rail::detector_signal(level, state),
         Kind::DaylightDetector => daylight::get_signal(level, state),
         Kind::SculkSensor | Kind::CalibratedSculkSensor => sculk::get_signal(level, state, dir),
         Kind::Observer => observer::get_signal(level, state, dir),
@@ -394,6 +400,7 @@ pub fn get_direct_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i
         Kind::TripwireHook => plain::hook_direct_signal(level, state, dir),
         Kind::Lectern => lectern::get_direct_signal(level, state, dir),
         Kind::PressurePlate | Kind::WeightedPlate => plate::get_direct_signal(level, state, dir),
+        Kind::DetectorRail if dir == Dir::Up => rail::detector_signal(level, state),
         Kind::SculkSensor | Kind::CalibratedSculkSensor => sculk::get_direct_signal(level, state, dir),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::get_direct_signal(level, pos, state, dir),
         _ => 0,
@@ -411,6 +418,7 @@ pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId, moved
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::on_place(level, pos, state),
         Kind::Observer => observer::on_place(level, pos, state, old),
         Kind::PoweredRail => rail::on_place(level, pos, state, old),
+        Kind::DetectorRail => rail::detector_on_place(level, pos, state, old),
         Kind::Rail => rail::plain_on_place(level, pos, state, old),
         Kind::Water => water::on_place(level, pos, state),
         Kind::Hopper => container::hopper_on_place(level, pos, state, old),
@@ -433,7 +441,9 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
         }
         Kind::PistonHead => piston::head_affect_neighbors_after_removal(level, pos, state),
         Kind::Observer => observer::affect_neighbors_after_removal(level, pos, state),
-        Kind::PoweredRail => rail::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
+        Kind::PoweredRail | Kind::DetectorRail => {
+            rail::affect_neighbors_after_removal(level, pos, state, moved_by_piston)
+        }
         Kind::Rail => rail::plain_affect_neighbors_after_removal(level, pos, state, moved_by_piston),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => {
             torch::affect_neighbors_after_removal(level, pos, state, moved_by_piston)
@@ -473,6 +483,7 @@ pub fn neighbor_changed(
         Kind::Comparator => comparator::neighbor_changed(level, pos, state),
         Kind::NoteBlock => note::neighbor_changed(level, pos, state),
         Kind::PoweredRail => rail::neighbor_changed(level, pos, state, moved_by_piston),
+        Kind::DetectorRail => rail::detector_neighbor_changed(level, pos, state, moved_by_piston),
         Kind::Rail => rail::plain_neighbor_changed(level, pos, state, source, moved_by_piston),
         Kind::Trapdoor => door::trapdoor_neighbor_changed(level, pos, state),
         Kind::Door => door::door_neighbor_changed(level, pos, state, source),
@@ -576,6 +587,7 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
         Kind::Leaves => plain::leaves_tick(level, pos, state),
         Kind::FallingBlock => falling::tick(level, pos, state),
         Kind::PressurePlate | Kind::WeightedPlate => plate::tick(level, pos, state),
+        Kind::DetectorRail => rail::detector_tick(level, pos, state),
         Kind::Tripwire => tripwire::tick(level, pos, state),
         Kind::SoulSand | Kind::Magma => bubble::source_tick(level, pos, state),
         Kind::BubbleColumn => bubble::column_tick(level, pos, state),
@@ -596,6 +608,7 @@ pub fn trigger_event(level: &mut Level, pos: Pos, state: StateId, a: i32, b: i32
 pub fn entity_inside(level: &mut Level, pos: Pos, state: StateId) {
     match level.kind(state) {
         Kind::PressurePlate | Kind::WeightedPlate => plate::entity_inside(level, pos, state),
+        Kind::DetectorRail => rail::detector_entity_inside(level, pos, state),
         Kind::Tripwire => tripwire::entity_inside(level, pos, state),
         Kind::Hopper => container::hopper_entity_inside(level, pos),
         Kind::BubbleColumn => bubble::column_entity_inside(level, pos, state),

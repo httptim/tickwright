@@ -28,7 +28,7 @@ all eight orientations and must match at the order level
 | `update-suppression-other` | no | | not present in 26.3 |
 | `tnt-dupe` | yes, captured | `phase4/tnt_dupe_coral` | covered: the primed TNT and the placed TNT block both appear in 26.3 |
 | `rail-carpet-dupe` | yes, captured | `phase4/carpet_dupe`, `phase4/rail_dupe` | covered: in 26.3 the dropped carpet or rail and the placed copy both appear. The carpet pops when the coral fan under it does; the rail drops when the fan's pop updates it while a moving piston, not yet solid, stands under it |
-| `gravity-dupe` | unverified | | needs falling blocks and the End (phase 4) |
+| `gravity-dupe` | unverified | | not simulated: it needs end portals, dimension travel and an entity riding in the portal, none of which the engine has. A build with an end portal is refused by name |
 | `string-dupe` | no | | not present in 26.3 |
 | `flying-machines` | yes | `nucleation/flying_kick`, `nucleation/slime_extender` | covered |
 | `block-entities-immovable` | yes | `phase1/piston_block_entity`, `phase1/piston_immovable` | covered |

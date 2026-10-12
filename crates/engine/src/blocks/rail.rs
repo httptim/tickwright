@@ -1,5 +1,5 @@
-//! `PoweredRailBlock` (powered and activator rails) with the parts of
-//! `BaseRailBlock` they use.
+//! `PoweredRailBlock` (powered and activator rails) and `DetectorRailBlock`,
+//! with the parts of `BaseRailBlock` they use.
 //!
 //! `RailState`, which turns a newly placed rail toward its neighbours and
 //! turns them toward it, is here for straight rails. Plain rails are
@@ -142,6 +142,83 @@ pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId, moved_by_pi
     }
 }
 
+/// `BaseRailBlock.neighborChanged` for a detector rail: only the survival
+/// check, as its `updateState` does nothing.
+pub fn detector_neighbor_changed(level: &mut Level, pos: Pos, state: StateId, moved_by_piston: bool) {
+    if should_be_removed(level, pos, level.prop(state, "shape")) {
+        if level.simulate_entities {
+            level.drop_resources(pos, state);
+        }
+        let f = if moved_by_piston { flags::ALL | flags::MOVE_BY_PISTON } else { flags::ALL };
+        level.set_block(pos, level.air, f);
+    }
+}
+
+/// `DetectorRailBlock.getSignal`.
+pub fn detector_signal(level: &Level, state: StateId) -> i32 {
+    if level.flag(state, "powered") { 15 } else { 0 }
+}
+
+/// `DetectorRailBlock.onPlace`: a fresh detector rail settles its shape
+/// like any straight rail, then looks for a minecart on it.
+pub fn detector_on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId) {
+    let block = level.block(state);
+    if !level.is(old, block) {
+        let placed = RailState::new(level, pos, state).place(level, level.has_neighbor_signal(pos), true);
+        level.neighbor_changed_state(pos, placed, block, false);
+        detector_check_pressed(level, pos, placed);
+    } else if old != state {
+        removal_updates(level, pos, old, block);
+    }
+}
+
+/// `entityInside`: an unpowered detector rail checks as soon as something
+/// is inside it.
+pub fn detector_entity_inside(level: &mut Level, pos: Pos, state: StateId) {
+    if !level.flag(state, "powered") {
+        detector_check_pressed(level, pos, state);
+    }
+}
+
+/// `tick`: a powered detector rail checks again every 20 ticks.
+pub fn detector_tick(level: &mut Level, pos: Pos, state: StateId) {
+    if level.flag(state, "powered") {
+        detector_check_pressed(level, pos, state);
+    }
+}
+
+/// `checkPressed`: powered while a minecart's box meets the middle of the
+/// block.
+fn detector_check_pressed(level: &mut Level, pos: Pos, state: StateId) {
+    if !super::placement::state_can_survive(level, pos, state) {
+        return;
+    }
+    let was = level.flag(state, "powered");
+    let b = crate::physics::Aabb {
+        min: [pos.x as f64 + 0.2, pos.y as f64, pos.z as f64 + 0.2],
+        max: [pos.x as f64 + 0.8, pos.y as f64 + 0.8, pos.z as f64 + 0.8],
+    };
+    let now = level
+        .entities
+        .iter()
+        .any(|e| !e.removed && matches!(e.data, crate::entity::Data::Minecart(_)) && e.bounding_box().intersects(&b));
+    let block = level.block(state);
+    if now != was {
+        let s = level.with_bool(state, "powered", now);
+        level.set_block(pos, s, flags::ALL);
+        for c in RailState::new(level, pos, s).connections {
+            let cs = level.get(c);
+            level.neighbor_changed_state(c, cs, level.block(cs), false);
+        }
+        level.update_neighbors_at(pos, block);
+        level.update_neighbors_at(pos.below(), block);
+    }
+    if now {
+        level.schedule_tick(pos, block, 20, 0);
+    }
+    level.update_neighbour_for_output_signal(pos, block);
+}
+
 /// `BaseRailBlock.onPlace`: a fresh rail runs `updateState`, which reshapes
 /// it and its neighbours (`updateDir`, `RailState.place`) and then sends
 /// itself a neighbor update carrying the new shape, so it checks its power
@@ -182,7 +259,7 @@ fn is_rail(level: &Level, pos: Pos) -> bool {
 
 /// `BaseRailBlock.isRail(state)`.
 pub fn is_rail_state(level: &Level, state: StateId) -> bool {
-    matches!(level.kind(state), Kind::PoweredRail | Kind::Rail)
+    matches!(level.kind(state), Kind::PoweredRail | Kind::DetectorRail | Kind::Rail)
 }
 
 /// `RailBlock.updateState` after `BaseRailBlock.neighborChanged`'s
