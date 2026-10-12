@@ -53,7 +53,10 @@ fn session_matches_fixture_runs() {
                 let pos = Pos::new(ox + s.pos[0], oy + s.pos[1], oz + s.pos[2]);
                 match s.action {
                     Action::Use => session.use_block(pos),
-                    Action::Set => session.set_block(pos, s.state.as_deref().unwrap(), Placement::Updates).unwrap(),
+                    Action::Set => {
+                        let how = if s.quiet { Placement::Quiet } else { Placement::Updates };
+                        session.set_block(pos, s.state.as_deref().unwrap(), how).unwrap()
+                    }
                     Action::Destroy => session.destroy(pos),
                     Action::Place => {
                         let p = s.place.as_ref().unwrap();

@@ -171,7 +171,8 @@ fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result
             }
             Action::Set => {
                 let text = s.state.as_deref().context("set stimulus without a state")?;
-                level.set_block(pos, level.reg.parse(text)?, flags::ALL);
+                let how = if s.quiet { flags::CLIENTS | flags::KNOWN_SHAPE } else { flags::ALL };
+                level.set_block(pos, level.reg.parse(text)?, how);
             }
             Action::Destroy => {
                 level.destroy_block(pos, crate::level::MAX_RECURSION);
