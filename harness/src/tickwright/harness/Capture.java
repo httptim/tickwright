@@ -119,7 +119,7 @@ public final class Capture {
             Class.forName(c, false, Capture.class.getClassLoader());
         }
         System.out.printf("agent patched: %s%n", new TreeMap<>(Hooks.patched));
-        Class.forName("net.minecraft.util.RandomSupport", false, Capture.class.getClassLoader());
+        Class.forName("net.minecraft.world.level.levelgen.RandomSupport", false, Capture.class.getClassLoader());
         for (String kind : List.of("set", "neighbor", "shape", "schedule", "tick", "block_event_queued",
                 "block_event", "items", "unique_seed")) {
             if (!Hooks.patched.containsKey(kind)) {

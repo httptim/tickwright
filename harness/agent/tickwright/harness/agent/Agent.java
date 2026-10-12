@@ -71,7 +71,7 @@ public final class Agent {
             @Override
             public byte[] transform(ClassLoader loader, String name, Class<?> redefined,
                     ProtectionDomain domain, byte[] bytes) {
-                if (name.equals("net/minecraft/util/RandomSupport")) {
+                if (name.equals("net/minecraft/world/level/levelgen/RandomSupport")) {
                     try {
                         return patchUniqueSeed(loader, bytes);
                     } catch (Throwable t) {
