@@ -1,0 +1,297 @@
+{
+  "name": "daylight_detector_day",
+  "description": "A daylight detector and an inverted one under open sky while the time of day is set to 51 values across a day, 10 ticks before each of the detectors' once-a-second updates. At the end the inverted one is used, which flips it back to normal and recomputes its output at once.",
+  "ticks": 1050,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "daylight_detector"
+  ],
+  "transforms": [
+    "r0"
+  ],
+  "day_time": 0,
+  "palette": {
+    "#": "stone",
+    "d": "daylight_detector[inverted=false,power=0]",
+    "i": "daylight_detector[inverted=true,power=0]",
+    "L": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "###"
+    ],
+    [
+      "dLi"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 10,
+      "action": "time",
+      "time": 0
+    },
+    {
+      "tick": 30,
+      "action": "time",
+      "time": 1000
+    },
+    {
+      "tick": 50,
+      "action": "time",
+      "time": 2000
+    },
+    {
+      "tick": 70,
+      "action": "time",
+      "time": 3000
+    },
+    {
+      "tick": 90,
+      "action": "time",
+      "time": 4000
+    },
+    {
+      "tick": 110,
+      "action": "time",
+      "time": 5000
+    },
+    {
+      "tick": 130,
+      "action": "time",
+      "time": 6000
+    },
+    {
+      "tick": 150,
+      "action": "time",
+      "time": 7000
+    },
+    {
+      "tick": 170,
+      "action": "time",
+      "time": 8000
+    },
+    {
+      "tick": 190,
+      "action": "time",
+      "time": 9000
+    },
+    {
+      "tick": 210,
+      "action": "time",
+      "time": 10000
+    },
+    {
+      "tick": 230,
+      "action": "time",
+      "time": 11000
+    },
+    {
+      "tick": 250,
+      "action": "time",
+      "time": 11200
+    },
+    {
+      "tick": 270,
+      "action": "time",
+      "time": 11400
+    },
+    {
+      "tick": 290,
+      "action": "time",
+      "time": 11600
+    },
+    {
+      "tick": 310,
+      "action": "time",
+      "time": 11800
+    },
+    {
+      "tick": 330,
+      "action": "time",
+      "time": 12000
+    },
+    {
+      "tick": 350,
+      "action": "time",
+      "time": 12040
+    },
+    {
+      "tick": 370,
+      "action": "time",
+      "time": 12200
+    },
+    {
+      "tick": 390,
+      "action": "time",
+      "time": 12400
+    },
+    {
+      "tick": 410,
+      "action": "time",
+      "time": 12541
+    },
+    {
+      "tick": 430,
+      "action": "time",
+      "time": 12600
+    },
+    {
+      "tick": 450,
+      "action": "time",
+      "time": 12800
+    },
+    {
+      "tick": 470,
+      "action": "time",
+      "time": 13000
+    },
+    {
+      "tick": 490,
+      "action": "time",
+      "time": 13188
+    },
+    {
+      "tick": 510,
+      "action": "time",
+      "time": 13200
+    },
+    {
+      "tick": 530,
+      "action": "time",
+      "time": 13400
+    },
+    {
+      "tick": 550,
+      "action": "time",
+      "time": 13600
+    },
+    {
+      "tick": 570,
+      "action": "time",
+      "time": 13800
+    },
+    {
+      "tick": 590,
+      "action": "time",
+      "time": 14000
+    },
+    {
+      "tick": 610,
+      "action": "time",
+      "time": 15000
+    },
+    {
+      "tick": 630,
+      "action": "time",
+      "time": 16000
+    },
+    {
+      "tick": 650,
+      "action": "time",
+      "time": 17000
+    },
+    {
+      "tick": 670,
+      "action": "time",
+      "time": 18000
+    },
+    {
+      "tick": 690,
+      "action": "time",
+      "time": 19000
+    },
+    {
+      "tick": 710,
+      "action": "time",
+      "time": 20000
+    },
+    {
+      "tick": 730,
+      "action": "time",
+      "time": 21000
+    },
+    {
+      "tick": 750,
+      "action": "time",
+      "time": 21800
+    },
+    {
+      "tick": 770,
+      "action": "time",
+      "time": 22000
+    },
+    {
+      "tick": 790,
+      "action": "time",
+      "time": 22200
+    },
+    {
+      "tick": 810,
+      "action": "time",
+      "time": 22400
+    },
+    {
+      "tick": 830,
+      "action": "time",
+      "time": 22600
+    },
+    {
+      "tick": 850,
+      "action": "time",
+      "time": 22800
+    },
+    {
+      "tick": 870,
+      "action": "time",
+      "time": 22812
+    },
+    {
+      "tick": 890,
+      "action": "time",
+      "time": 23000
+    },
+    {
+      "tick": 910,
+      "action": "time",
+      "time": 23200
+    },
+    {
+      "tick": 930,
+      "action": "time",
+      "time": 23400
+    },
+    {
+      "tick": 950,
+      "action": "time",
+      "time": 23459
+    },
+    {
+      "tick": 970,
+      "action": "time",
+      "time": 23600
+    },
+    {
+      "tick": 990,
+      "action": "time",
+      "time": 23800
+    },
+    {
+      "tick": 1010,
+      "action": "time",
+      "time": 23960
+    },
+    {
+      "tick": 1030,
+      "action": "use",
+      "pos": [
+        2,
+        1,
+        0
+      ]
+    }
+  ]
+}

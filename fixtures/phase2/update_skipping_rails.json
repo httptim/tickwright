@@ -1,0 +1,58 @@
+{
+  "name": "update_skipping_rails",
+  "description": "Update skipping: with max-chained-neighbor-updates lowered to 24, a lever powers a line of eight powered rails. Each rail that turns on updates its neighbors, all in one chain, so once 24 updates have been queued the rest are dropped and the far rails stay unpowered. Switching the lever off and on again starts a fresh chain.",
+  "ticks": 20,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "quirk",
+    "update_skipping",
+    "rail"
+  ],
+  "max_chained_updates": 24,
+  "palette": {
+    "#": "stone",
+    "l": "lever[face=floor,facing=north,powered=false]",
+    "=": "powered_rail[powered=false,shape=east_west,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "##########"
+    ],
+    [
+      "l========."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 8,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 12,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}

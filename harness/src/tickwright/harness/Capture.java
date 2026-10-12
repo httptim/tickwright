@@ -48,6 +48,16 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ComparatorBlockEntity;
+import net.minecraft.world.level.block.entity.LecternBlockEntity;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.server.network.Filterable;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.WritableBookContent;
+import net.minecraft.world.flag.FeatureFlagSet;
+import net.minecraft.world.flag.FeatureFlags;
+import net.minecraft.world.level.WorldDataConfiguration;
+import net.minecraft.world.level.redstone.CollectingNeighborUpdater;
+import net.minecraft.world.level.redstone.NeighborUpdater;
 import net.minecraft.world.level.BlockEventData;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.ticks.ScheduledTick;
@@ -250,6 +260,24 @@ public final class Capture {
         idle(SETTLE_TICKS);
         clear(min, max);
 
+        setExperiments(id, fixture.has("experiments") ? fixture.getAsJsonArray("experiments") : new JsonArray());
+        if (fixture.has("experiments")) {
+            // Experimental redstone picks random orientations where nothing
+            // gives one; a fixed seed keeps the capture repeatable.
+            level.getRandom().setSeed(id.hashCode());
+        }
+        setMaxChainedUpdates(fixture.has("max_chained_updates")
+                ? fixture.get("max_chained_updates").getAsInt() : -1);
+        if (fixture.has("day_time")) {
+            freezeClock();
+            // Start on a multiple of 20, so tick t runs at game time
+            // (start + t) and the daylight detector updates on ticks 20, 40, ...
+            while (level.getGameTime() % 20 != 0) {
+                tick();
+            }
+            command("time set " + fixture.get("day_time").getAsLong());
+        }
+
         for (JsonElement b : fixture.getAsJsonArray("blocks")) {
             JsonArray a = b.getAsJsonArray();
             BlockPos p = origin.offset(a.get(0).getAsInt(), a.get(1).getAsInt(), a.get(2).getAsInt());
@@ -279,6 +307,25 @@ public final class Capture {
                     throw new IllegalStateException(id + ": no comparator at " + c.get("pos"));
                 }
                 comparator.setOutputSignal(c.get("output").getAsInt());
+            }
+        }
+
+        // Books on lecterns, open at a page.
+        if (fixture.has("lecterns")) {
+            for (JsonElement le : fixture.getAsJsonArray("lecterns")) {
+                JsonObject l = le.getAsJsonObject();
+                BlockPos p = origin.offset(pos(l.getAsJsonArray("pos")));
+                if (!(level.getBlockEntity(p) instanceof LecternBlockEntity lectern)) {
+                    throw new IllegalStateException(id + ": no lectern at " + l.get("pos"));
+                }
+                List<Filterable<String>> pages = new ArrayList<>();
+                for (int i = 0; i < l.get("pages").getAsInt(); i++) {
+                    pages.add(Filterable.passThrough("page " + (i + 1)));
+                }
+                ItemStack book = new ItemStack(Items.WRITABLE_BOOK);
+                book.set(DataComponents.WRITABLE_BOOK_CONTENT, new WritableBookContent(pages));
+                lectern.setBook(book);
+                setPage(lectern, l.has("page") ? l.get("page").getAsInt() : 0);
             }
         }
 
@@ -523,7 +570,117 @@ public final class Capture {
             case "set" -> level.setBlock(p, parse(blocks, s.get("state").getAsString()), NORMAL);
             case "destroy" -> level.destroyBlock(p, false);
             case "place" -> place(p, s);
+            case "page" -> {
+                if (!(level.getBlockEntity(p) instanceof LecternBlockEntity lectern)) {
+                    throw new IllegalStateException("no lectern at " + p);
+                }
+                setPage(lectern, s.get("page").getAsInt());
+            }
+            case "time" -> command("time set " + s.get("time").getAsLong());
             default -> throw new IllegalArgumentException("unknown action " + s.get("action"));
+        }
+    }
+
+    /** {@code LecternBlockEntity.setPage}, which is private: what turning a page in the book menu calls. */
+    private static void setPage(LecternBlockEntity lectern, int page) {
+        try {
+            Method m = LecternBlockEntity.class.getDeclaredMethod("setPage", int.class);
+            m.setAccessible(true);
+            m.invoke(lectern, page);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("cannot turn the lectern's page", e);
+        }
+    }
+
+    /** Run a command as the server console. */
+    private static void command(String command) {
+        server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), command);
+    }
+
+    private static boolean clockFrozen;
+
+    /** Stop the day-night cycle and the weather, once, for fixtures that read the time of day. */
+    private static void freezeClock() {
+        if (clockFrozen) {
+            return;
+        }
+        clockFrozen = true;
+        // The game rule's name changed in 1.21.11; the other one is rejected quietly.
+        command("gamerule advance_time false");
+        command("gamerule doDaylightCycle false");
+        command("weather clear");
+        System.out.printf("clock frozen: day time %d after 5 ticks of %d%n", dayTimeAfter(5), level.getDayTime());
+    }
+
+    private static long dayTimeAfter(int ticks) {
+        try {
+            idle(ticks);
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+        return level.getDayTime();
+    }
+
+    /** The features the world was created with, which the captures without experiments use. */
+    private static FeatureFlagSet baseFlags;
+    private static final java.util.Set<String> experimentsOn = new java.util.TreeSet<>();
+
+    /**
+     * Turn feature flags on or off for the next fixture. {@code ServerLevel.enabledFeatures}
+     * reads the world data each time, so switching it between fixtures is enough.
+     */
+    private static void setExperiments(String id, JsonArray experiments) {
+        java.util.Set<String> wanted = new java.util.TreeSet<>();
+        experiments.forEach(e -> wanted.add(e.getAsString()));
+        if (wanted.equals(experimentsOn)) {
+            return;
+        }
+        WorldDataConfiguration old = server.getWorldData().getDataConfiguration();
+        if (baseFlags == null) {
+            baseFlags = old.enabledFeatures();
+        }
+        FeatureFlagSet flags = baseFlags;
+        for (String name : wanted) {
+            if (!name.equals("redstone_experiments")) {
+                throw new IllegalArgumentException(id + ": unknown experiment " + name);
+            }
+            flags = flags.join(FeatureFlagSet.of(FeatureFlags.REDSTONE_EXPERIMENTS));
+        }
+        server.getWorldData().setDataConfiguration(new WorldDataConfiguration(old.dataPacks(), flags));
+        boolean on = level.enabledFeatures().contains(FeatureFlags.REDSTONE_EXPERIMENTS);
+        if (on != wanted.contains("redstone_experiments")) {
+            throw new IllegalStateException(id + ": redstone_experiments did not switch " + (on ? "off" : "on"));
+        }
+        experimentsOn.clear();
+        experimentsOn.addAll(wanted);
+        System.out.printf("experiments now %s%n", experimentsOn);
+    }
+
+    private static NeighborUpdater defaultUpdater;
+
+    /**
+     * Swap the level's neighbor updater for one with a different
+     * {@code max-chained-neighbor-updates}, or back to the server's own when
+     * {@code limit} is negative.
+     */
+    private static void setMaxChainedUpdates(int limit) {
+        try {
+            java.lang.reflect.Field f = null;
+            for (java.lang.reflect.Field c : net.minecraft.world.level.Level.class.getDeclaredFields()) {
+                if (c.getType() == NeighborUpdater.class) {
+                    f = c;
+                }
+            }
+            if (f == null) {
+                throw new IllegalStateException("Level has no NeighborUpdater field");
+            }
+            f.setAccessible(true);
+            if (defaultUpdater == null) {
+                defaultUpdater = (NeighborUpdater) f.get(level);
+            }
+            f.set(level, limit < 0 ? defaultUpdater : new CollectingNeighborUpdater(level, limit));
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("cannot set max-chained-neighbor-updates", e);
         }
     }
 

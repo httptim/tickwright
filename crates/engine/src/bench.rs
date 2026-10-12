@@ -61,6 +61,10 @@ pub fn redstone_rings(rings: i32, length: i32, ticks: u32) -> ResolvedFixture {
         stimuli: Vec::new(),
         containers: Vec::new(),
         comparators: Vec::new(),
+        lecterns: Vec::new(),
+        experiments: Vec::new(),
+        day_time: None,
+        max_chained_updates: None,
     }
 }
 

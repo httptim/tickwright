@@ -37,6 +37,9 @@ pub mod flags {
 /// `Level.setBlock`'s default recursion budget for shape updates.
 pub const MAX_RECURSION: i32 = 512;
 
+/// The server's default `max-chained-neighbor-updates`.
+pub const DEFAULT_MAX_CHAINED_UPDATES: usize = 1_000_000;
+
 /// `TickPriority`, as its integer value.
 pub type Priority = i32;
 
@@ -104,6 +107,9 @@ pub struct Level {
     stack: Vec<Update>,
     added_this_layer: Vec<Update>,
     update_count: usize,
+    /// `max-chained-neighbor-updates`: updates past this many in one chain
+    /// are dropped.
+    pub max_chained_updates: usize,
 
     /// Block entities by position, and the order they tick in.
     pub block_entities: HashMap<Pos, blocks::BlockEntity>,
@@ -147,6 +153,7 @@ impl Level {
             stack: Vec::new(),
             added_this_layer: Vec::new(),
             update_count: 0,
+            max_chained_updates: DEFAULT_MAX_CHAINED_UPDATES,
             block_entities: HashMap::new(),
             ticker_slots: Vec::new(),
             ticker_at: HashMap::new(),
@@ -421,8 +428,11 @@ impl Level {
     /// `CollectingNeighborUpdater.addAndRun`.
     fn add_and_run(&mut self, update: Update) {
         let nested = self.update_count > 0;
+        let too_many = self.update_count >= self.max_chained_updates;
         self.update_count += 1;
-        if nested {
+        if too_many {
+            // "Too many chained neighbor updates. Skipping the rest."
+        } else if nested {
             self.added_this_layer.push(update);
         } else {
             self.stack.push(update);

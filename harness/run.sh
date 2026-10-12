@@ -105,6 +105,8 @@ v = next(filter(None, map(read, sys.argv[2:])))
 out = {"name": v["name"], "data_version": v["world_version"], "protocol_version": v["protocol_version"]}
 open(sys.argv[1], "w").write(json.dumps(out, indent=2) + "\n")
 PY
+    # Crafting recipes and item tags, for the crafter.
+    python3 -I tools/recipes.py "$INNER" "data/$MC_VERSION"
 fi
 
 # --- data reports -------------------------------------------------------------
