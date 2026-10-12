@@ -213,6 +213,13 @@ enum Command {
     Entities {
         session: u32,
     },
+    /// What the session has met that the engine does not simulate, from
+    /// which tick on its results may differ from the game:
+    /// `{"unsupported": "… is not simulated by the engine yet"}`, or null.
+    /// Rewinding to before that tick clears it.
+    Unsupported {
+        session: u32,
+    },
     /// Summon an entity as `/summon` does, before the next tick. `at` is
     /// its position, `motion` its starting velocity and `nbt` its data in
     /// SNBT, such as `{fuse:40}`.
@@ -387,6 +394,7 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                     .collect();
                 json!({ "entities": entities })
             }
+            Command::Unsupported { session } => json!({ "unsupported": get(sessions, session)?.unsupported() }),
             Command::Summon { session, entity, at, motion, nbt } => {
                 get(sessions, session)?.summon(&entity, at, motion, nbt.as_deref())?;
                 json!({})
@@ -526,6 +534,30 @@ mod tests {
         assert!(
             command(format!(r#"{{"op":"summon","session":{id},"entity":"zombie","at":[0,1,0]}}"#).as_bytes()).is_err()
         );
+    }
+
+    #[test]
+    fn a_session_says_what_it_does_not_simulate() {
+        let id = ok(r#"{"op":"open","version":"26.3"}"#)["session"].as_u64().unwrap();
+        let set = |pos: &str, state: &str, updates: bool| {
+            ok(&format!(r#"{{"op":"set","session":{id},"pos":{pos},"state":"{state}","updates":{updates}}}"#));
+        };
+        for x in -1..=1 {
+            for z in -1..=1 {
+                set(&format!("[{x},0,{z}]"), "stone", false);
+            }
+        }
+        assert_eq!(ok(&format!(r#"{{"op":"unsupported","session":{id}}}"#))["unsupported"], serde_json::Value::Null);
+        ok(&format!(r#"{{"op":"step","session":{id}}}"#));
+        // A rail with rails on three sides bends, which the engine can't do yet.
+        for p in ["[-1,1,0]", "[1,1,0]", "[0,1,1]", "[0,1,0]"] {
+            set(p, "rail", true);
+        }
+        ok(&format!(r#"{{"op":"step","session":{id}}}"#));
+        let what = ok(&format!(r#"{{"op":"unsupported","session":{id}}}"#));
+        assert_eq!(what["unsupported"], "a plain rail bending is not simulated by the engine yet", "{what}");
+        ok(&format!(r#"{{"op":"rewind","session":{id},"tick":1}}"#));
+        assert_eq!(ok(&format!(r#"{{"op":"unsupported","session":{id}}}"#))["unsupported"], serde_json::Value::Null);
     }
 
     #[test]
