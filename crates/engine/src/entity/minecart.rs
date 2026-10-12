@@ -1,8 +1,11 @@
 //! `AbstractMinecart` with `OldMinecartBehavior` (the game's default; the
 //! experimental minecart physics are off in 26.3 worlds): plain and
-//! furnace minecarts, without riders, which push each other.
+//! furnace minecarts, and chest and hopper minecarts, without riders,
+//! which push each other. A hopper minecart takes items each tick unless
+//! a powered activator rail turned it off.
 
 use super::{Data, Entity, apply_gravity, floor, move_entity};
+use crate::blocks::container::{self, Stack};
 use crate::blocks::rail::is_rail_state;
 use crate::level::Level;
 use crate::physics::Vec3;
@@ -18,11 +21,39 @@ pub struct Minecart {
     pub y_rot: f32,
     /// `flipped`: the cart turned round to face the way it moves.
     pub flipped: bool,
+    /// What a chest or hopper minecart holds.
+    pub items: Option<Vec<Stack>>,
+    /// A hopper minecart, and whether it is taking items (`enabled`).
+    pub hopper: bool,
+    pub enabled: bool,
 }
 
 impl Minecart {
-    pub fn new(furnace: bool) -> Minecart {
-        Minecart { furnace, y_rot: 0.0, flipped: false }
+    /// A minecart of the given type (`minecart`, `furnace_minecart`,
+    /// `chest_minecart` or `hopper_minecart`).
+    pub fn new(name: &str) -> Minecart {
+        let size = match name {
+            "chest_minecart" => 27,
+            "hopper_minecart" => 5,
+            _ => 0,
+        };
+        Minecart {
+            furnace: name == "furnace_minecart",
+            y_rot: 0.0,
+            flipped: false,
+            items: (size > 0).then(|| vec![Stack::default(); size]),
+            hopper: name == "hopper_minecart",
+            enabled: true,
+        }
+    }
+
+    pub fn type_name(&self) -> &'static str {
+        match (self.furnace, self.hopper, self.items.is_some()) {
+            (true, _, _) => "minecraft:furnace_minecart",
+            (_, true, _) => "minecraft:hopper_minecart",
+            (_, _, true) => "minecraft:chest_minecart",
+            _ => "minecraft:minecart",
+        }
     }
 }
 
@@ -112,7 +143,16 @@ fn max_speed(e: &Entity) -> f64 {
 }
 
 /// `applyNaturalSlowdown`: a furnace cart without fuel slows by 0.98 first.
+/// A chest or hopper cart slows less the emptier it is.
 fn natural_slowdown(e: &Entity, m: Vec3) -> Vec3 {
+    if let Some(items) = &cart(e).items {
+        let empty = 15 - container::signal_from_items(items);
+        let mut f = 0.98f32 + empty as f32 * 0.001f32;
+        if e.was_touching_water {
+            f *= 0.95f32;
+        }
+        return m.multiply(f as f64, 0.0, f as f64);
+    }
     let m = if cart(e).furnace { m.multiply(0.98, 0.0, 0.98) } else { m };
     let m = m.multiply(0.96, 0.0, 0.96);
     if e.was_touching_water { m.scale(0.95f32 as f64) } else { m }
@@ -129,6 +169,15 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
         super::fluid::update_in_water(level, e);
         e.first_tick = false;
     }
+    // `MinecartHopper.tick`, after the cart has moved. It is back on the
+    // level's list while it takes items, as containers are found there.
+    let m = cart(e);
+    if m.hopper && m.enabled && !e.removed {
+        level.entities.push(std::mem::take(e));
+        let k = level.entities.len() - 1;
+        container::hopper_cart_suck(level, k);
+        *e = level.entities.pop().unwrap();
+    }
 }
 
 /// `OldMinecartBehavior.tick`, on the server.
@@ -137,8 +186,14 @@ fn behavior_tick(level: &mut Level, e: &mut Entity) {
     let y_rot_o = cart(e).y_rot;
     apply_gravity(e, 0.04);
     let r = rail_pos(level, e.pos);
-    if is_rail_state(level, level.get(r)) {
+    let state = level.get(r);
+    if is_rail_state(level, state) {
         move_along_track(level, e);
+        // `activateMinecart`: a hopper minecart is off on a powered
+        // activator rail and on again on an unpowered one.
+        if level.reg.name(state) == "minecraft:activator_rail" && cart(e).hopper {
+            cart_mut(e).enabled = !level.flag(state, "powered");
+        }
     } else {
         come_off_track(level, e);
     }

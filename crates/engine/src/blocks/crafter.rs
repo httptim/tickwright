@@ -120,10 +120,11 @@ fn dispense_item(level: &mut Level, pos: Pos, state: StateId, stack: Stack) {
         return; // dropped as an item entity
     };
     let mut stack = stack;
-    let one_by_one = level.kind_at(dest) == super::Kind::Crafter || stack.count > stack.max_stack_size().min(99);
+    let one_by_one = matches!(dest, container::Inv::Block(d) if level.kind_at(d) == super::Kind::Crafter)
+        || stack.count > stack.max_stack_size().min(99);
     if one_by_one {
         while !stack.is_empty() {
-            let left = container::add_item(level, Some(pos), dest, Stack::new(&stack.id, 1));
+            let left = container::add_item(level, Some(pos.into()), dest, Stack::new(&stack.id, 1));
             if !left.is_empty() {
                 break;
             }
@@ -132,7 +133,7 @@ fn dispense_item(level: &mut Level, pos: Pos, state: StateId, stack: Stack) {
     } else {
         while !stack.is_empty() {
             let n = stack.count;
-            stack = container::add_item(level, Some(pos), dest, stack);
+            stack = container::add_item(level, Some(pos.into()), dest, stack);
             if stack.count == n {
                 break;
             }

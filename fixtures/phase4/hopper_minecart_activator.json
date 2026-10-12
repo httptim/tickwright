@@ -1,0 +1,72 @@
+{
+  "name": "hopper_minecart_activator",
+  "description": "A rolling hopper minecart picks up an item it passes, then crosses a powered activator rail, which turns it off, so it rolls past a second item without taking it.",
+  "ticks": 60,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "minecart",
+    "hopper",
+    "rail"
+  ],
+  "palette": {
+    "#": "stone",
+    "R": "redstone_block",
+    "r": "rail[shape=east_west]",
+    "A": "activator_rail[powered=true,shape=east_west]"
+  },
+  "layers": [
+    [
+      "#####R########",
+      "##############"
+    ],
+    [
+      "rrrrrArrrrrrr.",
+      ".............."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        2.5,
+        1.1,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"stone\",count:2}}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        8.5,
+        1.1,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"dirt\",count:2}}"
+    },
+    {
+      "tick": 4,
+      "action": "summon",
+      "entity": "hopper_minecart",
+      "at": [
+        0.5,
+        1.0625,
+        0.5
+      ],
+      "motion": [
+        0.25,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "entities": true
+}

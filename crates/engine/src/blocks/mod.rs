@@ -268,8 +268,7 @@ pub fn analog_output(level: &Level, pos: Pos, state: StateId) -> i32 {
         Kind::SculkSensor | Kind::CalibratedSculkSensor => sculk::analog_output(level, pos, state),
         Kind::Composter => level.int(state, "level"),
         Kind::Cake => (7 - level.int(state, "bites")) * 2,
-        // A detector rail reads container and command block minecarts,
-        // which the engine doesn't have; plain ones give 0.
+        Kind::DetectorRail => rail::detector_analog_output(level, pos, state),
         _ => 0,
     }
 }

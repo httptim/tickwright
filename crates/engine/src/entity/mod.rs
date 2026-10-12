@@ -92,8 +92,7 @@ impl Entity {
             Data::Item(_) => "minecraft:item",
             Data::FallingBlock(_) => "minecraft:falling_block",
             Data::Tnt(_) => "minecraft:tnt",
-            Data::Minecart(ref m) if m.furnace => "minecraft:furnace_minecart",
-            Data::Minecart(_) => "minecraft:minecart",
+            Data::Minecart(ref m) => m.type_name(),
             Data::SmallFireball => "minecraft:small_fireball",
             Data::Arrow(_) => "minecraft:arrow",
             Data::Gone => "minecraft:none",
@@ -140,7 +139,8 @@ impl Entity {
             Data::Item(i) => Some(format!("minecraft:{}*{}", i.stack.id, i.stack.count)),
             Data::Tnt(t) => Some(format!("fuse={}", t.fuse)),
             Data::FallingBlock(f) => Some(level.reg.format(f.state)),
-            Data::Minecart(_) | Data::SmallFireball | Data::Arrow(_) | Data::Gone => None,
+            Data::Minecart(m) => m.items.as_ref().map(|i| crate::blocks::container::describe(i)),
+            Data::SmallFireball | Data::Arrow(_) | Data::Gone => None,
         }
     }
 
@@ -268,6 +268,7 @@ fn known_data(name: &str) -> Option<&'static [&'static str]> {
         "tnt" => &["fuse"],
         "falling_block" => &["BlockState", "Time", "DropItem", "CancelDrop"],
         "minecart" | "furnace_minecart" => &[],
+        "chest_minecart" | "hopper_minecart" => &["Items"],
         "small_fireball" | "arrow" => &[],
         _ => return None,
     })
@@ -325,7 +326,20 @@ fn spawn(level: &mut Level, name: &str, tag: &snbt::Tag, at: Vec3, motion: Optio
         }
         "small_fireball" => Data::SmallFireball,
         "arrow" => Data::Arrow(Default::default()),
-        _ => Data::Minecart(minecart::Minecart::new(name == "furnace_minecart")),
+        _ => {
+            let mut cart = minecart::Minecart::new(name);
+            if let (Some(items), Some(snbt::Tag::List(list))) = (cart.items.as_mut(), tag.get("Items")) {
+                for it in list {
+                    let slot = it.get("Slot").and_then(|t| t.number()).context("Items[].Slot")? as usize;
+                    let id = it.get("id").and_then(|t| t.string()).context("Items[].id")?;
+                    let count = it.get("count").and_then(|t| t.number()).unwrap_or(1.0) as i32;
+                    let id = if id.contains(':') { id.to_string() } else { format!("minecraft:{id}") };
+                    *items.get_mut(slot).context("Items[].Slot out of range")? =
+                        crate::blocks::container::Stack::new(&id, count);
+                }
+            }
+            Data::Minecart(cart)
+        }
     };
     let mut e = Entity::new(level, data, at);
     if let Some(m) = motion {
