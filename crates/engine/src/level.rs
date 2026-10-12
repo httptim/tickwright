@@ -162,6 +162,9 @@ pub struct Level {
     /// Set when something happened that the engine can't simulate exactly;
     /// a run fails with it rather than giving a wrong answer.
     pub unsupported: Option<String>,
+    /// `PistonMovingBlockEntity.NOCLIP`: while a moving block pushes an
+    /// entity, blocks moving the same way don't collide with it.
+    pub piston_noclip: Option<crate::pos::Dir>,
 }
 
 impl Level {
@@ -205,6 +208,7 @@ impl Level {
             unique_seeds: 0,
             simulate_entities: false,
             unsupported: None,
+            piston_noclip: None,
         }
     }
 

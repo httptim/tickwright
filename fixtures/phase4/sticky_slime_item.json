@@ -1,0 +1,71 @@
+{
+  "name": "sticky_slime_item",
+  "description": "A sticky piston lifts a slime block with an item on it and pulls it back down; the item rides up and falls after it.",
+  "ticks": 50,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "item",
+    "slime"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "sticky_piston[extended=false,facing=up]",
+    "S": "slime_block"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".....",
+      ".P...",
+      "....."
+    ],
+    [
+      ".....",
+      ".S...",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        3.0,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        2,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 25,
+      "action": "destroy",
+      "pos": [
+        2,
+        1,
+        1
+      ]
+    }
+  ],
+  "entities": true
+}

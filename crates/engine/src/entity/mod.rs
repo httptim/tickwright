@@ -61,6 +61,9 @@ pub struct Entity {
     pub was_touching_water: bool,
     pub fluid_height: f64,
     pub first_tick: bool,
+    /// `pistonDeltas` and the game time they were counted in.
+    piston_deltas: [f64; 3],
+    piston_deltas_time: i64,
 }
 
 impl Entity {
@@ -323,6 +326,45 @@ fn clamp_loaded_motion(m: Vec3) -> Vec3 {
 }
 
 // --- movement --------------------------------------------------------------
+
+/// `Entity.move(MoverType.PISTON, ...)` for the entity at `index` in the
+/// level's list, with blocks moving toward `noclip` passing through it
+/// (`PistonMovingBlockEntity.moveEntityByPiston`). A piston moves an
+/// entity at most 0.51 along each axis per game tick (`limitPistonMovement`).
+pub fn move_by_piston(level: &mut Level, index: usize, noclip: crate::pos::Dir, movement: Vec3) {
+    let mut e = std::mem::take(&mut level.entities[index]);
+    if movement.length_sqr() > 1.0E-7 {
+        if e.piston_deltas_time != level.game_time {
+            e.piston_deltas = [0.0; 3];
+            e.piston_deltas_time = level.game_time;
+        }
+        let limited = |e: &mut Entity, axis: usize, amount: f64| {
+            let d = (amount + e.piston_deltas[axis]).clamp(-0.51, 0.51);
+            let amount = d - e.piston_deltas[axis];
+            e.piston_deltas[axis] = d;
+            amount
+        };
+        let m = if movement.x != 0.0 {
+            let d = limited(&mut e, 0, movement.x);
+            Vec3::new(d, 0.0, 0.0)
+        } else if movement.y != 0.0 {
+            let d = limited(&mut e, 1, movement.y);
+            Vec3::new(0.0, d, 0.0)
+        } else {
+            let d = limited(&mut e, 2, movement.z);
+            Vec3::new(0.0, 0.0, d)
+        };
+        if m.x.abs().max(m.y.abs()).max(m.z.abs()) > 1.0E-5f32 as f64 {
+            if e.stuck_speed_multiplier.length_sqr() > 1.0E-7 {
+                level.unsupported("a piston pushing an entity stuck in a block");
+            }
+            level.piston_noclip = Some(noclip);
+            move_entity(level, &mut e, m);
+            level.piston_noclip = None;
+        }
+    }
+    level.entities[index] = e;
+}
 
 /// `Mth.equal(double, double)`.
 fn mth_equal(a: f64, b: f64) -> bool {
@@ -607,6 +649,10 @@ fn moving_collision_shape(level: &Level, p: Pos) -> Vec<Aabb> {
     } else {
         Vec::new()
     };
+    let movement = if m.extending { m.direction } else { m.direction.opposite() };
+    if m.progress < 1.0 && level.piston_noclip == Some(movement) {
+        return out;
+    }
     let moved = if m.is_source_piston {
         let head = level.default_state(level.block_id("piston_head"));
         let head = level.with_dir(head, "facing", m.direction);

@@ -3,6 +3,7 @@
 
 use crate::game_event::GameEvent;
 use crate::level::{Level, flags};
+use crate::physics::{Aabb, Vec3};
 use crate::pos::{Dir, Pos, java_hash_set_order};
 use crate::registry::StateId;
 
@@ -495,7 +496,138 @@ pub fn tick_moving(level: &mut Level, pos: Pos) {
             }
         }
     } else {
-        be.progress = (be.progress + 0.5).min(1.0);
+        let new_progress = be.progress + 0.5;
+        move_collided_entities(level, pos, new_progress);
+        if let Some(BlockEntity::Piston(be)) = level.block_entities.get_mut(&pos) {
+            be.progress = new_progress.min(1.0);
+        }
+    }
+}
+
+/// `PistonMovingBlockEntity.moveCollidedEntities`: entities in the way of
+/// the moving block's shape this tick are shoved along with it, and a
+/// slime block also sets their speed along the axis it moves.
+fn move_collided_entities(level: &mut Level, pos: Pos, new_progress: f32) {
+    if level.entities.is_empty() {
+        return;
+    }
+    let Some(BlockEntity::Piston(be)) = level.block_entities.get(&pos) else { return };
+    let be = be.clone();
+    let movement = if be.extending { be.direction } else { be.direction.opposite() };
+    let delta = (new_progress - be.progress) as f64;
+    // `getCollisionRelatedBlockState`: the head, for the piston's own move.
+    let state = if be.is_source_piston {
+        let head = level.default_state(level.block_id("piston_head"));
+        let head = level.with(
+            head,
+            "type",
+            if level.kind(be.moved_state) == Kind::StickyPiston { "sticky" } else { "normal" },
+        );
+        level.with_dir(head, "facing", be.direction)
+    } else {
+        be.moved_state
+    };
+    if level.kind(state) == Kind::Honey {
+        level.unsupported("a honey block moving entities");
+    }
+    let shape = level.physics().shape(state).to_vec();
+    if shape.is_empty() {
+        return;
+    }
+    // `moveByPositionAndProgress`: where the shape is now.
+    let p = if be.extending { be.progress - 1.0 } else { 1.0 - be.progress } as f64;
+    let [dx, dy, dz] = be.direction.step();
+    let place =
+        |b: &Aabb| b.offset(pos.x as f64 + p * dx as f64, pos.y as f64 + p * dy as f64, pos.z as f64 + p * dz as f64);
+    let placed: Vec<Aabb> = shape.iter().map(place).collect();
+    let bounds = placed.iter().skip(1).fold(placed[0], |a, b| a.minmax(b));
+    let area = movement_area(&bounds, movement, delta).minmax(&bounds);
+    let mut hit: Vec<usize> = (0..level.entities.len())
+        .filter(|&i| !level.entities[i].removed && level.entities[i].bounding_box().intersects(&area))
+        .collect();
+    hit.sort_by_key(|&i| level.entities[i].id);
+    let slime = level.kind(be.moved_state) == Kind::Slime;
+    for i in hit {
+        if slime {
+            let e = &mut level.entities[i];
+            let m = e.motion;
+            let [sx, sy, sz] = movement.step();
+            e.motion = match movement.axis() {
+                0 => Vec3::new(sx as f64, m.y, m.z),
+                1 => Vec3::new(m.x, sy as f64, m.z),
+                _ => Vec3::new(m.x, m.y, sz as f64),
+            };
+        }
+        let mut amount: f64 = 0.0;
+        for b in &placed {
+            let area = movement_area(b, movement, delta);
+            let entity_box = level.entities[i].bounding_box();
+            if area.intersects(&entity_box) {
+                amount = amount.max(get_movement(&area, movement, &entity_box));
+                if amount >= delta {
+                    break;
+                }
+            }
+        }
+        if amount > 0.0 {
+            let amount = amount.min(delta) + 0.01;
+            push_entity(level, i, movement, amount, movement);
+            if !be.extending && be.is_source_piston {
+                fix_entity_within_piston_base(level, pos, i, movement, delta);
+            }
+        }
+    }
+}
+
+/// `moveEntityByPiston`.
+fn push_entity(level: &mut Level, i: usize, push: Dir, amount: f64, dir: Dir) {
+    let [x, y, z] = dir.step();
+    crate::entity::move_by_piston(level, i, push, Vec3::new(amount * x as f64, amount * y as f64, amount * z as f64));
+}
+
+/// `fixEntityWithinPistonBase`: an entity left inside a retracting piston's
+/// base is pushed back out of it.
+fn fix_entity_within_piston_base(level: &mut Level, pos: Pos, i: usize, dir: Dir, delta: f64) {
+    let entity_box = level.entities[i].bounding_box();
+    let base = Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0).offset(pos.x as f64, pos.y as f64, pos.z as f64);
+    if entity_box.intersects(&base) {
+        let opposite = dir.opposite();
+        let movement = get_movement(&base, opposite, &entity_box) + 0.01;
+        let inverse = get_movement(&base, opposite, &entity_box.intersect(&base)) + 0.01;
+        if (movement - inverse).abs() < 0.01 {
+            let movement = movement.min(delta) + 0.01;
+            push_entity(level, i, dir, movement, opposite);
+        }
+    }
+}
+
+/// `PistonMath.getMovementArea`: the slab a face of `bounds` sweeps moving
+/// `delta` toward `dir`.
+fn movement_area(b: &Aabb, dir: Dir, delta: f64) -> Aabb {
+    let [sx, sy, sz] = dir.step();
+    let d = delta * (sx + sy + sz) as f64;
+    let (lo, hi) = (d.min(0.0), d.max(0.0));
+    let [x0, y0, z0] = b.min;
+    let [x1, y1, z1] = b.max;
+    match dir {
+        Dir::West => Aabb::new(x0 + lo, y0, z0, x0 + hi, y1, z1),
+        Dir::East => Aabb::new(x1 + lo, y0, z0, x1 + hi, y1, z1),
+        Dir::Down => Aabb::new(x0, y0 + lo, z0, x1, y0 + hi, z1),
+        Dir::Up => Aabb::new(x0, y1 + lo, z0, x1, y1 + hi, z1),
+        Dir::North => Aabb::new(x0, y0, z0 + lo, x1, y1, z0 + hi),
+        Dir::South => Aabb::new(x0, y0, z1 + lo, x1, y1, z1 + hi),
+    }
+}
+
+/// `getMovement`: how far the area reaches into the entity's box.
+fn get_movement(area: &Aabb, dir: Dir, e: &Aabb) -> f64 {
+    match dir {
+        Dir::East => area.max[0] - e.min[0],
+        Dir::West => e.max[0] - area.min[0],
+        Dir::Up => area.max[1] - e.min[1],
+        Dir::Down => e.max[1] - area.min[1],
+        Dir::South => area.max[2] - e.min[2],
+        Dir::North => e.max[2] - area.min[2],
     }
 }
 

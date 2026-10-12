@@ -1,0 +1,62 @@
+{
+  "name": "slime_launch_tnt",
+  "description": "A piston pushes a slime block up under a primed TNT; the slime sets the TNT's upward speed to a block a tick and it flies, then falls back.",
+  "ticks": 60,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "tnt",
+    "slime"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "piston[extended=false,facing=up]",
+    "S": "slime_block"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".....",
+      ".P...",
+      "....."
+    ],
+    [
+      ".....",
+      ".S...",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        1.5,
+        3.0,
+        1.5
+      ],
+      "nbt": "{fuse:200}"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        2,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    }
+  ],
+  "entities": true
+}

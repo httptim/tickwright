@@ -1,0 +1,55 @@
+{
+  "name": "piston_push_tnt_up",
+  "description": "An upward piston lifts a primed TNT standing on it by a block; the TNT falls back onto the head.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "tnt"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "piston[extended=false,facing=up]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".....",
+      ".P...",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        1.5,
+        2.0,
+        1.5
+      ],
+      "nbt": "{fuse:200}"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        2,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    }
+  ],
+  "entities": true
+}
