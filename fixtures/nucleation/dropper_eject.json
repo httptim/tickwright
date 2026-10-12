@@ -1,0 +1,65 @@
+{
+  "name": "nucleation_dropper_eject",
+  "description": "The RNG policy's conformance shape: vanilla jitters every velocity component (`triangle(mean, 0.103)` plus a random 0.2..0.3 speed); the engine spawns at the distribution means. The capture is one sample, so entity positions compare with a tolerance sized to the jitter bounds over this short flight \u2014 while the inventory decrement and TRIGGERED flips stay exact. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 19,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "dropper[facing=east,triggered=false]"
+  },
+  "layers": [
+    [
+      "####"
+    ],
+    [
+      "A..."
+    ],
+    [
+      "...."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "set",
+      "pos": [
+        0,
+        2,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 3,
+      "action": "destroy",
+      "pos": [
+        0,
+        2,
+        0
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "redstone",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

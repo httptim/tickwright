@@ -1,0 +1,63 @@
+{
+  "name": "nucleation_dropper_into_barrel",
+  "description": "The pulse triggers at tick 0 (TRIGGERED flips, 4-tick boundary schedule fires at tick 3); the front is air by then, so the item leaves as an item entity \u2014 Milestone B's territory \u2014 and the container-side effect is exactly the decrement. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 15,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "dropper[facing=east,triggered=false]",
+    "B": "barrel[facing=up,open=false]"
+  },
+  "layers": [
+    [
+      "###"
+    ],
+    [
+      "A.B"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "set",
+      "pos": [
+        1,
+        1,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 3,
+      "action": "destroy",
+      "pos": [
+        1,
+        1,
+        0
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "redstone",
+          "count": 2
+        }
+      ]
+    }
+  ]
+}

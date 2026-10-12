@@ -1,0 +1,43 @@
+{
+  "name": "nucleation_hopper_race",
+  "description": "The discriminating capture for tick order. Hopper A (placed first, ticks first) pushes into empty hopper B on tick 0; the destination-cooldown rule gives B cooldown 8, B's own tick the same game tick decrements it to 7, so B forwards to the barrel on tick 7 \u2014 not 8. An engine with the wrong block-entity order or without the tickedGameTime comparison gets every following tick wrong. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 27,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "hopper[enabled=true,facing=east]",
+    "B": "barrel[facing=up,open=false]"
+  },
+  "layers": [
+    [
+      "###"
+    ],
+    [
+      "AAB"
+    ]
+  ],
+  "stimuli": [],
+  "containers": [
+    {
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "redstone",
+          "count": 2
+        }
+      ]
+    }
+  ]
+}

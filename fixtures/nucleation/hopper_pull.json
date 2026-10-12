@@ -1,0 +1,46 @@
+{
+  "name": "nucleation_hopper_pull",
+  "description": "A barrel above a hopper: one item moves per 8 game ticks, the first on tick 0 \u2014 the hopper's block entity ticks in phase 9 of the very first tick. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 28,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "hopper[enabled=true,facing=down]",
+    "B": "barrel[facing=up,open=false]"
+  },
+  "layers": [
+    [
+      "#"
+    ],
+    [
+      "A"
+    ],
+    [
+      "B"
+    ]
+  ],
+  "stimuli": [],
+  "containers": [
+    {
+      "pos": [
+        0,
+        2,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "redstone",
+          "count": 3
+        }
+      ]
+    }
+  ]
+}

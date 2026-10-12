@@ -9,13 +9,16 @@ our own harness, so the ground truth stays ours.
 
     python3 tools/nucleation.py <nucleation checkout> fixtures/nucleation
 
-Builds with entities, block entity data, or inputs this format cannot
-express are skipped and listed.
+Container contents become the fixture's `containers`. Builds with entities,
+other block entity data, or inputs this format cannot express are skipped
+and listed.
 """
 import json
 import re
 import sys
 from pathlib import Path
+
+CONTAINERS = {"minecraft:barrel", "minecraft:chest", "minecraft:hopper", "minecraft:dropper", "minecraft:dispenser"}
 
 CHARS = "#ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@$%&*+=?!<>^~"
 
@@ -139,6 +142,13 @@ def runs(conformance):
             pos = [int(v) for v in a.group(3).replace(" ", "").split(",")]
             actions.append((int(a.group(1)), a.group(2), pos, a.group(4)))
         expected = len(re.findall(r"Actuate::", body))
+        # `bucket_actuations(&[lanes])`: a redstone block above each lane's
+        # dispenser at tick 10, removed at tick 12.
+        for lanes in re.findall(r"bucket_actuations\(&\[([^\]]*)\]\)", body):
+            zs = [int(z) for z in lanes.replace(" ", "").split(",")]
+            actions += [(10, "Place", [0, 2, z], "minecraft:redstone_block") for z in zs]
+            actions += [(12, "Place", [0, 2, z], "minecraft:air") for z in zs]
+            expected += 2 * len(zs)
         settle = re.search(r"Settle::(\w+)", body)
         # The test's own description: the comment block just above `#[test]`'s fn.
         head = conformance[: m.start()]
@@ -177,7 +187,20 @@ def convert(root, out):
         if s.get("entities"):
             skipped.append((name, "has entities"))
             continue
-        if any("nbt" in b for b in s["blocks"]):
+        containers = []
+        expressible = True
+        for b in s["blocks"]:
+            nbt = b.get("nbt")
+            if nbt is None:
+                continue
+            items = nbt.get("Items", [])
+            if nbt.get("id") not in CONTAINERS or set(nbt) - {"id", "Items"} or any("components" in i for i in items):
+                expressible = False
+                break
+            if items:
+                slots = [{"slot": i["Slot"], "id": i["id"].removeprefix("minecraft:"), "count": i["count"]} for i in items]
+                containers.append({"pos": b["pos"], "items": slots})
+        if not expressible:
             skipped.append((name, "has block entity data"))
             continue
         if not run["complete"]:
@@ -207,7 +230,10 @@ def convert(root, out):
             grid[y][z][x] = keys[st]
 
         stimuli = []
-        if run["settle"] == "Placement" and not run["actions"]:
+        # Filling a container updates comparators and hoppers tick on their
+        # own, so those builds run without placement updates.
+        self_starting = bool(containers) or any(p.startswith("hopper") for p in palette)
+        if run["settle"] == "Placement" and not run["actions"] and not self_starting:
             # Nucleation placed these with block updates, which is what set
             # them going. We place quietly, so the redstone blocks that power
             # them are placed as the first input instead.
@@ -243,7 +269,7 @@ def convert(root, out):
 
         desc = run["comment"] or f"Nucleation's {name} build."
         settle = ""
-        if run["settle"] == "Placement" and not run["actions"]:
+        if run["settle"] == "Placement" and not run["actions"] and not self_starting:
             settle = " Nucleation's placement updates set it going; here its redstone blocks are placed on the first tick instead."
         fixture = {
             "name": f"nucleation_{name}",
@@ -255,6 +281,8 @@ def convert(root, out):
             "layers": [["".join(row) for row in layer] for layer in grid],
             "stimuli": stimuli,
         }
+        if containers:
+            fixture["containers"] = sorted(containers, key=lambda c: (c["pos"][1], c["pos"][2], c["pos"][0]))
         (out / f"{name}.json").write_text(json.dumps(fixture, indent=2) + "\n")
         written.append(name)
     return written, skipped

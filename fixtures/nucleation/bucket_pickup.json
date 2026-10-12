@@ -1,0 +1,231 @@
+{
+  "name": "nucleation_bucket_pickup",
+  "description": "The same geometry with the roles swapped, which is the half the record door needs on the way back:  - `powder_snow` (z=0) and `water[level=0]` (z=2) are each picked up,   leaving air and the matching filled bucket. `lava[level=0]` was   measured too and is unpinned for the same reason as above   (`tools/gametest/captures/bucket_pickup_lava.log`). - z=6's front cell is air, which is not a `BucketPickup` at all: `$4`   ejects the empty bucket and the slot goes empty. This is the lane that   makes \"picks up\" falsifiable \u2014 the same dispenser, the same item, no   block to take. - z=8 pins that the *removal* pulses the observers too (flags 11). - z=10 holds **two** buckets, so `consumeWithRemainder` cannot reuse the   slot: slot 4 keeps `1x bucket` and `insertItem` puts the   `powder_snow_bucket` in slot 0, the first empty one.  Negative control: with `BucketDispense::Fills` deleted, all five lanes eject their bucket, so z=0/2/8/10 keep their front block and lose the filled bucket \u2014 and z=6, the one lane whose vanilla answer *is* an eject, still passes. That asymmetry is the point of including it. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 29,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "dispenser[facing=east,triggered=false]",
+    "A": "stone",
+    "B": "powder_snow",
+    "C": "water[level=0]",
+    "D": "observer[facing=up,powered=false]",
+    "E": "observer[facing=down,powered=false]"
+  },
+  "layers": [
+    [
+      ".A.",
+      ".A.",
+      ".A.",
+      ".A.",
+      ".A.",
+      ".A.",
+      ".A.",
+      ".A.",
+      ".D.",
+      ".A.",
+      ".A."
+    ],
+    [
+      "#BA",
+      ".A.",
+      "#CA",
+      ".A.",
+      ".AA",
+      ".A.",
+      "#.A",
+      ".A.",
+      "#BA",
+      ".A.",
+      "#BA"
+    ],
+    [
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      ".E.",
+      "...",
+      "..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 11,
+      "action": "set",
+      "pos": [
+        0,
+        2,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 11,
+      "action": "set",
+      "pos": [
+        0,
+        2,
+        2
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 11,
+      "action": "set",
+      "pos": [
+        0,
+        2,
+        6
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 11,
+      "action": "set",
+      "pos": [
+        0,
+        2,
+        8
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 11,
+      "action": "set",
+      "pos": [
+        0,
+        2,
+        10
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 13,
+      "action": "destroy",
+      "pos": [
+        0,
+        2,
+        0
+      ]
+    },
+    {
+      "tick": 13,
+      "action": "destroy",
+      "pos": [
+        0,
+        2,
+        2
+      ]
+    },
+    {
+      "tick": 13,
+      "action": "destroy",
+      "pos": [
+        0,
+        2,
+        6
+      ]
+    },
+    {
+      "tick": 13,
+      "action": "destroy",
+      "pos": [
+        0,
+        2,
+        8
+      ]
+    },
+    {
+      "tick": 13,
+      "action": "destroy",
+      "pos": [
+        0,
+        2,
+        10
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "bucket",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "pos": [
+        0,
+        1,
+        2
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "bucket",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "pos": [
+        0,
+        1,
+        6
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "bucket",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "pos": [
+        0,
+        1,
+        8
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "bucket",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "pos": [
+        0,
+        1,
+        10
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "bucket",
+          "count": 2
+        }
+      ]
+    }
+  ]
+}

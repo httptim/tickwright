@@ -95,10 +95,13 @@ fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
     // The harness fills containers with `Container.setItem`, slot by slot.
     for c in &fixture.containers {
         let pos = Pos::new(ox + c.pos[0], oy + c.pos[1], oz + c.pos[2]);
-        if !matches!(level.kind_at(pos), Kind::Chest | Kind::Hopper | Kind::Dropper) {
+        if !matches!(level.kind_at(pos), Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser) {
             bail!("{}: no container at {:?}", fixture.id, c.pos);
         }
         for item in &c.items {
+            if level.kind_at(pos) == Kind::Dispenser && !blocks::dispenser::supported_item(&item.id) {
+                bail!("{}: dispensing {} is not supported by the engine yet", fixture.id, item.id);
+            }
             let stack = blocks::container::Stack::new(&item.id, item.count as i32);
             blocks::container::set_item(&mut level, pos, item.slot as usize, stack);
         }

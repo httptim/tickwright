@@ -1,0 +1,57 @@
+{
+  "name": "nucleation_hopper_locked",
+  "description": "Authored disabled beside a redstone block; breaking the block flips `enabled` (silently, flag 2 \u2014 but visible) and the first transfer lands the same tick. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 20,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "hopper[enabled=false,facing=down]",
+    "B": "redstone_block",
+    "C": "barrel[facing=up,open=false]"
+  },
+  "layers": [
+    [
+      "#."
+    ],
+    [
+      "AB"
+    ],
+    [
+      "C."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "destroy",
+      "pos": [
+        1,
+        1,
+        0
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        0,
+        2,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "redstone",
+          "count": 2
+        }
+      ]
+    }
+  ]
+}

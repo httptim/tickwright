@@ -39,6 +39,9 @@ fn block(name: &str) -> Option<Kind> {
         "water" => Kind::Water,
         "hopper" => Kind::Hopper,
         "dropper" => Kind::Dropper,
+        "dispenser" => Kind::Dispenser,
+        "barrel" => Kind::Barrel,
+        "powder_snow" => Kind::PowderSnow,
         "waxed_copper_bulb"
         | "waxed_exposed_copper_bulb"
         | "waxed_weathered_copper_bulb"

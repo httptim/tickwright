@@ -43,7 +43,7 @@ pub struct FluidState {
 }
 
 const EMPTY: FluidState = FluidState { fluid: Fluid::Empty, amount: 0, falling: false };
-const SOURCE: FluidState = FluidState { fluid: Fluid::Water, amount: 8, falling: false };
+pub(super) const SOURCE: FluidState = FluidState { fluid: Fluid::Water, amount: 8, falling: false };
 
 fn flowing(amount: i32, falling: bool) -> FluidState {
     FluidState { fluid: Fluid::FlowingWater, amount, falling }
@@ -60,7 +60,7 @@ impl FluidState {
 }
 
 /// Blocks that implement `SimpleWaterloggedBlock` (a `LiquidBlockContainer`).
-fn is_container(level: &Level, state: StateId) -> bool {
+pub(super) fn is_container(level: &Level, state: StateId) -> bool {
     match level.kind(state) {
         Kind::Trapdoor | Kind::Chest | Kind::PoweredRail => true,
         Kind::Slab => level.prop(state, "type") != "double",
@@ -82,7 +82,7 @@ pub fn fluid_state(level: &Level, state: StateId) -> FluidState {
 }
 
 /// `FluidState.createLegacyBlock`.
-fn legacy_block(level: &Level, fs: FluidState) -> StateId {
+pub(super) fn legacy_block(level: &Level, fs: FluidState) -> StateId {
     if fs.is_empty() {
         return level.air;
     }
@@ -136,6 +136,9 @@ fn collision(level: &Level, state: StateId) -> Shape {
         | Kind::Observer
         | Kind::NoteBlock
         | Kind::Dropper
+        | Kind::Dispenser
+        | Kind::Barrel
+        | Kind::PowderSnow
         | Kind::CopperBulb
         | Kind::Slime => Shape::Full,
         Kind::Slab if level.prop(state, "type") == "double" => Shape::Full,
@@ -391,7 +394,7 @@ fn spread_to(level: &mut Level, pos: Pos, state: StateId, fs: FluidState) {
 }
 
 /// `SimpleWaterloggedBlock.placeLiquid`.
-fn place_liquid(level: &mut Level, pos: Pos, state: StateId, fs: FluidState) {
+pub(super) fn place_liquid(level: &mut Level, pos: Pos, state: StateId, fs: FluidState) {
     if !level.flag(state, "waterlogged") && fs.is_source() {
         level.set_block(pos, level.with_bool(state, "waterlogged", true), flags::ALL);
         level.schedule_fluid_tick(pos, Fluid::Water, TICK_DELAY);

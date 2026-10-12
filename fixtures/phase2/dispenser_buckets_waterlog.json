@@ -1,0 +1,78 @@
+{
+  "name": "dispenser_buckets_waterlog",
+  "description": "A lever fires a dispenser holding a water bucket into a bottom slab, which it waterlogs, leaving an empty bucket in the slot. The water spreads one block inside a stone pen. Fired again, the dispenser picks the water back up out of the slab and the spread water drains.",
+  "ticks": 50,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "dispenser",
+    "water",
+    "container"
+  ],
+  "palette": {
+    "#": "stone",
+    "l": "lever[face=floor,facing=north,powered=false]",
+    "D": "dispenser[facing=east,triggered=false]",
+    "s": "stone_slab[type=bottom,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      "#####",
+      "lDs.#",
+      "#####"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        1
+      ]
+    },
+    {
+      "tick": 8,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        1
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        1
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        1,
+        1,
+        1
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "water_bucket",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

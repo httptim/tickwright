@@ -1,0 +1,47 @@
+{
+  "name": "nucleation_comparator_drain",
+  "description": "The full chain: hopper transfers mutate the barrel, each mutation notifies the comparator (vanilla's updateNeighbourForOutputSignal), and when the last item leaves at tick 16 the comparator schedules its 2-game-tick delay and goes dark at tick 18. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "hopper[enabled=true,facing=down]",
+    "B": "barrel[facing=up,open=false]",
+    "C": "comparator[facing=west,mode=compare,powered=false]"
+  },
+  "layers": [
+    [
+      "##"
+    ],
+    [
+      "A#"
+    ],
+    [
+      "BC"
+    ]
+  ],
+  "stimuli": [],
+  "containers": [
+    {
+      "pos": [
+        0,
+        2,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "redstone",
+          "count": 3
+        }
+      ]
+    }
+  ]
+}

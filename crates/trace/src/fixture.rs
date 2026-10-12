@@ -72,7 +72,7 @@ pub struct ItemSlot {
     pub count: u32,
 }
 
-/// What a container block (chest, hopper, dropper) holds when the fixture is
+/// What a container block (chest, barrel, hopper, dropper, dispenser) holds when the fixture is
 /// placed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

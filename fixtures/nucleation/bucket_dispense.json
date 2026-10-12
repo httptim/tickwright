@@ -1,0 +1,190 @@
+{
+  "name": "nucleation_bucket_dispense",
+  "description": "Four lanes, one trigger, four rules:  - `powder_snow_bucket` \u2192 `minecraft:powder_snow` (z=0) and `water_bucket`   \u2192 `minecraft:water[level=0]` (z=2). Two items, so the rule is not   fitted to one. A **third**, `lava_bucket` \u2192   `minecraft:lava[level=0]`, was captured on the same rig and agrees   exactly; it is not pinned here because `minecraft:lava` has no   behaviour in this engine, so a build holding one refuses at load rather   than running. The evidence is   `tools/gametest/captures/bucket_dispense_lava.log`. - Each leaves `1x minecraft:bucket` in the slot it came from \u2014   `consumeWithRemainder` with the stack down to nothing. - z=6's front cell is stone. `emptyContents` gates on `isEmptyBlock`, so   it fails, `$3` falls through to the default eject, and the *only* thing   the world records is the slot emptying. - z=8 is the record door's geometry: the same air cell watched by an   observer below facing up and one above facing down. Both pulse at tick   15 and clear at 17 \u2014 the placement writes with flags 3, so it hands out   ordinary neighbour updates. Their tick-1/tick-3 pulse is the placement   pass arming them, which is why the trigger waits until tick 10.  The dispense is on tick 13, the 4-game-tick delay after the tick-10 edge.  Negative control: with `BucketDispense::Empties` deleted from `vanilla::bucket_dispense` \u2014 the pre-fix engine \u2014 this fails at tick 13 with the front cells still air, the slots emptied instead of holding buckets, and no observer pulse at 15. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 29,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "dispenser[facing=east,triggered=false]",
+    "A": "stone",
+    "B": "observer[facing=up,powered=false]",
+    "C": "observer[facing=down,powered=false]"
+  },
+  "layers": [
+    [
+      ".A.",
+      ".A.",
+      ".A.",
+      ".A.",
+      ".A.",
+      ".A.",
+      ".A.",
+      ".A.",
+      ".B."
+    ],
+    [
+      "#.A",
+      ".A.",
+      "#.A",
+      ".A.",
+      ".AA",
+      ".A.",
+      "#AA",
+      ".A.",
+      "#.A"
+    ],
+    [
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      ".C."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 11,
+      "action": "set",
+      "pos": [
+        0,
+        2,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 11,
+      "action": "set",
+      "pos": [
+        0,
+        2,
+        2
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 11,
+      "action": "set",
+      "pos": [
+        0,
+        2,
+        6
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 11,
+      "action": "set",
+      "pos": [
+        0,
+        2,
+        8
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 13,
+      "action": "destroy",
+      "pos": [
+        0,
+        2,
+        0
+      ]
+    },
+    {
+      "tick": 13,
+      "action": "destroy",
+      "pos": [
+        0,
+        2,
+        2
+      ]
+    },
+    {
+      "tick": 13,
+      "action": "destroy",
+      "pos": [
+        0,
+        2,
+        6
+      ]
+    },
+    {
+      "tick": 13,
+      "action": "destroy",
+      "pos": [
+        0,
+        2,
+        8
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "powder_snow_bucket",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "pos": [
+        0,
+        1,
+        2
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "water_bucket",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "pos": [
+        0,
+        1,
+        6
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "powder_snow_bucket",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "pos": [
+        0,
+        1,
+        8
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "powder_snow_bucket",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
