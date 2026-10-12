@@ -1,0 +1,64 @@
+{
+  "name": "piston_push_item",
+  "description": "A piston head extends into an item lying in front of it and shoves it east along the floor; then it retracts.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "item"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "piston[extended=false,facing=east]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".....",
+      ".P...",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        2.5,
+        1.0,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 25,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        1
+      ]
+    }
+  ],
+  "entities": true
+}

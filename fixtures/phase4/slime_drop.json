@@ -1,0 +1,57 @@
+{
+  "name": "slime_drop",
+  "description": "A TNT and an item dropped from different heights onto slime blocks bounce until they settle.",
+  "ticks": 60,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "tnt",
+    "item",
+    "slime"
+  ],
+  "palette": {
+    "#": "stone",
+    "S": "slime_block"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".S.S.",
+      ".....",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        1.5,
+        5.0,
+        0.5
+      ],
+      "nbt": "{fuse:200}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        3.5,
+        4.0,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:100}"
+    }
+  ],
+  "entities": true
+}

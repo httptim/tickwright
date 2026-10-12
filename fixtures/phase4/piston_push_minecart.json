@@ -1,0 +1,63 @@
+{
+  "name": "piston_push_minecart",
+  "description": "A piston pushes a minecart resting on the floor, off the rails, east by the head's stroke.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "minecart"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "piston[extended=false,facing=east]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".....",
+      ".P...",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        2.5,
+        1.0,
+        1.5
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 25,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        1
+      ]
+    }
+  ],
+  "entities": true
+}

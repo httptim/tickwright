@@ -164,6 +164,30 @@ impl Aabb {
         hit.then(|| [from[0] + scale * d[0], from[1] + scale * d[1], from[2] + scale * d[2]])
     }
 
+    /// `AABB.minmax`: the box around both.
+    pub fn minmax(&self, o: &Aabb) -> Aabb {
+        Aabb::new(
+            self.min[0].min(o.min[0]),
+            self.min[1].min(o.min[1]),
+            self.min[2].min(o.min[2]),
+            self.max[0].max(o.max[0]),
+            self.max[1].max(o.max[1]),
+            self.max[2].max(o.max[2]),
+        )
+    }
+
+    /// `AABB.intersect`: the overlap of the two.
+    pub fn intersect(&self, o: &Aabb) -> Aabb {
+        Aabb::new(
+            self.min[0].max(o.min[0]),
+            self.min[1].max(o.min[1]),
+            self.min[2].max(o.min[2]),
+            self.max[0].min(o.max[0]),
+            self.max[1].min(o.max[1]),
+            self.max[2].min(o.max[2]),
+        )
+    }
+
     pub fn deflate(self, d: f64) -> Aabb {
         self.inflate(-d, -d, -d)
     }
