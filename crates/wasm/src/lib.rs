@@ -25,8 +25,9 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 use serde_json::{Value, json};
-use tickwright_engine::Pos;
+use tickwright_engine::blocks::Kind;
 use tickwright_engine::session::{Placement, Session};
+use tickwright_engine::{BlockId, Pos, Rules};
 use tickwright_materials::Table;
 use tickwright_schematic::{Format, Schematic};
 use tickwright_trace::fixture::PlaceInput;
@@ -241,6 +242,12 @@ enum Command {
     Entities {
         session: u32,
     },
+    /// The blocks a version's rules simulate, without the `minecraft:`
+    /// prefix: `{"blocks": ["stone", …]}`. Setting or placing any other
+    /// block is refused.
+    Simulated {
+        version: String,
+    },
     /// What the session has met that the engine does not simulate, from
     /// which tick on its results may differ from the game:
     /// `{"unsupported": "… is not simulated by the engine yet"}`, or null.
@@ -422,6 +429,18 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                     .collect();
                 json!({ "entities": entities })
             }
+            Command::Simulated { version } => {
+                let rules = Rules::for_version(&version)?;
+                let blocks: Vec<&str> = (0..rules.reg.len() as u16)
+                    .map(BlockId)
+                    .filter(|&b| rules.kind(b) != Kind::Other)
+                    .map(|b| {
+                        let name = &rules.reg.block(b).name;
+                        name.strip_prefix("minecraft:").unwrap_or(name)
+                    })
+                    .collect();
+                json!({ "blocks": blocks })
+            }
             Command::Unsupported { session } => json!({ "unsupported": get(sessions, session)?.unsupported() }),
             Command::Summon { session, entity, at, motion, nbt } => {
                 get(sessions, session)?.summon(&entity, at, motion, nbt.as_deref())?;
@@ -586,6 +605,18 @@ mod tests {
         assert_eq!(what["unsupported"], "a plain rail bending is not simulated by the engine yet", "{what}");
         ok(&format!(r#"{{"op":"rewind","session":{id},"tick":1}}"#));
         assert_eq!(ok(&format!(r#"{{"op":"unsupported","session":{id}}}"#))["unsupported"], serde_json::Value::Null);
+    }
+
+    #[test]
+    fn simulated_blocks_are_the_ones_a_session_accepts() {
+        let blocks = ok(r#"{"op":"simulated","version":"26.3"}"#)["blocks"].clone();
+        let names: Vec<&str> = blocks.as_array().unwrap().iter().map(|b| b.as_str().unwrap()).collect();
+        assert!(names.contains(&"repeater") && names.contains(&"stone"), "{names:?}");
+        assert!(!names.contains(&"red_bed"));
+        let id = ok(r#"{"op":"open","version":"26.3"}"#)["session"].as_u64().unwrap();
+        ok(&format!(r#"{{"op":"set","session":{id},"pos":[0,0,0],"state":"repeater"}}"#));
+        let refused = command(format!(r#"{{"op":"set","session":{id},"pos":[0,1,0],"state":"red_bed"}}"#).as_bytes());
+        assert!(refused.unwrap_err().to_string().contains("not supported"));
     }
 
     #[test]
