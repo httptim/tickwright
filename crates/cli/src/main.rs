@@ -2,7 +2,9 @@
 //!
 //! - `resolve` turns hand-written fixtures into one explicit fixture per
 //!   orientation, which is what the capture harness and the engine load.
+//! - `run` simulates resolved fixtures with the engine and writes traces.
 //! - `diff` compares two traces and reports the first divergence.
+//! - `bench` times the engine on a large dust-and-repeater build.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -10,7 +12,7 @@ use std::process::ExitCode;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use tickwright_trace::{FixtureSource, Level, Trace, compare};
+use tickwright_trace::{FixtureSource, Level, ResolvedFixture, Trace, compare};
 
 #[derive(Parser)]
 #[command(name = "tickwright", version, about)]
@@ -29,6 +31,32 @@ enum Command {
         /// Directory for the resolved fixtures.
         #[arg(long)]
         out: PathBuf,
+    },
+    /// Run resolved fixtures through the engine and write one trace each.
+    Run {
+        /// Resolved fixture files or directories to search for `*.json`.
+        #[arg(required = true)]
+        inputs: Vec<PathBuf>,
+        /// Directory for the traces.
+        #[arg(long)]
+        out: PathBuf,
+        /// Minecraft version whose rules to simulate.
+        #[arg(long, default_value = "26.3")]
+        mc_version: String,
+    },
+    /// Time the engine on a large dust-and-repeater build.
+    Bench {
+        /// Number of repeater loops.
+        #[arg(long, default_value_t = 32)]
+        rings: i32,
+        /// Components along each side of a loop.
+        #[arg(long, default_value_t = 63)]
+        length: i32,
+        #[arg(long, default_value_t = 2000)]
+        ticks: u32,
+        /// Also write the build as a resolved fixture, for the browser run.
+        #[arg(long)]
+        write: Option<PathBuf>,
     },
     /// Compare an expected trace with an actual one.
     Diff {
@@ -82,6 +110,35 @@ fn run(cli: Cli) -> Result<ExitCode> {
                 }
             }
             println!("resolved {} fixture(s) into {written} file(s) in {}", files.len(), out.display());
+            Ok(ExitCode::SUCCESS)
+        }
+        Command::Run { inputs, out, mc_version } => {
+            let files = collect_json(&inputs)?;
+            fs::create_dir_all(&out)?;
+            for file in &files {
+                let text = fs::read_to_string(file).with_context(|| format!("reading {}", file.display()))?;
+                let fixture: ResolvedFixture =
+                    serde_json::from_str(&text).with_context(|| format!("in {}", file.display()))?;
+                let trace = tickwright_engine::run::run(&fixture, &mc_version)?;
+                fs::write(out.join(format!("{}.json", fixture.id)), serde_json::to_string(&trace)? + "\n")?;
+            }
+            println!("ran {} fixture(s) into {}", files.len(), out.display());
+            Ok(ExitCode::SUCCESS)
+        }
+        Command::Bench { rings, length, ticks, write } => {
+            let fixture = tickwright_engine::bench::redstone_rings(rings, length, ticks);
+            if let Some(path) = write {
+                fs::write(&path, serde_json::to_string(&fixture)? + "\n")?;
+            }
+            let start = std::time::Instant::now();
+            tickwright_engine::run::run_unrecorded(&fixture, "26.3")?;
+            let secs = start.elapsed().as_secs_f64();
+            println!(
+                "{}: {} blocks, {ticks} ticks in {secs:.3} s, {:.0} ticks/s",
+                fixture.name,
+                fixture.blocks.len(),
+                f64::from(ticks) / secs
+            );
             Ok(ExitCode::SUCCESS)
         }
         Command::Diff { expected, actual, level } => {

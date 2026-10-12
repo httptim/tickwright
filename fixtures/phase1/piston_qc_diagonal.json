@@ -1,0 +1,56 @@
+{
+  "name": "piston_qc_diagonal",
+  "description": "A redstone block diagonally above a piston powers it by quasi-connectivity. A block placed next to the piston later updates it and it extends.",
+  "ticks": 16,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "piston",
+    "qc",
+    "bud"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "piston[extended=false,facing=east]",
+    "s": "stone"
+  },
+  "layers": [
+    [
+      "####",
+      "...."
+    ],
+    [
+      ".Ps.",
+      "...."
+    ],
+    [
+      "....",
+      "...."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        1,
+        2,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 8,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "state": "stone"
+    }
+  ]
+}

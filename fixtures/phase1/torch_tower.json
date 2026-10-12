@@ -1,0 +1,63 @@
+{
+  "name": "torch_tower",
+  "description": "A torch tower: torches and blocks stacked, each torch inverting the one above. A wall lever on the base flips the whole tower, 2 game ticks per stage.",
+  "ticks": 24,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "torch"
+  ],
+  "palette": {
+    "#": "stone",
+    "L": "lever[face=wall,facing=west,powered=false]",
+    "T": "redstone_torch[lit=true]",
+    "t": "redstone_torch[lit=false]",
+    "o": "redstone_lamp[lit=true]"
+  },
+  "layers": [
+    [
+      "L#"
+    ],
+    [
+      ".T"
+    ],
+    [
+      ".#"
+    ],
+    [
+      ".t"
+    ],
+    [
+      ".#"
+    ],
+    [
+      ".T"
+    ],
+    [
+      ".o"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "tick": 12,
+      "action": "use",
+      "pos": [
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

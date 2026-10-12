@@ -491,3 +491,17 @@ pub fn final_tick(level: &mut Level, pos: Pos) {
         level.neighbor_changed(pos, level.block(s));
     }
 }
+
+/// `isFaceSturdy` for a moving piston, from
+/// `PistonMovingBlockEntity.getCollisionShape`: a retracting piston base
+/// keeps its extended base's shape, and a moved block counts only once it
+/// has arrived. In between, a partly moved block is never whole on a face.
+pub fn moving_face_sturdy(level: &Level, pos: Pos, dir: Dir) -> bool {
+    let Some(BlockEntity::Piston(be)) = level.block_entities.get(&pos) else { return false };
+    let moved = be.moved_state;
+    if !be.extending && be.is_source_piston && is_piston(level, moved) && level.dir(moved, "facing").opposite() == dir {
+        return true;
+    }
+    let offset = if be.extending { be.progress - 1.0 } else { 1.0 - be.progress };
+    offset == 0.0 && !be.is_source_piston && super::is_face_sturdy(level, pos, moved, dir)
+}

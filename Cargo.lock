@@ -267,6 +267,7 @@ dependencies = [
  "anyhow",
  "clap",
  "serde_json",
+ "tickwright-engine",
  "tickwright-trace",
 ]
 
@@ -287,6 +288,16 @@ dependencies = [
  "anyhow",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "tickwright-wasm"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde_json",
+ "tickwright-engine",
+ "tickwright-trace",
 ]
 
 [[package]]

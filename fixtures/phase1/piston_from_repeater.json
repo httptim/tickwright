@@ -1,0 +1,49 @@
+{
+  "name": "piston_from_repeater",
+  "description": "A repeater drives a piston, so the piston starts from a block tick rather than from player input.",
+  "ticks": 20,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "piston",
+    "repeater"
+  ],
+  "palette": {
+    "#": "stone",
+    "L": "lever[face=floor,facing=north,powered=false]",
+    "r": "repeater[delay=1,facing=west,locked=false,powered=false]",
+    "P": "piston[extended=false,facing=east]",
+    "s": "stone"
+  },
+  "layers": [
+    [
+      "####."
+    ],
+    [
+      "LrPs."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}

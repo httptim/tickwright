@@ -2,7 +2,7 @@
 
 A tick-accurate simulator for Minecraft: Java Edition redstone, targeting
 26.3. This repository holds the open-source parts: the simulation engine
-(coming in phase 1) and the test harness that checks it against the real game.
+and the test harness that checks it against the real game.
 
 ## How accuracy is measured
 
@@ -13,8 +13,11 @@ A tick-accurate simulator for Minecraft: Java Edition redstone, targeting
 2. **The capture harness** (`harness/`) runs every fixture in the real
    server, headless, and records a **trace**: every block change in the
    fixture's box, tagged with the tick and the tick phase it happened in.
-3. **The engine** runs the same fixtures and writes its own traces.
-   `tickwright diff` compares the two and reports the first divergence.
+3. **The engine** (`crates/engine`) runs the same fixtures and writes its
+   own traces. `tickwright diff` compares the two and reports the first
+   divergence. `cargo test -p tickwright-engine` runs every fixture against
+   the committed game traces; every phase 1 fixture matches at the `order`
+   level in all eight orientations.
 
 Traces compare at three levels, each stricter than the last:
 
@@ -32,12 +35,15 @@ phase 1 has no comparators.
 | Path | What it is |
 |------|------------|
 | `crates/trace` | Fixture, trace and diff formats (`tickwright-trace`) |
-| `crates/cli` | The `tickwright` command: `resolve` and `diff` |
-| `fixtures/phase1` | Phase 1 fixtures: dust, torches, repeaters, pistons |
+| `crates/engine` | The simulation engine (`tickwright-engine`) |
+| `crates/wasm` | The engine as a WebAssembly module with a plain C ABI |
+| `crates/cli` | The `tickwright` command: `resolve`, `run`, `diff` and `bench` |
+| `fixtures/phase1` | Phase 1 fixtures: dust, torches, repeaters, pistons, buttons |
 | `harness/` | Java capture harness for the vanilla server |
 | `traces/<version>/` | Ground-truth traces from the real game, gzipped |
 | `data/<version>/` | Blocks, items and block entity types from the game's data reports |
 | `tools/registry.py` | Turns the game's data reports into `data/<version>/` |
+| `tools/wasm-check.cjs` | Runs every fixture in headless Chromium and checks the traces match the native engine's |
 
 ## Usage
 
@@ -45,8 +51,14 @@ phase 1 has no comparators.
 # Validate fixtures and expand them into one file per orientation
 cargo run -p tickwright -- resolve fixtures --out resolved
 
+# Simulate resolved fixtures with the engine
+cargo run -p tickwright -- run resolved --out traces-engine
+
 # Compare two traces
 cargo run -p tickwright -- diff expected.json actual.json --level phase
+
+# Ticks per second on a large dust-and-repeater build
+cargo run --release -p tickwright -- bench
 ```
 
 ### Capturing traces

@@ -1,0 +1,54 @@
+{
+  "name": "dust_glass_up",
+  "description": "Dust climbs onto a glass block and the dust on top powers a lamp. Power flows up the glass step.",
+  "ticks": 12,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "dust",
+    "glass"
+  ],
+  "palette": {
+    "#": "stone",
+    "g": "glass",
+    "L": "lever[face=floor,facing=north,powered=false]",
+    "-": "redstone_wire[east=side,north=none,power=0,south=none,west=side]",
+    "u": "redstone_wire[east=up,north=none,power=0,south=none,west=side]",
+    "t": "redstone_wire[east=side,north=none,power=0,south=none,west=side]",
+    "o": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "####"
+    ],
+    [
+      "Lug."
+    ],
+    [
+      "..to"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 6,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}
