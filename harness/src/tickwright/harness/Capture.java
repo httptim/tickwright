@@ -102,6 +102,7 @@ public final class Capture {
         Path out = Path.of(arg(args, "--out", "work/traces"));
         Path universe = Path.of(arg(args, "--universe", "work/universe"));
         String only = arg(args, "--only", null);
+        String physics = arg(args, "--physics", null);
 
         // LevelChunk is loaded lazily; load it (without initializing) so the
         // agent has patched it before the check below.
@@ -146,6 +147,9 @@ public final class Capture {
         level = server.overworld();
         String mcVersion = SharedConstants.getCurrentVersion().name();
         System.out.printf("Minecraft %s%n", mcVersion);
+        if (physics != null) {
+            exportPhysics(Path.of(physics));
+        }
 
         List<Path> files;
         try (Stream<Path> s = Files.list(fixtures)) {
@@ -276,6 +280,9 @@ public final class Capture {
             // and when explosions sample rays; a fixed seed keeps the
             // capture repeatable.
             level.getRandom().setSeed(id.hashCode());
+            // Entity ids decide when resting items move ((tickCount + id) % 4);
+            // number them from 1 in every capture.
+            resetEntityIds();
         }
         setMaxChainedUpdates(fixture.has("max_chained_updates")
                 ? fixture.get("max_chained_updates").getAsInt() : -1);
@@ -660,6 +667,7 @@ public final class Capture {
             JsonObject o = new JsonObject();
             o.addProperty("tick", t);
             o.addProperty("n", n);
+            o.addProperty("id", e.getId());
             o.addProperty("type", BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).toString());
             JsonArray pos = new JsonArray();
             pos.add(e.getX() - rec.origin.getX());
@@ -692,6 +700,99 @@ public final class Capture {
             return BlockStateParser.serialize(falling.getBlockState());
         }
         return null;
+    }
+
+    private static java.lang.reflect.Field entityCounter;
+
+    /** Sets {@code Entity.ENTITY_COUNTER} to 0, so the next entity made gets id 1. */
+    private static void resetEntityIds() {
+        try {
+            if (entityCounter == null) {
+                for (java.lang.reflect.Field f : Entity.class.getDeclaredFields()) {
+                    if (java.lang.reflect.Modifier.isStatic(f.getModifiers())
+                            && f.getType() == java.util.concurrent.atomic.AtomicInteger.class) {
+                        f.setAccessible(true);
+                        entityCounter = f;
+                        break;
+                    }
+                }
+                if (entityCounter == null) {
+                    throw new IllegalStateException("no entity id counter in Entity");
+                }
+            }
+            ((java.util.concurrent.atomic.AtomicInteger) entityCounter.get(null)).set(0);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("cannot reset entity ids", e);
+        }
+    }
+
+    /**
+     * What entity physics needs from every block: each state's collision
+     * boxes (with no world around it, so context-dependent shapes like
+     * scaffolding are their defaults), and each block's friction, speed and
+     * jump factors.
+     */
+    private static void exportPhysics(Path file) throws IOException {
+        List<String> shapes = new ArrayList<>();
+        Map<String, Integer> shapeIndex = new java.util.HashMap<>();
+        JsonArray runs = new JsonArray();
+        int lastShape = -1;
+        int runStart = 0;
+        int id = 0;
+        for (;; id++) {
+            BlockState state = Block.BLOCK_STATE_REGISTRY.byId(id);
+            if (state == null) {
+                break;
+            }
+            JsonArray boxes = new JsonArray();
+            for (AABB b : state.getCollisionShape(net.minecraft.world.level.EmptyBlockGetter.INSTANCE, BlockPos.ZERO)
+                    .toAabbs()) {
+                JsonArray a = new JsonArray();
+                a.add(b.minX);
+                a.add(b.minY);
+                a.add(b.minZ);
+                a.add(b.maxX);
+                a.add(b.maxY);
+                a.add(b.maxZ);
+                boxes.add(a);
+            }
+            String key = GSON.toJson(boxes);
+            int index = shapeIndex.computeIfAbsent(key, k -> {
+                shapes.add(k);
+                return shapes.size() - 1;
+            });
+            if (index != lastShape) {
+                if (lastShape >= 0) {
+                    JsonArray r = new JsonArray();
+                    r.add(runStart);
+                    r.add(lastShape);
+                    runs.add(r);
+                }
+                lastShape = index;
+                runStart = id;
+            }
+        }
+        JsonArray last = new JsonArray();
+        last.add(runStart);
+        last.add(lastShape);
+        runs.add(last);
+
+        StringBuilder out = new StringBuilder("{\n");
+        out.append("  \"states\": ").append(id).append(",\n");
+        out.append("  \"shapes\": [\n    ").append(String.join(",\n    ", shapes)).append("\n  ],\n");
+        out.append("  \"shape_runs\": ").append(GSON.toJson(runs)).append(",\n");
+        out.append("  \"blocks\": {\n");
+        List<String> rows = new ArrayList<>();
+        for (Block b : BuiltInRegistries.BLOCK) {
+            if (b.getFriction() == 0.6F && b.getSpeedFactor() == 1.0F && b.getJumpFactor() == 1.0F) {
+                continue;
+            }
+            rows.add("    \"" + BuiltInRegistries.BLOCK.getKey(b) + "\": {\"friction\": " + b.getFriction()
+                    + ", \"speed\": " + b.getSpeedFactor() + ", \"jump\": " + b.getJumpFactor() + "}");
+        }
+        out.append(String.join(",\n", rows)).append("\n  }\n}\n");
+        Files.writeString(file, out.toString());
+        System.out.printf("block physics: %d states, %d distinct shapes -> %s%n", id, shapes.size(), file);
     }
 
     private static java.lang.reflect.Field rngSeed;

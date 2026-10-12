@@ -70,7 +70,7 @@ echo "==> capturing in Minecraft $MC_VERSION"
 rm -rf "$WORK/traces"
 java -javaagent:"$WORK/agent.jar" -cp "$WORK/classes:$WORK/agent.jar:$CP" \
     tickwright.harness.Capture \
-    --fixtures "$WORK/resolved" --out "$WORK/traces" --universe "$WORK/universe" "$@" \
+    --fixtures "$WORK/resolved" --out "$WORK/traces" --universe "$WORK/universe" --physics "$WORK/physics.json" "$@" \
     2>&1 | grep -vE 'Saving |chunks are saved|dimensions are saved|Preparing |\[ \]$' | tee "$WORK/capture.log"
 
 # --- check the traces parse ---------------------------------------------------
@@ -110,6 +110,8 @@ v = next(filter(None, map(read, sys.argv[2:])))
 out = {"name": v["name"], "data_version": v["world_version"], "protocol_version": v["protocol_version"]}
 open(sys.argv[1], "w").write(json.dumps(out, indent=2) + "\n")
 PY
+    # Collision shapes and block friction, for entity physics.
+    cp "$WORK/physics.json" "data/$MC_VERSION/physics.json"
     # Crafting recipes and item tags, for the crafter.
     python3 -I tools/recipes.py "$INNER" "data/$MC_VERSION"
     # The world clock's timelines (sky light and sun angle through the day),

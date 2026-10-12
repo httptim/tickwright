@@ -82,6 +82,11 @@ pub struct EntityRow {
     pub tick: u32,
     /// Which entity: entities are numbered from 0 in the order they appear.
     pub n: u32,
+    /// The game's entity id. Captures number entities from 1, so the ids
+    /// repeat between runs; they matter because resting items only move on
+    /// ticks where `(age + id) % 4 == 0`.
+    #[serde(default)]
+    pub id: i32,
     /// The entity type, such as `minecraft:tnt`.
     #[serde(rename = "type")]
     pub kind: String,
