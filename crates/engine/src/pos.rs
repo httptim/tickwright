@@ -58,6 +58,15 @@ impl Dir {
     /// `Direction.values()`.
     pub const ALL: [Dir; 6] = [Dir::Down, Dir::Up, Dir::North, Dir::South, Dir::West, Dir::East];
 
+    /// `Direction.getAxis`: 0 for x, 1 for y, 2 for z.
+    pub fn axis(self) -> u8 {
+        match self {
+            Dir::West | Dir::East => 0,
+            Dir::Down | Dir::Up => 1,
+            Dir::North | Dir::South => 2,
+        }
+    }
+
     /// `Direction.Plane.HORIZONTAL`: north, east, south, west.
     pub const HORIZONTAL: [Dir; 4] = [Dir::North, Dir::East, Dir::South, Dir::West];
 
