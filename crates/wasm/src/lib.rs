@@ -523,7 +523,9 @@ mod tests {
         let list = ok(&format!(r#"{{"op":"entities","session":{id}}}"#));
         assert_eq!(list["entities"][0]["type"], "minecraft:tnt", "{list}");
         assert_eq!(list["entities"][0]["detail"], "fuse=39", "{list}");
-        assert!(command(format!(r#"{{"op":"summon","session":{id},"entity":"zombie","at":[0,1,0]}}"#).as_bytes()).is_err());
+        assert!(
+            command(format!(r#"{{"op":"summon","session":{id},"entity":"zombie","at":[0,1,0]}}"#).as_bytes()).is_err()
+        );
     }
 
     #[test]
