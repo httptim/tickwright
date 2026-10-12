@@ -13,7 +13,7 @@ pub mod trace;
 pub mod transform;
 
 pub use diff::{Divergence, compare};
-pub use fixture::{FixtureSource, Level, ResolvedFixture};
+pub use fixture::{Action, FixtureSource, Level, ResolvedFixture, Stimulus};
 pub use state::BlockState;
-pub use trace::{Entry, Kind, Phase, Trace};
+pub use trace::{Entry, Kind, Phase, TRACE_FORMAT, Trace};
 pub use transform::Transform;
