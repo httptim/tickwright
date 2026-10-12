@@ -743,6 +743,10 @@ public final class Capture {
         if (e instanceof net.minecraft.world.entity.item.FallingBlockEntity falling) {
             return BlockStateParser.serialize(falling.getBlockState());
         }
+        // Chest and hopper minecarts: what they hold.
+        if (e instanceof Container container) {
+            return describeItems(container);
+        }
         return null;
     }
 

@@ -1,0 +1,143 @@
+{
+  "name": "container_minecarts_parked",
+  "description": "Parked container minecarts. A hopper minecart picks up items dropped on it and pulls from a chest above. A hopper under the rail empties a chest minecart into a chest, and a comparator reads a chest minecart on a detector rail into a lamp.",
+  "ticks": 80,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "minecart",
+    "hopper",
+    "container",
+    "comparator"
+  ],
+  "palette": {
+    "#": "stone",
+    "r": "rail[shape=east_west]",
+    "D": "detector_rail[powered=false,shape=east_west]",
+    "C": "chest[facing=north,type=single,waterlogged=false]",
+    "h": "hopper[enabled=true,facing=east]",
+    "c": "comparator[facing=west,mode=compare,powered=false]",
+    "L": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".r...",
+      ".....",
+      ".r...",
+      ".....",
+      ".hC..",
+      ".....",
+      ".DcL."
+    ],
+    [
+      ".....",
+      ".....",
+      ".C...",
+      ".....",
+      ".r...",
+      ".....",
+      "....."
+    ]
+  ],
+  "containers": [
+    {
+      "pos": [
+        1,
+        2,
+        2
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "stone",
+          "count": 3
+        },
+        {
+          "slot": 4,
+          "id": "dirt",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "hopper_minecart",
+      "at": [
+        1.5,
+        1.0625,
+        0.5
+      ]
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "hopper_minecart",
+      "at": [
+        1.5,
+        1.0625,
+        2.5
+      ]
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "chest_minecart",
+      "at": [
+        1.5,
+        2.0625,
+        4.5
+      ],
+      "nbt": "{Items:[{Slot:0b,id:\"minecraft:stone\",count:2},{Slot:5b,id:\"minecraft:dirt\",count:3}]}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "chest_minecart",
+      "at": [
+        1.5,
+        1.0625,
+        6.5
+      ],
+      "nbt": "{Items:[{Slot:0b,id:\"minecraft:stone\",count:64},{Slot:1b,id:\"minecraft:stone\",count:64},{Slot:2b,id:\"minecraft:dirt\",count:20}]}"
+    },
+    {
+      "tick": 10,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        2.0,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"stone\",count:3}}"
+    },
+    {
+      "tick": 12,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        2.1,
+        1.1,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"dirt\",count:2}}"
+    }
+  ],
+  "entities": true
+}
