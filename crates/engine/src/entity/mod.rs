@@ -64,6 +64,8 @@ pub struct Entity {
     /// `pistonDeltas` and the game time they were counted in.
     piston_deltas: [f64; 3],
     piston_deltas_time: i64,
+    /// The vertical motion the entity started its tick with.
+    start_motion_y: f64,
 }
 
 impl Entity {
@@ -206,6 +208,7 @@ impl Level {
 }
 
 fn tick(level: &mut Level, e: &mut Entity) {
+    e.start_motion_y = e.motion.y;
     match e.data {
         Data::Item(_) => item::tick(level, e),
         Data::FallingBlock(_) => falling::tick(level, e),
@@ -526,8 +529,26 @@ pub fn move_entity(level: &mut Level, e: &mut Entity, mut movement: Vec3) {
         let p = e.on_pos(level, 0.2);
         let state = level.get(p);
         match level.kind(state) {
-            Kind::Slime => level.unsupported("an entity landed on a slime block"),
+            // `SlimeBlock.bounceUp`: nothing the engine has steps carefully.
+            // 26.3 captures show an entity only bounces when it was already
+            // moving down at the start of its tick; one that was still lands
+            // as on any other block.
+            Kind::Slime if e.start_motion_y < 0.0 => {
+                let f = if e.is_living() { 1.0 } else { 0.8f32 as f64 };
+                e.motion = Vec3::new(e.motion.x, -e.motion.y * f, e.motion.z);
+            }
             _ => e.motion = e.motion.multiply(1.0, 0.0, 1.0),
+        }
+    }
+    if e.on_ground {
+        // `Block.stepOn`, for the block under the entity's feet.
+        let state = level.get(e.on_pos(level, 0.2));
+        if level.kind(state) == Kind::Slime {
+            let d = e.motion.y.abs();
+            if d < 0.1 {
+                let f = 0.4 + d * 0.2;
+                e.motion = e.motion.multiply(f, 1.0, f);
+            }
         }
     }
     let f = block_speed_factor(level, e);

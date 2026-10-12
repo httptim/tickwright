@@ -44,10 +44,7 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
     super::apply_effects_from_blocks(level, e, old);
     e.motion = e.motion.scale(DRAG);
     if e.on_ground {
-        e.motion = e.motion.multiply(0.7, 1.0, 0.7);
-        if e.motion.y < 0.0 {
-            e.motion = e.motion.multiply(1.0, -0.5, 1.0);
-        }
+        e.motion = e.motion.multiply(0.7, -0.5, 0.7);
     }
     let Data::Tnt(t) = &mut e.data else { unreachable!() };
     t.fuse -= 1;
