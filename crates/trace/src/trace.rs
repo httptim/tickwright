@@ -54,6 +54,10 @@ pub enum Kind {
     BlockEventQueued,
     /// A block event ran at `pos`.
     BlockEvent,
+    /// A container block entity at `pos` was marked changed
+    /// (`BlockEntity.setChanged`). `detail` lists what it holds, as
+    /// `slot:id*count` separated by spaces.
+    Items,
     #[serde(other)]
     Other,
 }

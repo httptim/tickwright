@@ -37,6 +37,8 @@ fn block(name: &str) -> Option<Kind> {
         "note_block" => Kind::NoteBlock,
         "powered_rail" | "activator_rail" => Kind::PoweredRail,
         "water" => Kind::Water,
+        "hopper" => Kind::Hopper,
+        "dropper" => Kind::Dropper,
         n if n.ends_with("_trapdoor") => Kind::Trapdoor,
         n if n.ends_with("_door") => Kind::Door,
         _ => return None,

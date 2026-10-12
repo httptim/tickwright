@@ -1,0 +1,52 @@
+{
+  "name": "hopper_chain_cooldown",
+  "description": "Three hoppers in a row pass items west into a chest. Each hand-off between hoppers depends on which hopper ticked first that game tick. A comparator reads the chest into a lamp.",
+  "ticks": 70,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "hopper",
+    "container",
+    "comparator"
+  ],
+  "palette": {
+    "#": "stone",
+    "C": "chest[facing=north,type=single,waterlogged=false]",
+    "h": "hopper[enabled=true,facing=west]",
+    "c": "comparator[facing=east,mode=compare,powered=false]",
+    "L": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "######"
+    ],
+    [
+      "LcChhh"
+    ]
+  ],
+  "stimuli": [],
+  "containers": [
+    {
+      "pos": [
+        5,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "stone",
+          "count": 3
+        },
+        {
+          "slot": 2,
+          "id": "oak_planks",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

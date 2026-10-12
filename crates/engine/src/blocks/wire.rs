@@ -77,9 +77,9 @@ fn should_connect_to(level: &Level, state: StateId, dir: Option<Dir>) -> bool {
     }
 }
 
-/// `canSurviveOn`.
+/// `canSurviveOn`: a sturdy top, or a hopper.
 fn can_survive_on(level: &Level, pos: Pos, state: StateId) -> bool {
-    super::is_face_sturdy(level, pos, state, Dir::Up)
+    super::is_face_sturdy(level, pos, state, Dir::Up) || level.kind(state) == Kind::Hopper
 }
 
 /// `getConnectingSide(level, pos, dir, canConnectUp)`.

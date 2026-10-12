@@ -83,8 +83,29 @@ fn compare_world(expected: &Trace, actual: &Trace, tick: u32) -> Result<(), Dive
     finish(Level::State, tick, lines)
 }
 
+/// What each container held at the end of `tick`, for those that changed.
+fn items_at(trace: &Trace, tick: u32) -> BTreeMap<[i32; 3], &str> {
+    trace
+        .entries
+        .iter()
+        .filter(|e| e.tick <= tick && e.kind == Kind::Items)
+        .map(|e| (e.pos, e.detail.as_deref().unwrap_or("")))
+        .collect()
+}
+
 fn compare_state(expected: &Trace, actual: &Trace, tick: u32) -> Result<(), Divergence> {
-    compare_world(expected, actual, tick)
+    compare_world(expected, actual, tick)?;
+    let a = items_at(expected, tick);
+    let b = items_at(actual, tick);
+    let mut lines = Vec::new();
+    let positions: std::collections::BTreeSet<_> = a.keys().chain(b.keys()).collect();
+    for pos in positions {
+        if a.get(pos) != b.get(pos) {
+            let show = |v: Option<&&str>| v.map(|s| format!("[{s}]")).unwrap_or_else(|| "no change".into());
+            lines.push(format!("{pos:?} items: expected {}, got {}", show(a.get(pos)), show(b.get(pos))));
+        }
+    }
+    finish(Level::State, tick, lines)
 }
 
 fn per_block(trace: &Trace, tick: u32) -> BTreeMap<[i32; 3], Vec<(Phase, &str)>> {

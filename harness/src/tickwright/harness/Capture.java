@@ -25,6 +25,7 @@ import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestServer;
 import net.minecraft.server.Bootstrap;
@@ -34,14 +35,18 @@ import net.minecraft.server.level.TicketType;
 import net.minecraft.server.packs.repository.PackRepository;
 import net.minecraft.server.packs.repository.ServerPacksSource;
 import net.minecraft.util.Util;
+import net.minecraft.world.Container;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.BlockEventData;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.ticks.ScheduledTick;
@@ -97,12 +102,13 @@ public final class Capture {
 
         // Load the remaining patched classes so every hook can be checked.
         for (String c : List.of("net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase",
-                "net.minecraft.world.ticks.LevelTicks", "net.minecraft.server.level.ServerLevel")) {
+                "net.minecraft.world.ticks.LevelTicks", "net.minecraft.server.level.ServerLevel",
+                "net.minecraft.world.level.block.entity.BlockEntity")) {
             Class.forName(c, false, Capture.class.getClassLoader());
         }
         System.out.printf("agent patched: %s%n", new TreeMap<>(Hooks.patched));
         for (String kind : List.of("set", "neighbor", "shape", "schedule", "tick", "block_event_queued",
-                "block_event")) {
+                "block_event", "items")) {
             if (!Hooks.patched.containsKey(kind)) {
                 throw new IllegalStateException("the agent patched no method for " + kind
                         + "; run with -javaagent:agent.jar, or the game's method changed");
@@ -248,6 +254,21 @@ public final class Capture {
             BlockPos p = origin.offset(a.get(0).getAsInt(), a.get(1).getAsInt(), a.get(2).getAsInt());
             level.setBlock(p, parse(blocks, a.get(3).getAsString()), QUIET);
         }
+        // Container contents, slot by slot, as the engine fills them.
+        if (fixture.has("containers")) {
+            for (JsonElement ce : fixture.getAsJsonArray("containers")) {
+                JsonObject c = ce.getAsJsonObject();
+                BlockPos p = origin.offset(pos(c.getAsJsonArray("pos")));
+                if (!(level.getBlockEntity(p) instanceof Container container)) {
+                    throw new IllegalStateException(id + ": no container at " + c.get("pos"));
+                }
+                for (JsonElement ie : c.getAsJsonArray("items")) {
+                    JsonObject i = ie.getAsJsonObject();
+                    container.setItem(i.get("slot").getAsInt(),
+                            new ItemStack(item(i.get("id").getAsString()), i.get("count").getAsInt()));
+                }
+            }
+        }
 
         JsonArray initial = new JsonArray();
         for (BlockPos p : BlockPos.betweenClosed(min, max)) {
@@ -369,6 +390,14 @@ public final class Capture {
                 detail = "delay=" + (t.triggerTick() - level.getGameTime())
                         + ",priority=" + t.priority().getValue();
             }
+            case "items" -> {
+                if (!(self instanceof BlockEntity be) || be.getLevel() != level
+                        || !(self instanceof Container container)) {
+                    return;
+                }
+                pos = be.getBlockPos();
+                detail = describeItems(container);
+            }
             case "block_event" -> {
                 if (self != level || !(arg instanceof BlockEventData e)) {
                     return;
@@ -385,6 +414,32 @@ public final class Capture {
         }
         rec.lastKey = null;
         add(rec, phase(), kind, pos, null, detail);
+    }
+
+    private static Item item(String id) {
+        for (Item it : BuiltInRegistries.ITEM) {
+            if (BuiltInRegistries.ITEM.getKey(it).toString().equals(id)) {
+                return it;
+            }
+        }
+        throw new IllegalArgumentException("unknown item " + id);
+    }
+
+    /** A container's contents as {@code slot:id*count}, space separated. */
+    private static String describeItems(Container container) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < container.getContainerSize(); i++) {
+            ItemStack stack = container.getItem(i);
+            if (stack.isEmpty()) {
+                continue;
+            }
+            if (sb.length() > 0) {
+                sb.append(' ');
+            }
+            sb.append(i).append(':').append(BuiltInRegistries.ITEM.getKey(stack.getItem()))
+                    .append('*').append(stack.getCount());
+        }
+        return sb.toString();
     }
 
     private static void add(Recording rec, String phase, String kind, BlockPos pos, String state, String detail) {

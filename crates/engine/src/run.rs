@@ -92,6 +92,17 @@ fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
     for (pos, state) in blocks? {
         level.set_block(pos, state, QUIET);
     }
+    // The harness fills containers with `Container.setItem`, slot by slot.
+    for c in &fixture.containers {
+        let pos = Pos::new(ox + c.pos[0], oy + c.pos[1], oz + c.pos[2]);
+        if !matches!(level.kind_at(pos), Kind::Chest | Kind::Hopper | Kind::Dropper) {
+            bail!("{}: no container at {:?}", fixture.id, c.pos);
+        }
+        for item in &c.items {
+            let stack = blocks::container::Stack::new(&item.id, item.count as i32);
+            blocks::container::set_item(&mut level, pos, item.slot as usize, stack);
+        }
+    }
     Ok(level)
 }
 
@@ -125,11 +136,11 @@ mod tests {
     #[test]
     fn unsupported_blocks_fail_by_name() {
         let source = FixtureSource::from_json(
-            r##"{"name": "t", "ticks": 1, "palette": {"#": "stone", "h": "hopper"}, "layers": [["#h"]], "stimuli": []}"##,
+            r##"{"name": "t", "ticks": 1, "palette": {"#": "stone", "h": "furnace"}, "layers": [["#h"]], "stimuli": []}"##,
         )
         .unwrap();
         let fixture = source.resolve(Transform::IDENTITY).unwrap();
         let err = super::run(&fixture, "26.3").unwrap_err().to_string();
-        assert!(err.contains("minecraft:hopper is not supported"), "{err}");
+        assert!(err.contains("minecraft:furnace is not supported"), "{err}");
     }
 }

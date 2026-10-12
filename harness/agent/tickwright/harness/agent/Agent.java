@@ -37,6 +37,8 @@ public final class Agent {
         FIRST_BLOCK_POS,
         /** The first parameter, whatever its type. */
         FIRST,
+        /** The receiver itself, for methods without parameters. */
+        SELF,
     }
 
     private record Rule(String owner, String method, String descriptorPrefix, String kind, Arg arg) {}
@@ -58,7 +60,9 @@ public final class Agent {
             // A block event being queued and being run.
             new Rule("net/minecraft/server/level/ServerLevel", "blockEvent", "(" + BLOCK_POS,
                     "block_event_queued", Arg.FIRST_BLOCK_POS),
-            new Rule("net/minecraft/server/level/ServerLevel", "doBlockEvent", "(", "block_event", Arg.FIRST));
+            new Rule("net/minecraft/server/level/ServerLevel", "doBlockEvent", "(", "block_event", Arg.FIRST),
+            // A block entity marked changed: how containers report new contents.
+            new Rule("net/minecraft/world/level/block/entity/BlockEntity", "setChanged", "()V", "items", Arg.SELF));
 
     private Agent() {}
 
@@ -143,6 +147,9 @@ public final class Agent {
     private static int argSlot(MethodTypeDesc type, Arg arg) {
         if (arg == null) {
             return 1;
+        }
+        if (arg == Arg.SELF) {
+            return 0;
         }
         int slot = 1;
         for (ClassDesc p : type.parameterList()) {

@@ -230,6 +230,11 @@ impl Level {
         }
     }
 
+    /// A container's `setChanged`, with what it now holds.
+    pub fn record_items(&mut self, pos: Pos, detail: String) {
+        self.record(Event::Items(detail), pos);
+    }
+
     // --- writes ------------------------------------------------------------
 
     /// `Level.setBlock(pos, state, flags)`.

@@ -14,6 +14,7 @@ pub enum Event {
     Tick,
     BlockEventQueued,
     BlockEvent { a: i32, b: i32 },
+    Items(String),
 }
 
 pub struct Recorder {
@@ -49,6 +50,7 @@ impl Recorder {
             Event::Tick => (Kind::Tick, None, None),
             Event::BlockEventQueued => (Kind::BlockEventQueued, None, None),
             Event::BlockEvent { a, b } => (Kind::BlockEvent, None, Some(format!("{a},{b}"))),
+            Event::Items(d) => (Kind::Items, None, Some(d)),
         };
         self.entries.push(Entry {
             tick: self.tick,
