@@ -3,7 +3,7 @@
 //! `DefaultRedstoneWireEvaluator` recomputes power one wire at a time. A wire
 //! whose power changes writes itself with flag 2 and then updates the
 //! neighbors of itself and its six neighbors, in the iteration order of a
-//! `HashSet<BlockPos>`. That order depends on the absolute position, which is
+//! `FxHashSet<BlockPos>`. That order depends on the absolute position, which is
 //! why dust is locational.
 //!
 //! `ExperimentalRedstoneWireEvaluator`, used when the `redstone_experiments`
@@ -12,7 +12,8 @@
 //! changed wire, and only then sends updates, each wire to the blocks it
 //! points into, in an order given by its [`Orientation`].
 
-use std::collections::{HashMap, VecDeque};
+use crate::fxhash::FxHashMap;
+use std::collections::VecDeque;
 
 use crate::level::{Level, flags};
 use crate::orientation::Orientation;
@@ -352,7 +353,7 @@ struct Experimental {
     to_turn_on: VecDeque<Pos>,
     /// `updatedWires`: a linked map, so iteration follows insertion order.
     order: Vec<Pos>,
-    updated: HashMap<Pos, (Orientation, i32)>,
+    updated: FxHashMap<Pos, (Orientation, i32)>,
 }
 
 impl Experimental {

@@ -7,6 +7,7 @@
 pub mod bench;
 pub mod blocks;
 pub mod entity;
+pub mod fxhash;
 pub mod game_event;
 pub mod items;
 pub mod level;
