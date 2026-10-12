@@ -65,6 +65,9 @@ enum Update {
     Multi { source: Pos, block: BlockId, skip: Option<Dir>, idx: usize },
     /// `SimpleNeighborUpdate`: neighbor-changed to one position.
     Simple { pos: Pos, block: BlockId, moved_by_piston: bool },
+    /// `FullNeighborUpdate`: like `Simple`, but with the state to notify
+    /// given rather than read from the world.
+    Full { pos: Pos, state: StateId, block: BlockId, moved_by_piston: bool },
     /// `ShapeUpdate`.
     Shape { dir: Dir, pos: Pos, neighbor: Pos, neighbor_state: StateId, flags: i32, recursion: i32 },
 }
@@ -369,6 +372,12 @@ impl Level {
         self.add_and_run(Update::Simple { pos, block, moved_by_piston: false });
     }
 
+    /// `Level.neighborChanged(state, pos, block, orientation, movedByPiston)`:
+    /// one neighbor-changed update to `state`, which need not be in the world.
+    pub fn neighbor_changed_state(&mut self, pos: Pos, state: StateId, block: BlockId, moved_by_piston: bool) {
+        self.add_and_run(Update::Full { pos, state, block, moved_by_piston });
+    }
+
     /// `BlockStateBase.updateNeighbourShapes`: tell each neighbor of `pos`,
     /// in `UPDATE_SHAPE_ORDER`, that `state` is now beside it.
     pub fn update_neighbour_shapes(&mut self, pos: Pos, state: StateId, flags: i32, recursion: i32) {
@@ -448,8 +457,8 @@ impl Level {
 
     fn execute(&mut self, step: Step) {
         match step {
-            Step::Neighbor { pos, block, moved_by_piston } => {
-                let state = self.get(pos);
+            Step::Neighbor { pos, state, block, moved_by_piston } => {
+                let state = state.unwrap_or_else(|| self.get(pos));
                 self.record(Event::Neighbor, pos);
                 blocks::neighbor_changed(self, pos, state, block, moved_by_piston);
             }
@@ -698,7 +707,7 @@ impl Level {
 
 /// One notification taken off an update entry.
 enum Step {
-    Neighbor { pos: Pos, block: BlockId, moved_by_piston: bool },
+    Neighbor { pos: Pos, state: Option<StateId>, block: BlockId, moved_by_piston: bool },
     Shape { dir: Dir, pos: Pos, neighbor: Pos, neighbor_state: StateId, flags: i32, recursion: i32 },
 }
 
@@ -711,11 +720,15 @@ fn next_step(u: &mut Update) -> (Option<Step>, bool) {
             if *idx < 6 && Some(UPDATE_ORDER[*idx]) == *skip {
                 *idx += 1;
             }
-            (Some(Step::Neighbor { pos, block: *block, moved_by_piston: false }), *idx < 6)
+            (Some(Step::Neighbor { pos, state: None, block: *block, moved_by_piston: false }), *idx < 6)
         }
         Update::Simple { pos, block, moved_by_piston } => {
-            (Some(Step::Neighbor { pos: *pos, block: *block, moved_by_piston: *moved_by_piston }), false)
+            (Some(Step::Neighbor { pos: *pos, state: None, block: *block, moved_by_piston: *moved_by_piston }), false)
         }
+        Update::Full { pos, state, block, moved_by_piston } => (
+            Some(Step::Neighbor { pos: *pos, state: Some(*state), block: *block, moved_by_piston: *moved_by_piston }),
+            false,
+        ),
         Update::Shape { dir, pos, neighbor, neighbor_state, flags, recursion } => (
             Some(Step::Shape {
                 dir: *dir,

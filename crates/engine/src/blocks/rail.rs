@@ -10,6 +10,8 @@ use crate::level::{Level, flags};
 use crate::pos::{Dir, Pos};
 use crate::registry::StateId;
 
+use super::Kind;
+
 fn is_slope(shape: &str) -> bool {
     shape.starts_with("ascending_")
 }
@@ -137,11 +139,14 @@ pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId, moved_by_pi
     }
 }
 
-/// `BaseRailBlock.onPlace`, as the captures show it.
+/// `BaseRailBlock.onPlace`: a fresh rail runs `updateState`, which reshapes
+/// it (`updateDir`) and then sends itself a neighbor update carrying the
+/// new shape, so it checks its power at once.
 ///
-/// A fresh rail checks its power at once, through a queued neighbor update,
-/// but is not removed for lack of support: a sloped rail placed before the
-/// block it leans on survives in the game (`powered_rail_slope`).
+/// `RailState` is not simulated. The one reshaping that matters here is a
+/// slope placed before the rail it climbs to: the game flattens it until that
+/// rail arrives, so its missing high-side support does not remove it
+/// (`powered_rail_slope`). The flattened shape is used for the update only.
 ///
 /// When only `powered` changes, the rail updates the neighbors above it (if
 /// sloped), its own and those below it, in that order, before the write's
@@ -149,10 +154,24 @@ pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId, moved_by_pi
 pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId) {
     let block = level.block(state);
     if !level.is(old, block) {
-        update_state(level, pos, state);
+        let placed = flatten_lone_slope(level, pos, state);
+        level.neighbor_changed_state(pos, placed, block, false);
     } else if level.flag(old, "powered") != level.flag(state, "powered") {
         removal_updates(level, pos, state, block);
     }
+}
+
+/// A slope with no rail above its high side, as `updateDir` would flatten it.
+fn flatten_lone_slope(level: &Level, pos: Pos, state: StateId) -> StateId {
+    let (high, flat) = match level.prop(state, "shape") {
+        "ascending_east" => (Dir::East, "east_west"),
+        "ascending_west" => (Dir::West, "east_west"),
+        "ascending_north" => (Dir::North, "north_south"),
+        "ascending_south" => (Dir::South, "north_south"),
+        _ => return state,
+    };
+    let above = pos.above().offset(high);
+    if level.kind_at(above) == Kind::PoweredRail { state } else { level.with(state, "shape", flat) }
 }
 
 fn removal_updates(level: &mut Level, pos: Pos, state: StateId, block: crate::registry::BlockId) {
