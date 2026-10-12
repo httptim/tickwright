@@ -1,0 +1,41 @@
+{
+  "name": "nucleation_dust_down_stone",
+  "description": "Nucleation's dust_down_stone build. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 12,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "redstone_wire[east=up,north=none,power=14,south=none,west=side]",
+    "B": "redstone_wire[east=side,north=none,power=15,south=none,west=side]",
+    "C": "redstone_block"
+  },
+  "layers": [
+    [
+      "##.."
+    ],
+    [
+      ".A#."
+    ],
+    [
+      "..BC"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "destroy",
+      "pos": [
+        3,
+        2,
+        0
+      ]
+    }
+  ]
+}

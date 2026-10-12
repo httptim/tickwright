@@ -1,0 +1,45 @@
+{
+  "name": "nucleation_water_spread",
+  "description": "Milestone D's opening pin: a walled source behind a broken wall. The boundary break schedules the source's fluid tick with the \u22121 fold (first flow lands on tick 4), then the flow front advances one block every five game ticks, levels 1 through 5. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 36,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "water[level=0]"
+  },
+  "layers": [
+    [
+      "########",
+      "########",
+      "########"
+    ],
+    [
+      "########",
+      "#A#....#",
+      "########"
+    ],
+    [
+      "........",
+      "........",
+      "........"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "destroy",
+      "pos": [
+        2,
+        1,
+        1
+      ]
+    }
+  ]
+}

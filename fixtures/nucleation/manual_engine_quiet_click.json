@@ -1,0 +1,52 @@
+{
+  "name": "nucleation_manual_engine_quiet_click",
+  "description": "The designed behaviour, isolated from placement side effects: knownShape placement dispatches nothing \u2014 the machine sits completely still, QC-powered piston included, for ten ticks \u2014 and the click at the note block's *as-built* position then runs exactly one activation: two steps, starting at ticks 10 and 19, nine game ticks apart. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 47,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "observer[facing=north,powered=false]",
+    "A": "white_stained_glass",
+    "B": "piston[extended=false,facing=west]",
+    "C": "piston[extended=false,facing=south]",
+    "D": "sticky_piston[extended=false,facing=east]",
+    "E": "slime_block",
+    "F": "note_block[instrument=harp,note=5,powered=false]",
+    "G": "observer[facing=up,powered=false]",
+    "H": "redstone_block"
+  },
+  "layers": [
+    [
+      "...........#AA.B",
+      "............CADE",
+      "..............EF"
+    ],
+    [
+      "...............G",
+      "..............GE",
+      "..............EB"
+    ],
+    [
+      "................",
+      "................",
+      "..............H."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 11,
+      "action": "use",
+      "pos": [
+        15,
+        0,
+        2
+      ]
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "name": "nucleation_note_powered",
+  "description": "Captured with `--pulse 1,0,0 --pulse-ticks 2`: the powered flag flips on the same tick the source appears and again on the tick it vanishes \u2014 NoteBlock has no scheduled delay at all. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 14,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "note_block[instrument=harp,note=0,powered=false]"
+  },
+  "layers": [
+    [
+      "#."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "set",
+      "pos": [
+        1,
+        0,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 3,
+      "action": "destroy",
+      "pos": [
+        1,
+        0,
+        0
+      ]
+    }
+  ]
+}

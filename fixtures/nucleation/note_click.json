@@ -1,0 +1,33 @@
+{
+  "name": "nucleation_note_click",
+  "description": "Captured with `--use 0,0,0 --use-tick 6`. Three things in one golden: the observer's placement pulse (ticks 1 and 3), the click cycling `note` on its own tick (6), and the observer pulsing one tick after the click (7 and 9) \u2014 boundary scheduling, not the in-phase two-tick offset. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 21,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "note_block[instrument=harp,note=0,powered=false]",
+    "A": "observer[facing=west,powered=false]"
+  },
+  "layers": [
+    [
+      "#A."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 7,
+      "action": "use",
+      "pos": [
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

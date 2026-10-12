@@ -1,0 +1,45 @@
+{
+  "name": "nucleation_slime_drag",
+  "description": "Nucleation's slime_drag build. (From Nucleation, MIT, (c) 2025 Schem-at. Nucleation's placement updates set it going; here its redstone blocks are placed on the first tick instead.)",
+  "ticks": 14,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "piston[extended=false,facing=east]",
+    "B": "slime_block",
+    "C": "honey_block"
+  },
+  "layers": [
+    [
+      "###."
+    ],
+    [
+      "AB.."
+    ],
+    [
+      ".#.."
+    ],
+    [
+      ".C.."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "set",
+      "pos": [
+        0,
+        2,
+        0
+      ],
+      "state": "redstone_block"
+    }
+  ]
+}

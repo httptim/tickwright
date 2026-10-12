@@ -1,0 +1,55 @@
+{
+  "name": "nucleation_rails_chain",
+  "description": "findPoweredRailSignal: the direct neighbour plus a chain of at most 8 already-powered rails \u2014 nine light up, the tenth stays dark, and the whole wave lands inside one tick's update cascade. Both edges captured. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 14,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "powered_rail[powered=false,shape=east_west,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "###############",
+      "###############",
+      "###############"
+    ],
+    [
+      "...............",
+      ".AAAAAAAAAAAAA.",
+      "..............."
+    ],
+    [
+      "...............",
+      "...............",
+      "..............."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 3,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        1
+      ]
+    }
+  ]
+}

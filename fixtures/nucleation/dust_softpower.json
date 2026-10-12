@@ -1,0 +1,41 @@
+{
+  "name": "nucleation_dust_softpower",
+  "description": "Same structure, no break: the dust strongly powers its floor block, the conductor re-emits, and the piston extends on tick 0. (From Nucleation, MIT, (c) 2025 Schem-at. Nucleation's placement updates set it going; here its redstone blocks are placed on the first tick instead.)",
+  "ticks": 14,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "B": "redstone_wire[east=side,north=none,power=15,south=none,west=side]",
+    "C": "redstone_wire[east=side,north=none,power=14,south=none,west=side]",
+    "D": "redstone_wire[east=side,north=none,power=13,south=none,west=side]",
+    "E": "redstone_wire[east=side,north=none,power=12,south=none,west=side]",
+    "F": "piston[extended=false,facing=up]"
+  },
+  "layers": [
+    [
+      "#####F"
+    ],
+    [
+      ".BCDE."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "state": "redstone_block"
+    }
+  ]
+}

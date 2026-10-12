@@ -1,0 +1,52 @@
+{
+  "name": "nucleation_manual_engine_click",
+  "description": "The same engine, placed with room to fly: padded to the east end of the capture's chunk so nothing crosses the frozen chunk border. Placement runs the first two steps (ticks 0-25); the world then goes quiet; a right-click on the note block \u2014 at [13,0,2], where the machine's two steps left it \u2014 cycles its pitch on tick 30, the observers see the change, and the engine runs a complete second activation through tick 55. Fifty-five ticks, two full activations, one of them started by the player-input path. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 67,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "observer[facing=north,powered=false]",
+    "A": "white_stained_glass",
+    "B": "piston[extended=false,facing=west]",
+    "C": "piston[extended=false,facing=south]",
+    "D": "sticky_piston[extended=false,facing=east]",
+    "E": "slime_block",
+    "F": "note_block[instrument=harp,note=5,powered=false]",
+    "G": "observer[facing=up,powered=false]",
+    "H": "redstone_block"
+  },
+  "layers": [
+    [
+      "...........#AA.B",
+      "............CADE",
+      "..............EF"
+    ],
+    [
+      "...............G",
+      "..............GE",
+      "..............EB"
+    ],
+    [
+      "................",
+      "................",
+      "..............H."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 31,
+      "action": "use",
+      "pos": [
+        13,
+        0,
+        2
+      ]
+    }
+  ]
+}

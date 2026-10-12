@@ -1,0 +1,51 @@
+{
+  "name": "nucleation_trapdoor_toggle",
+  "description": "Oak (facing=north, bottom) and iron (facing=south, top) beside one redstone block: open+powered flip together on the power edge, both ways. Captured with the --at schedule that mirrors the dynamic case exactly. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 20,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "oak_trapdoor[facing=north,half=bottom,open=false,powered=false,waterlogged=false]",
+    "A": "iron_trapdoor[facing=south,half=top,open=false,powered=false,waterlogged=false]",
+    "B": "piston[extended=false,facing=east]"
+  },
+  "layers": [
+    [
+      "..#.",
+      "....",
+      "B#.."
+    ],
+    [
+      ".A..",
+      "....",
+      "...."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 3,
+      "action": "set",
+      "pos": [
+        1,
+        0,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 9,
+      "action": "destroy",
+      "pos": [
+        1,
+        0,
+        0
+      ]
+    }
+  ]
+}

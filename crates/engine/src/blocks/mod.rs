@@ -54,6 +54,7 @@ impl Kind {
             "air" | "cave_air" | "void_air" => Kind::Air,
             "stone" | "obsidian" | "cobblestone" | "dirt" | "smooth_stone" | "white_wool" | "iron_block"
             | "gold_block" | "diamond_block" | "bedrock" => Kind::Solid,
+            n if n.ends_with("_concrete") => Kind::Solid,
             "lever" => Kind::Lever,
             "stone_button" | "polished_blackstone_button" => Kind::StoneButton,
             n if n == "glass" || n == "tinted_glass" || n.ends_with("_stained_glass") => Kind::Glass,
