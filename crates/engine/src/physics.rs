@@ -294,3 +294,104 @@ impl Physics {
         self.factors.get(block.0 as usize).copied().flatten().unwrap_or(DEFAULT_FACTORS)
     }
 }
+
+/// `Mth`'s table-driven trigonometry, which entities that turn use.
+pub mod mth {
+    use std::sync::LazyLock;
+
+    static SIN: LazyLock<Vec<f32>> =
+        LazyLock::new(|| (0..65536).map(|i| (i as f64 * std::f64::consts::PI * 2.0 / 65536.0).sin() as f32).collect());
+
+    /// `Mth.sin(double)`.
+    pub fn sin(d: f64) -> f32 {
+        SIN[((d * 10430.378350470453) as i64 & 65535) as usize]
+    }
+
+    /// `Mth.cos(double)`.
+    pub fn cos(d: f64) -> f32 {
+        SIN[((d * 10430.378350470453 + 16384.0) as i64 & 65535) as usize]
+    }
+
+    /// `Mth.wrapDegrees(float)`.
+    pub fn wrap_degrees(d: f32) -> f32 {
+        let mut f = d % 360.0;
+        if f >= 180.0 {
+            f -= 360.0;
+        }
+        if f < -180.0 {
+            f += 360.0;
+        }
+        f
+    }
+
+    const FRAC_BIAS: f64 = f64::from_bits(4805340802404319232);
+
+    static ASIN_COS: LazyLock<Vec<(f64, f64)>> = LazyLock::new(|| {
+        (0..257)
+            .map(|i| {
+                let asin = (i as f64 / 256.0).asin();
+                (asin, asin.cos())
+            })
+            .collect()
+    });
+
+    fn fast_inv_sqrt(x: f64) -> f64 {
+        let h = 0.5 * x;
+        let i = 6910469410427058090i64 - ((x.to_bits() as i64) >> 1);
+        let x = f64::from_bits(i as u64);
+        x * (1.5 - h * x * x)
+    }
+
+    /// `Mth.atan2`.
+    pub fn atan2(mut y: f64, mut x: f64) -> f64 {
+        let d = x * x + y * y;
+        if d.is_nan() {
+            return f64::NAN;
+        }
+        let neg_y = y < 0.0;
+        if neg_y {
+            y = -y;
+        }
+        let neg_x = x < 0.0;
+        if neg_x {
+            x = -x;
+        }
+        let steep = y > x;
+        if steep {
+            std::mem::swap(&mut x, &mut y);
+        }
+        let inv = fast_inv_sqrt(d);
+        x *= inv;
+        y *= inv;
+        let e = FRAC_BIAS + y;
+        let i = e.to_bits() as i32 as usize;
+        let (asin, cos) = ASIN_COS[i];
+        let f = e - FRAC_BIAS;
+        let g = y * cos - x * f;
+        let h = (6.0 + g * g) * g * 0.16666666666666666;
+        let mut r = asin + h;
+        if steep {
+            r = std::f64::consts::FRAC_PI_2 - r;
+        }
+        if neg_x {
+            r = std::f64::consts::PI - r;
+        }
+        if neg_y {
+            r = -r;
+        }
+        r
+    }
+
+    #[cfg(test)]
+    mod tests {
+        #[test]
+        fn atan2_is_close_to_the_real_one() {
+            // `fastInvSqrt` leaves it off by a few millionths.
+            for (y, x) in [(0.0, -0.3), (0.3, 0.0), (-1.0, 2.0), (0.5, 0.5), (-3.0, -0.1)] {
+                assert!((super::atan2(y, x) - f64::atan2(y, x)).abs() < 1e-5, "{y} {x}");
+            }
+            assert_eq!(super::wrap_degrees(180.0), -180.0);
+            assert!((super::cos(0.0) - 1.0).abs() < 1e-6);
+        }
+    }
+}

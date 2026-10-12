@@ -1,21 +1,40 @@
 //! `AbstractMinecart` with `OldMinecartBehavior` (the game's default; the
 //! experimental minecart physics are off in 26.3 worlds): plain and
-//! furnace minecarts, without riders.
+//! furnace minecarts, without riders, which push each other.
 
 use super::{Data, Entity, apply_gravity, floor, move_entity};
 use crate::blocks::rail::is_rail_state;
 use crate::level::Level;
 use crate::physics::Vec3;
+use crate::physics::mth;
 use crate::pos::{Dir, Pos};
 
 #[derive(Clone, Debug)]
 pub struct Minecart {
     /// A furnace minecart; the engine's never have fuel.
     pub furnace: bool,
+    /// `yRot`, which way the cart faces; carts only push carts in line
+    /// with it.
+    pub y_rot: f32,
+    /// `flipped`: the cart turned round to face the way it moves.
+    pub flipped: bool,
+}
+
+impl Minecart {
+    pub fn new(furnace: bool) -> Minecart {
+        Minecart { furnace, y_rot: 0.0, flipped: false }
+    }
 }
 
 fn cart(e: &Entity) -> &Minecart {
     match &e.data {
+        Data::Minecart(m) => m,
+        _ => unreachable!("not a minecart"),
+    }
+}
+
+fn cart_mut(e: &mut Entity) -> &mut Minecart {
+    match &mut e.data {
         Data::Minecart(m) => m,
         _ => unreachable!("not a minecart"),
     }
@@ -115,6 +134,7 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
 /// `OldMinecartBehavior.tick`, on the server.
 fn behavior_tick(level: &mut Level, e: &mut Entity) {
     let old = e.pos;
+    let y_rot_o = cart(e).y_rot;
     apply_gravity(e, 0.04);
     let r = rail_pos(level, e.pos);
     if is_rail_state(level, level.get(r)) {
@@ -123,19 +143,81 @@ fn behavior_tick(level: &mut Level, e: &mut Entity) {
         come_off_track(level, e);
     }
     super::apply_effects_from_blocks(level, e, old);
+    turn(e, old, y_rot_o);
     push_entities(level, e);
 }
 
-/// `pushAndPickupEntities`, for the carts the engine has: another cart
-/// close by would be pushed, which isn't simulated yet.
-fn push_entities(level: &mut Level, e: &Entity) {
+/// The end of `OldMinecartBehavior.tick`: face the way the cart moved,
+/// turning round (`flipped`) rather than swinging by more than 170°.
+fn turn(e: &mut Entity, old: Vec3, y_rot_o: f32) {
+    let (dx, dz) = (old.x - e.pos.x, old.z - e.pos.z);
+    let m = cart_mut(e);
+    if dx * dx + dz * dz > 0.001 {
+        m.y_rot = (mth::atan2(dz, dx) * 180.0 / std::f64::consts::PI) as f32;
+        if m.flipped {
+            m.y_rot += 180.0;
+        }
+    }
+    let delta = mth::wrap_degrees(m.y_rot - y_rot_o);
+    if !(-170.0..170.0).contains(&delta) {
+        m.y_rot += 180.0;
+        m.flipped = !m.flipped;
+    }
+    m.y_rot %= 360.0;
+}
+
+/// `pushAndPickupEntities`: each other cart close by gets
+/// `push(this cart)`. The engine has no mobs for a cart to pick up.
+fn push_entities(level: &mut Level, e: &mut Entity) {
     let b = e.bounding_box().inflate(0.2, 0.0, 0.2);
-    if level
-        .entities
-        .iter()
-        .any(|o| !o.removed && matches!(o.data, Data::Minecart(_)) && o.bounding_box().intersects(&b))
-    {
-        level.unsupported("minecarts pushing each other");
+    for i in 0..level.entities.len() {
+        let o = &level.entities[i];
+        if !o.removed && matches!(o.data, Data::Minecart(_)) && o.bounding_box().intersects(&b) {
+            push(&mut level.entities[i], e);
+        }
+    }
+}
+
+/// `AbstractMinecart.push(entity)` on cart `b` by cart `a`: if `a` is in
+/// line with the way `b` faces, the two share their speed and are pushed
+/// apart. A furnace cart takes most of a plain cart's speed instead.
+fn push(b: &mut Entity, a: &mut Entity) {
+    let (mut dx, mut dz) = (a.pos.x - b.pos.x, a.pos.z - b.pos.z);
+    let mut dd = dx * dx + dz * dz;
+    if dd < 1.0E-4f32 as f64 {
+        return;
+    }
+    dd = dd.sqrt();
+    dx /= dd;
+    dz /= dd;
+    let inv = (1.0 / dd).min(1.0);
+    dx *= inv;
+    dz *= inv;
+    dx *= 0.1f32 as f64;
+    dz *= 0.1f32 as f64;
+    dx *= 0.5;
+    dz *= 0.5;
+    let v = Vec3::new(a.pos.x - b.pos.x, 0.0, a.pos.z - b.pos.z).normalize();
+    let r = cart(b).y_rot as f64 * (std::f32::consts::PI / 180.0) as f64;
+    let look = Vec3::new(mth::cos(r) as f64, 0.0, mth::sin(r) as f64).normalize();
+    if (v.x * look.x + v.z * look.z).abs() < 0.8f32 as f64 {
+        return;
+    }
+    let (mb, ma) = (b.motion, a.motion);
+    match (cart(a).furnace, cart(b).furnace) {
+        (true, false) => {
+            b.motion = mb.multiply(0.2, 1.0, 0.2) + Vec3::new(ma.x - dx, 0.0, ma.z - dz);
+            a.motion = ma.multiply(0.95, 1.0, 0.95);
+        }
+        (false, true) => {
+            a.motion = ma.multiply(0.2, 1.0, 0.2) + Vec3::new(mb.x + dx, 0.0, mb.z + dz);
+            b.motion = mb.multiply(0.95, 1.0, 0.95);
+        }
+        _ => {
+            let (mx, mz) = ((ma.x + mb.x) / 2.0, (ma.z + mb.z) / 2.0);
+            b.motion = mb.multiply(0.2, 1.0, 0.2) + Vec3::new(mx - dx, 0.0, mz - dz);
+            a.motion = ma.multiply(0.2, 1.0, 0.2) + Vec3::new(mx + dx, 0.0, mz + dz);
+        }
     }
 }
 

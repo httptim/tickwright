@@ -1,0 +1,63 @@
+{
+  "name": "minecart_bumps_parked",
+  "description": "A rolling minecart runs into one standing still on the same rail.",
+  "ticks": 60,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "minecart"
+  ],
+  "palette": {
+    "#": "stone",
+    "r": "rail[shape=east_west]"
+  },
+  "layers": [
+    [
+      "##########",
+      "##########",
+      "##########"
+    ],
+    [
+      "..........",
+      "rrrrrrrrrr",
+      ".........."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        1.5,
+        1.0625,
+        1.5
+      ],
+      "motion": [
+        0.35,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        6.5,
+        1.0625,
+        1.5
+      ],
+      "motion": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "entities": true
+}
