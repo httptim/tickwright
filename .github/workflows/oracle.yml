@@ -22,7 +22,7 @@ on:
         description: Capture only fixtures whose file name contains this
         required: false
       commit_data:
-        description: Commit regenerated registry data to the branch
+        description: Commit regenerated registry data and traces to the branch
         type: boolean
         default: false
 
@@ -63,23 +63,23 @@ jobs:
             jq -c '{initial: .initial | length, levels}, (.entries[] | [.tick, .phase, .kind, .pos, (.state // .detail)])' "$t"
             echo "::endgroup::"
           done
-      - name: Registry data is current
-        if: ${{ !inputs.commit_data }}
+      - name: Committed ground truth is current
+        if: ${{ !inputs.commit_data && !inputs.only }}
         run: |
-          git add -N data
-          if git ls-files --error-unmatch "data/$MC_VERSION" >/dev/null 2>&1; then
-            git diff --exit-code --stat -- data
-          else
+          if [ -z "$(git ls-tree --name-only HEAD "data/$MC_VERSION")" ]; then
             echo "::warning::data/$MC_VERSION is not committed yet; run this workflow with commit_data"
-            head -c 2000 "data/$MC_VERSION/blocks.json"
+            exit 0
           fi
-      - name: Commit registry data
-        if: ${{ inputs.commit_data }}
+          # Fails if the game's output changed, or if a capture is not deterministic.
+          git add -N data traces
+          git diff --exit-code --stat -- data traces
+      - name: Commit ground truth
+        if: ${{ inputs.commit_data && !inputs.only }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data
-          git diff --cached --quiet || git commit -m "Regenerate $MC_VERSION registry data from the game's reports"
+          git add data traces
+          git diff --cached --quiet || git commit -m "Regenerate $MC_VERSION registry data and traces from the game"
           git push origin "HEAD:${GITHUB_REF_NAME}"
       - uses: actions/upload-artifact@v4
         if: always()

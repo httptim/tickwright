@@ -78,6 +78,17 @@ done
 echo "    $n trace(s) parse and self-compare"
 echo "    traces total: $(du -sh "$WORK/traces" | cut -f1)"
 
+# --- committed copy -----------------------------------------------------------
+# traces/<version>/ holds the ground truth the engine is tested against,
+# gzipped (-n keeps the output byte-identical between runs).
+if [[ $# -eq 0 ]]; then
+    rm -rf "traces/$MC_VERSION"
+    mkdir -p "traces/$MC_VERSION"
+    for t in "$WORK"/traces/*.json; do
+        gzip -n -9 -c "$t" > "traces/$MC_VERSION/$(basename "$t").gz"
+    done
+fi
+
 # --- data reports -------------------------------------------------------------
 # The game's own dump of every block, its properties and default state, and
 # every registry. tools/registry.py condenses it into data/<version>/.
