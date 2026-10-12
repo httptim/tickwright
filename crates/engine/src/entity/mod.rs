@@ -535,25 +535,43 @@ pub fn move_entity(level: &mut Level, e: &mut Entity, mut movement: Vec3) {
             // as on any other block.
             Kind::Slime if e.start_motion_y < 0.0 => {
                 let f = if e.is_living() { 1.0 } else { 0.8f32 as f64 };
-                e.motion = Vec3::new(e.motion.x, -e.motion.y * f, e.motion.z);
+                let y = slime_impact_speed(e.motion.y, moved.y / movement.y);
+                e.motion = Vec3::new(e.motion.x, -y * f, e.motion.z);
             }
             _ => e.motion = e.motion.multiply(1.0, 0.0, 1.0),
         }
     }
     if e.on_ground {
-        // `Block.stepOn`, for the block under the entity's feet.
-        let state = level.get(e.on_pos(level, 0.2));
-        if level.kind(state) == Kind::Slime {
-            let d = e.motion.y.abs();
-            if d < 0.1 {
-                let f = 0.4 + d * 0.2;
-                e.motion = e.motion.multiply(f, 1.0, f);
-            }
-        }
+        step_on(level, e);
     }
     let f = block_speed_factor(level, e);
     if f != 1.0 {
         e.motion = e.motion.multiply(f as f64, 1.0, f as f64);
+    }
+}
+
+/// The vertical motion a falling entity bounces off slime with (still
+/// negative), given its motion `y` for the tick and the fraction `t` of the
+/// tick's fall it got through before landing. 26.3 captures show the bounce
+/// is not just `-y`: it is as if the entity had picked up gravity and drag
+/// for that part of the tick, `(y - g*t) * (1 - (1 - drag)*t)`, for the
+/// entities' gravity `g` of 0.04 and drag of 0.98. This was fitted exactly
+/// over two dozen bounces of items and TNT dropped from different heights
+/// (`slime_bounce_heights`, `slime_drop`).
+fn slime_impact_speed(y: f64, t: f64) -> f64 {
+    const G: f64 = 0.04;
+    (y - G * t) * (1.0 - (1.0 - DRAG) * t)
+}
+
+/// `Block.stepOn`, for the block under the entity's feet.
+pub fn step_on(level: &Level, e: &mut Entity) {
+    let state = level.get(e.on_pos(level, 0.2));
+    if level.kind(state) == Kind::Slime {
+        let d = e.motion.y.abs();
+        if d < 0.1 {
+            let f = 0.4 + d * 0.2;
+            e.motion = e.motion.multiply(f, 1.0, f);
+        }
     }
 }
 

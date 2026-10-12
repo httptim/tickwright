@@ -117,8 +117,11 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
         }
     } else {
         // Fitted from 26.3 captures: a resting item still feels the
-        // blocks it is in.
+        // blocks it is in, and slime under it still slows it.
         super::apply_effects_from_blocks(level, e, old);
+        if e.on_ground {
+            super::step_on(level, e);
+        }
     }
     let moved_block = super::floor(old.x) != super::floor(e.pos.x)
         || super::floor(old.y) != super::floor(e.pos.y)
