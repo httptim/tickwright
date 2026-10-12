@@ -62,6 +62,10 @@ impl Vec3 {
         if d < 1.0E-5f32 as f64 { Vec3::ZERO } else { Vec3::new(self.x / d, self.y / d, self.z / d) }
     }
 
+    pub fn horizontal_distance(self) -> f64 {
+        self.horizontal_distance_sqr().sqrt()
+    }
+
     pub fn horizontal_distance_sqr(self) -> f64 {
         self.x * self.x + self.z * self.z
     }

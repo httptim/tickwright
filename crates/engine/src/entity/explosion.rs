@@ -107,6 +107,7 @@ fn hurt_entities(level: &mut Level, source: Option<&Entity>, center: Vec3, radiu
         let eye = match e.data {
             Data::Tnt(_) => e.pos.y,
             Data::Item(_) => e.pos.y + 0.2125f32 as f64,
+            Data::Minecart(_) => e.pos.y + (0.7f32 * 0.85) as f64,
             _ => e.pos.y + (0.98f32 * 0.85) as f64,
         };
         let (mut x, mut y, mut z) = (e.pos.x - center.x, eye - center.y, e.pos.z - center.z);

@@ -196,9 +196,13 @@ fn can_survive(level: &Level, pos: Pos, state: StateId) -> bool {
             let b = level.get(below);
             is_face_sturdy(level, below, b, Dir::Up) || level.kind(b) == Kind::Hopper
         }
-        Kind::Repeater | Kind::Comparator | Kind::Cake | Kind::PoweredRail | Kind::RedstoneTorch | Kind::Torch => {
-            sturdy(level, below, Dir::Up)
-        }
+        Kind::Repeater
+        | Kind::Comparator
+        | Kind::Cake
+        | Kind::PoweredRail
+        | Kind::Rail
+        | Kind::RedstoneTorch
+        | Kind::Torch => sturdy(level, below, Dir::Up),
         Kind::Door => level.prop(state, "half") != "lower" || sturdy(level, below, Dir::Up),
         Kind::RedstoneWallTorch | Kind::WallTorch | Kind::TripwireHook => {
             let facing = level.dir(state, "facing");
