@@ -116,6 +116,19 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
     Ok(level)
 }
 
+/// A resolved place stimulus as a click on the block at `pos`.
+pub fn click(pos: Pos, p: &tickwright_trace::fixture::PlaceInput) -> Result<blocks::placement::Click> {
+    let dir = |s: &str| crate::pos::Dir::from_name(s).with_context(|| format!("{s} is not a direction"));
+    Ok(blocks::placement::Click {
+        clicked: pos,
+        face: dir(&p.face)?,
+        hit: p.hit_or_default(),
+        look: dir(&p.look)?,
+        pitch: p.pitch,
+        sneak: p.sneak,
+    })
+}
+
 /// Apply the stimuli for game tick `t`, before the world tick runs.
 fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result<()> {
     let [ox, oy, oz] = fixture.origin;
@@ -133,6 +146,10 @@ fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result
             }
             Action::Destroy => {
                 level.destroy_block(pos, crate::level::MAX_RECURSION);
+            }
+            Action::Place => {
+                let p = s.place.as_ref().context("place stimulus without item, face and look")?;
+                blocks::placement::place(level, &p.item, click(pos, p)?).with_context(|| fixture.id.clone())?;
             }
         }
     }

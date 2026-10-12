@@ -56,6 +56,18 @@ impl Transform {
         [x, y, z]
     }
 
+    /// A point inside one block, in sixteenths from its least corner.
+    pub fn sixteenths(self, [x, y, z]: [i32; 3]) -> [i32; 3] {
+        let (mut x, mut z) = (x, z);
+        if self.mirror_x {
+            x = 16 - x;
+        }
+        for _ in 0..self.quarter_turns {
+            (x, z) = (16 - z, x);
+        }
+        [x, y, z]
+    }
+
     pub fn direction(self, dir: &str) -> String {
         let mut d = dir.to_string();
         if self.mirror_x {

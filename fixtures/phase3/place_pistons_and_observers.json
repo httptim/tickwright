@@ -1,0 +1,194 @@
+{
+  "name": "place_pistons_and_observers",
+  "description": "Pistons, observers, droppers, dispensers, hoppers and a barrel placed looking level, up and down; a piston placed beside a redstone block extends at once and pushes an observer.",
+  "ticks": 24,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "placement",
+    "piston",
+    "observer",
+    "hopper",
+    "dropper"
+  ],
+  "palette": {
+    "#": "stone"
+  },
+  "layers": [
+    [
+      "#######",
+      "#######",
+      "#######",
+      "#######",
+      "#######",
+      "#######",
+      "#######"
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "......."
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "......."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "place",
+      "pos": [
+        1,
+        0,
+        1
+      ],
+      "item": "piston",
+      "face": "up",
+      "look": "north",
+      "pitch": 0
+    },
+    {
+      "tick": 2,
+      "action": "place",
+      "pos": [
+        3,
+        0,
+        1
+      ],
+      "item": "sticky_piston",
+      "face": "up",
+      "look": "north",
+      "pitch": 80
+    },
+    {
+      "tick": 3,
+      "action": "place",
+      "pos": [
+        5,
+        0,
+        1
+      ],
+      "item": "observer",
+      "face": "up",
+      "look": "east",
+      "pitch": 0
+    },
+    {
+      "tick": 4,
+      "action": "place",
+      "pos": [
+        1,
+        0,
+        3
+      ],
+      "item": "observer",
+      "face": "up",
+      "look": "south",
+      "pitch": 70
+    },
+    {
+      "tick": 5,
+      "action": "place",
+      "pos": [
+        3,
+        0,
+        3
+      ],
+      "item": "dropper",
+      "face": "up",
+      "look": "west",
+      "pitch": -70
+    },
+    {
+      "tick": 6,
+      "action": "place",
+      "pos": [
+        5,
+        0,
+        3
+      ],
+      "item": "dispenser",
+      "face": "up",
+      "look": "north",
+      "pitch": 20
+    },
+    {
+      "tick": 7,
+      "action": "place",
+      "pos": [
+        5,
+        1,
+        1
+      ],
+      "item": "hopper",
+      "face": "west",
+      "look": "east",
+      "pitch": 10
+    },
+    {
+      "tick": 8,
+      "action": "place",
+      "pos": [
+        3,
+        0,
+        5
+      ],
+      "item": "hopper",
+      "face": "up",
+      "look": "north",
+      "pitch": 60
+    },
+    {
+      "tick": 9,
+      "action": "place",
+      "pos": [
+        1,
+        0,
+        5
+      ],
+      "item": "redstone_block",
+      "face": "up",
+      "look": "north",
+      "pitch": 60
+    },
+    {
+      "tick": 10,
+      "action": "place",
+      "pos": [
+        1,
+        1,
+        5
+      ],
+      "item": "piston",
+      "face": "north",
+      "look": "south",
+      "pitch": 0
+    },
+    {
+      "tick": 11,
+      "action": "place",
+      "pos": [
+        5,
+        0,
+        5
+      ],
+      "item": "barrel",
+      "face": "up",
+      "look": "north",
+      "pitch": 30
+    }
+  ]
+}

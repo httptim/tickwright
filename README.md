@@ -42,6 +42,7 @@ phase 1 has no comparators.
 | `crates/cli` | The `tickwright` command: `resolve`, `run`, `diff`, `bench`, `materials`, and `import`/`export` for schematics |
 | `fixtures/phase1` | Phase 1 fixtures: dust, torches, repeaters, pistons, buttons |
 | `fixtures/phase2` | Phase 2 fixtures: observers, comparators, note blocks, doors, trapdoors, rails, water, hoppers, droppers, dispensers, barrels, copper bulbs, bells |
+| `fixtures/phase3` | Blocks placed as a player places them, written by `tools/placement_fixtures.py` |
 | `fixtures/nucleation` | Builds from [Nucleation](https://github.com/Schem-at/Nucleation)'s conformance tests (MIT, © 2025 Schem-at), converted by `tools/nucleation.py` and recaptured on 26.3 |
 | `harness/` | Java capture harness for the vanilla server |
 | `traces/<version>/` | Ground-truth traces from the real game, gzipped |
@@ -116,7 +117,11 @@ After changing fixtures or the harness, run the workflow by hand with
 - Write block states in full. The harness places them exactly as written,
   without updates, so the build starts in the state you describe.
 - Stimuli run just before their tick, where player input lands in the game.
-  Actions are `use` (right-click with an empty hand), `set` and `destroy`.
+  Actions are `use` (right-click with an empty hand), `set`, `destroy` and
+  `place`: right-click a `face` of the block holding an `item`, as a player
+  facing `look` and looking `pitch` degrees down (optionally at a `hit`
+  point in sixteenths, or sneaking), so the block's own placement rules
+  choose its state.
 - Fixtures are placed at `[0, 100, 0]` unless `origin` says otherwise.
 
 ## License

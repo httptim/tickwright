@@ -1,0 +1,175 @@
+{
+  "name": "place_diodes_and_dust",
+  "description": "Repeaters, a comparator, dust and redstone torches placed by a player: diodes face away from the look direction, dust connects to what is beside, above and below it, and a torch clicked onto a wall becomes a wall torch.",
+  "ticks": 20,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "placement",
+    "dust",
+    "repeater",
+    "comparator",
+    "torch"
+  ],
+  "palette": {
+    "#": "stone"
+  },
+  "layers": [
+    [
+      "#######",
+      "#######",
+      "#######",
+      "#######",
+      "#######"
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "...#..."
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "......."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "place",
+      "pos": [
+        1,
+        0,
+        1
+      ],
+      "item": "repeater",
+      "face": "up",
+      "look": "north",
+      "pitch": 30
+    },
+    {
+      "tick": 2,
+      "action": "place",
+      "pos": [
+        1,
+        0,
+        2
+      ],
+      "item": "redstone",
+      "face": "up",
+      "look": "north",
+      "pitch": 60
+    },
+    {
+      "tick": 3,
+      "action": "place",
+      "pos": [
+        2,
+        0,
+        2
+      ],
+      "item": "redstone",
+      "face": "up",
+      "look": "east",
+      "pitch": 45
+    },
+    {
+      "tick": 4,
+      "action": "place",
+      "pos": [
+        3,
+        0,
+        2
+      ],
+      "item": "comparator",
+      "face": "up",
+      "look": "east",
+      "pitch": 30
+    },
+    {
+      "tick": 5,
+      "action": "place",
+      "pos": [
+        3,
+        1,
+        4
+      ],
+      "item": "redstone",
+      "face": "up",
+      "look": "south",
+      "pitch": 50
+    },
+    {
+      "tick": 6,
+      "action": "place",
+      "pos": [
+        3,
+        0,
+        3
+      ],
+      "item": "redstone",
+      "face": "up",
+      "look": "south",
+      "pitch": 50
+    },
+    {
+      "tick": 7,
+      "action": "place",
+      "pos": [
+        3,
+        1,
+        4
+      ],
+      "item": "redstone_torch",
+      "face": "west",
+      "look": "east",
+      "pitch": 10
+    },
+    {
+      "tick": 8,
+      "action": "place",
+      "pos": [
+        5,
+        0,
+        3
+      ],
+      "item": "redstone_torch",
+      "face": "up",
+      "look": "north",
+      "pitch": 45
+    },
+    {
+      "tick": 9,
+      "action": "place",
+      "pos": [
+        5,
+        0,
+        1
+      ],
+      "item": "repeater",
+      "face": "up",
+      "look": "west",
+      "pitch": 20
+    },
+    {
+      "tick": 10,
+      "action": "place",
+      "pos": [
+        6,
+        0,
+        4
+      ],
+      "item": "redstone",
+      "face": "up",
+      "look": "west",
+      "pitch": 40
+    }
+  ]
+}

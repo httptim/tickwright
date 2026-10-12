@@ -99,6 +99,13 @@ impl Session {
         Ok(())
     }
 
+    /// Right-click a face of a block holding `item`, as a player would, so
+    /// the block's placement rules pick its state. Returns whether a block
+    /// was placed.
+    pub fn place(&mut self, item: &str, click: blocks::placement::Click) -> Result<bool> {
+        blocks::placement::place(&mut self.level, item, click)
+    }
+
     /// Break the block at `pos` without drops, with normal updates.
     pub fn destroy(&mut self, pos: Pos) {
         self.level.destroy_block(pos, MAX_RECURSION);

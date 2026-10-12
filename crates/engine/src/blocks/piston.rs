@@ -240,7 +240,7 @@ fn neighbor_signal(level: &Level, pos: Pos, facing: Dir) -> bool {
 }
 
 /// `checkIfExtend`.
-fn check_if_extend(level: &mut Level, pos: Pos, state: StateId) {
+pub(super) fn check_if_extend(level: &mut Level, pos: Pos, state: StateId) {
     let dir = level.dir(state, "facing");
     let powered = neighbor_signal(level, pos, dir);
     let extended = level.flag(state, "extended");

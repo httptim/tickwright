@@ -27,6 +27,7 @@ use tickwright_engine::Pos;
 use tickwright_engine::session::{Placement, Session};
 use tickwright_materials::Table;
 use tickwright_schematic::{Format, Schematic};
+use tickwright_trace::fixture::PlaceInput;
 use tickwright_trace::{BlockState, ResolvedFixture, Transform};
 
 /// Allocate `len` bytes for the host to write into.
@@ -128,6 +129,16 @@ enum Command {
         session: u32,
         pos: [i32; 3],
     },
+    /// Right-click a face of the block at `pos` holding `item`, as a player
+    /// would; the block's placement rules pick its state. `hit` is the click
+    /// point in sixteenths (default: the middle of the face). Answers
+    /// `{"placed": bool}`.
+    Place {
+        session: u32,
+        pos: [i32; 3],
+        #[serde(flatten)]
+        input: PlaceInput,
+    },
     /// Right-click with an empty hand.
     Use {
         session: u32,
@@ -180,6 +191,13 @@ enum Command {
         session: u32,
         version: String,
     },
+    /// Rotate or mirror block states the way fixtures are transformed
+    /// (`r90`, `mr0`, ...), for the editor's rotate and mirror. Needs no
+    /// session. Answers `{"states": [...]}` in the same order.
+    Transform {
+        states: Vec<String>,
+        transform: String,
+    },
 }
 
 fn one() -> u32 {
@@ -219,6 +237,12 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                 sessions.insert(*next, s);
                 json!({ "session": *next })
             }
+            Command::Transform { states, transform } => {
+                let t: Transform = transform.parse()?;
+                let states: anyhow::Result<Vec<String>> =
+                    states.iter().map(|s| Ok(t.state(&BlockState::parse(s)?).to_string())).collect();
+                json!({ "states": states? })
+            }
             Command::Close { session } => {
                 sessions.remove(&session);
                 json!({})
@@ -231,6 +255,10 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
             Command::Destroy { session, pos: p } => {
                 get(sessions, session)?.destroy(pos(p));
                 json!({})
+            }
+            Command::Place { session, pos: p, input } => {
+                let click = tickwright_engine::run::click(pos(p), &input)?;
+                json!({ "placed": get(sessions, session)?.place(&input.item, click)? })
             }
             Command::Use { session, pos: p } => {
                 get(sessions, session)?.use_block(pos(p));
@@ -354,8 +382,19 @@ mod tests {
         let step = ok(&format!(r#"{{"op":"step","session":{id}}}"#));
         assert_eq!(step["tick"], 1);
         let lamp = ok(&format!(r#"{{"op":"block","session":{id},"pos":[1,1,0]}}"#));
+        let placed = ok(&format!(
+            r#"{{"op":"place","session":{id},"pos":[1,1,0],"item":"repeater","face":"up","look":"east","pitch":40}}"#
+        ));
+        assert_eq!(placed["placed"], true);
+        let repeater = ok(&format!(r#"{{"op":"block","session":{id},"pos":[1,2,0]}}"#));
+        assert!(repeater["state"].as_str().unwrap().contains("facing=west"), "{repeater}");
         assert_eq!(lamp["state"], "minecraft:redstone_lamp[lit=true]");
         assert!(command(br#"{"op":"step","session":999}"#).is_err());
+        let turned = ok(
+            r#"{"op":"transform","transform":"r90","states":["repeater[delay=1,facing=north,locked=false,powered=false]","stone"]}"#,
+        );
+        assert_eq!(turned["states"][0], "minecraft:repeater[delay=1,facing=east,locked=false,powered=false]");
+        assert_eq!(turned["states"][1], "minecraft:stone");
     }
 
     #[test]
