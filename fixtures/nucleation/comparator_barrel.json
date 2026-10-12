@@ -1,0 +1,53 @@
+{
+  "name": "nucleation_comparator_barrel",
+  "description": "The first container behaviour: a barrel holding three full stacks reads analog 2 (floor(3/27 * 14) + 1), and the comparator behind it turns on one tick after placement \u2014 the boundary-scheduled 2-game-tick delay. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 13,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "barrel[facing=up,open=false]",
+    "B": "comparator[facing=west,mode=compare,powered=false]"
+  },
+  "layers": [
+    [
+      "##"
+    ],
+    [
+      "AB"
+    ]
+  ],
+  "stimuli": [],
+  "containers": [
+    {
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "redstone",
+          "count": 64
+        },
+        {
+          "slot": 1,
+          "id": "redstone",
+          "count": 64
+        },
+        {
+          "slot": 2,
+          "id": "redstone",
+          "count": 64
+        }
+      ]
+    }
+  ]
+}

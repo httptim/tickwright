@@ -8,7 +8,7 @@ all eight orientations and must match at the order level
 
 | Quirk | In 26.3 | Fixtures | Status |
 | --- | --- | --- | --- |
-| `qc` quasi-connectivity | yes | `phase1/piston_qc_diagonal`, `phase2/dropper_qc_bud` | covered for pistons and droppers; dispensers and the crafter (which is not QC) are not simulated yet |
+| `qc` quasi-connectivity | yes | `phase1/piston_qc_diagonal`, `phase2/dropper_qc_bud` | covered for pistons and droppers (dispensers share the dropper's trigger); the crafter, which is not QC, is not simulated yet |
 | `bud` stale QC power | yes | `phase1/piston_qc_bud`, `phase2/dropper_qc_bud` | covered |
 | `piston-start-delay` | yes | `phase1/piston_from_repeater`, `phase1/piston_push` | covered |
 | `zero-tick-pulse` | yes | `phase1/piston_zero_tick`, `phase1/sticky_piston_zero_tick` | covered |
@@ -37,6 +37,6 @@ all eight orientations and must match at the order level
 | `powered-rail-order` | yes | `phase2/powered_rail_slope`, `phase2/activator_rail_chain`, `nucleation/rails_chain` | covered |
 | `minecart-improvements` | opt-in | | needs minecarts (phase 4) |
 | `crafter-no-qc` | yes | | the crafter is not simulated yet |
-| `be-tick-order` | yes | `phase2/hoppers_share_hopper`, `phase2/hopper_chain_cooldown` | covered |
+| `be-tick-order` | yes | `phase2/hoppers_share_hopper`, `phase2/hopper_chain_cooldown`, `nucleation/hopper_race` | covered |
 | `comparator-quirks` | unverified | `phase2/comparator_reads_composter`, `phase2/comparator_reads_cake`, `phase2/hopper_chest_to_chest` | covered for composters, cakes and blocked chests |
 | `item-shadowing` | no | | not present in 26.3 |

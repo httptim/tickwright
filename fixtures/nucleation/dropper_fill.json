@@ -1,0 +1,66 @@
+{
+  "name": "nucleation_dropper_fill",
+  "description": "Nucleation's dropper_fill build. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 15,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "dropper[facing=east,triggered=false]",
+    "B": "barrel[facing=up,open=false]"
+  },
+  "layers": [
+    [
+      "##"
+    ],
+    [
+      "AB"
+    ],
+    [
+      ".."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "set",
+      "pos": [
+        0,
+        2,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 3,
+      "action": "destroy",
+      "pos": [
+        0,
+        2,
+        0
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "redstone",
+          "count": 2
+        }
+      ]
+    }
+  ]
+}

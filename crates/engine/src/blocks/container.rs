@@ -33,13 +33,13 @@ impl Stack {
     }
 
     /// `ItemStack.split`.
-    fn split(&mut self, amount: i32) -> Stack {
+    pub(super) fn split(&mut self, amount: i32) -> Stack {
         let n = amount.min(self.count);
         self.count -= n;
         Stack { id: self.id.clone(), count: n }
     }
 
-    fn max_stack_size(&self) -> i32 {
+    pub(super) fn max_stack_size(&self) -> i32 {
         if self.is_empty() { 64 } else { max_stack_size(&self.id) }
     }
 }
@@ -102,7 +102,7 @@ pub fn new_dropper() -> BlockEntity {
 
 // --- container access ----------------------------------------------------------
 
-fn items(level: &Level, pos: Pos) -> Option<&Vec<Stack>> {
+pub(super) fn items(level: &Level, pos: Pos) -> Option<&Vec<Stack>> {
     match level.block_entities.get(&pos)? {
         BlockEntity::Chest(items) | BlockEntity::Dropper(items) => Some(items),
         BlockEntity::Hopper(h) => Some(&h.items),
@@ -136,11 +136,11 @@ fn hopper_mut(level: &mut Level, pos: Pos) -> &mut Hopper {
     }
 }
 
-fn size(level: &Level, pos: Pos) -> usize {
+pub(super) fn size(level: &Level, pos: Pos) -> usize {
     items(level, pos).map_or(0, Vec::len)
 }
 
-fn get_item(level: &Level, pos: Pos, slot: usize) -> Stack {
+pub(super) fn get_item(level: &Level, pos: Pos, slot: usize) -> Stack {
     items(level, pos).map(|i| i[slot].clone()).unwrap_or_default()
 }
 
@@ -173,7 +173,7 @@ fn remove_item(level: &mut Level, pos: Pos, slot: usize, amount: i32) -> Stack {
     stack
 }
 
-fn set_count(level: &mut Level, pos: Pos, slot: usize, count: i32) {
+pub(super) fn set_count(level: &mut Level, pos: Pos, slot: usize, count: i32) {
     items_mut(level, pos)[slot].count = count;
 }
 
@@ -231,7 +231,7 @@ pub fn analog_output(level: &Level, pos: Pos, state: StateId) -> i32 {
 /// at `pos`, if the block there is a container.
 fn container_at(level: &Level, pos: Pos) -> Option<Pos> {
     let kind = level.kind_at(pos);
-    let ok = matches!(kind, Kind::Chest | Kind::Hopper | Kind::Dropper);
+    let ok = matches!(kind, Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser);
     (ok && items(level, pos).is_some()).then_some(pos)
 }
 

@@ -1,0 +1,94 @@
+{
+  "name": "dispenser_fed_by_hopper",
+  "description": "A barrel feeds a hopper that fills the dispenser below it. A comparator reads the dispenser into a lamp. A lever fires the dispenser twice; each shot throws one cobblestone out as an item, which only shows as the slot going down.",
+  "ticks": 50,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "dispenser",
+    "hopper",
+    "barrel",
+    "comparator",
+    "container"
+  ],
+  "palette": {
+    "#": "stone",
+    "l": "lever[face=floor,facing=north,powered=false]",
+    "D": "dispenser[facing=south,triggered=false]",
+    "c": "comparator[facing=west,mode=compare,powered=false]",
+    "L": "redstone_lamp[lit=false]",
+    "h": "hopper[enabled=true,facing=down]",
+    "B": "barrel[facing=up,open=false]"
+  },
+  "layers": [
+    [
+      "####"
+    ],
+    [
+      "lDcL"
+    ],
+    [
+      ".h.."
+    ],
+    [
+      ".B.."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 20,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 26,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 28,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 34,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        1,
+        3,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "cobblestone",
+          "count": 3
+        }
+      ]
+    }
+  ]
+}
