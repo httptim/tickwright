@@ -1,0 +1,50 @@
+{
+  "name": "nucleation_item_merge",
+  "description": "Two stacks 0.3 apart merge on the 40-tick interval (tickCount 40 at tick 39); the larger stack survives. Resting items emit nothing \u2014 their gravity-accumulating velocity is flushed by collisions without the position ever changing \u2014 so the only event in the whole trace is the removal of the absorbed entity. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 51,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation",
+    "entities"
+  ],
+  "palette": {
+    "#": "stone"
+  },
+  "layers": [
+    [
+      "#"
+    ],
+    [
+      "."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        0.35,
+        1.0,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:redstone\",count:3},PickupDelay:0,Age:0}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        0.65,
+        1.0,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:redstone\",count:5},PickupDelay:0,Age:0}"
+    }
+  ],
+  "entities": true
+}

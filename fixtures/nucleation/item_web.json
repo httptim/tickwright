@@ -1,0 +1,69 @@
+{
+  "name": "nucleation_item_web",
+  "description": "WebBlock.entityInside arms Entity.stuckSpeedMultiplier (0.25, 0.05f, 0.25): the next move is scaled per axis and the velocity zeroed, every tick the box still touches the web \u2014 a 0.04 gravity step becomes a 0.002 descent, for as long as the golden runs. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 91,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation",
+    "entities"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "cobweb"
+  },
+  "layers": [
+    [
+      "###",
+      "###",
+      "###"
+    ],
+    [
+      "...",
+      "...",
+      "..."
+    ],
+    [
+      "...",
+      ".A.",
+      "..."
+    ],
+    [
+      "...",
+      "...",
+      "..."
+    ],
+    [
+      "...",
+      "...",
+      "..."
+    ],
+    [
+      "...",
+      "...",
+      "..."
+    ],
+    [
+      "...",
+      "...",
+      "..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        5.0,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:iron_ingot\",count:1},PickupDelay:0,Age:0}"
+    }
+  ],
+  "entities": true
+}

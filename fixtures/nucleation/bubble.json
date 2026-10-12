@@ -1,0 +1,78 @@
+{
+  "name": "nucleation_bubble",
+  "description": "Both column kinds in one golden: soul sand's upward column launches its item out of the water (the above-column +0.1/1.8 clamp at the open top), magma's drag column pulls its item to the floor where it rests. The per-cell clamps come straight from Entity.handleOnInsideBubbleColumn. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 131,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation",
+    "entities"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "soul_sand",
+    "B": "magma_block",
+    "C": "bubble_column[drag=false]",
+    "D": "bubble_column[drag=true]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#A#B#",
+      "#####"
+    ],
+    [
+      "#####",
+      "#C#D#",
+      "#####"
+    ],
+    [
+      "#####",
+      "#C#D#",
+      "#####"
+    ],
+    [
+      "#####",
+      "#C#D#",
+      "#####"
+    ],
+    [
+      "#####",
+      "#C#D#",
+      "#####"
+    ],
+    [
+      "#####",
+      "#.#.#",
+      "#####"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        1.5,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:iron_ingot\",count:1},PickupDelay:0,Age:0}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        3.5,
+        4.5,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:gold_ingot\",count:1},PickupDelay:0,Age:0}"
+    }
+  ],
+  "entities": true
+}

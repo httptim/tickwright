@@ -1,0 +1,76 @@
+{
+  "name": "nucleation_item_ice",
+  "description": "Milestone E's first surface: two identical items launched at 0.25/tick, one over blue ice (ground drag 0.98 \u00d7 0.989), one over stone (0.98 \u00d7 0.6). A hundred ticks later the ice item is still gliding past x=9 while the stone item stopped short \u2014 the friction table, pinned end to end. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 111,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation",
+    "entities"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "blue_ice"
+  },
+  "layers": [
+    [
+      "##############",
+      "#AAAAAAAAAAAA#",
+      "##############",
+      "##############",
+      "##############"
+    ],
+    [
+      "##############",
+      "#............#",
+      "##############",
+      "#............#",
+      "##############"
+    ],
+    [
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      ".............."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        1.0,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:iron_ingot\",count:1},PickupDelay:0,Age:0}",
+      "motion": [
+        0.25,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        1.0,
+        3.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:gold_ingot\",count:1},PickupDelay:0,Age:0}",
+      "motion": [
+        0.25,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "entities": true
+}

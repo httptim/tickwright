@@ -120,6 +120,23 @@ def parse_snbt(text):
     return v
 
 
+def snbt(v):
+    """Write a parsed SNBT value back out. Number types were not kept, and
+    the game reads entity data leniently, so integers go plain and other
+    numbers as doubles."""
+    if isinstance(v, dict):
+        return "{" + ",".join(f"{k}:{snbt(x)}" for k, x in v.items()) + "}"
+    if isinstance(v, list):
+        return "[" + ",".join(snbt(x) for x in v) + "]"
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, int):
+        return str(v)
+    if isinstance(v, float):
+        return repr(v) + "d"
+    return json.dumps(v)
+
+
 def state_string(entry):
     name = entry["Name"].removeprefix("minecraft:")
     props = entry.get("Properties") or {}
@@ -211,9 +228,6 @@ def convert(root, out):
             skipped.append((name, "structure not found"))
             continue
         s = parse_snbt(path.read_text())
-        if s.get("entities"):
-            skipped.append((name, "has entities"))
-            continue
         containers, comparators = [], []
         expressible = True
         for b in s["blocks"]:
@@ -264,8 +278,8 @@ def convert(root, out):
 
         stimuli = []
         # Filling a container updates comparators and hoppers tick on their
-        # own, so those builds run without placement updates.
-        self_starting = bool(containers) or any(p.startswith("hopper") for p in palette)
+        # own, as do entities, so those builds run without placement updates.
+        self_starting = bool(containers) or any(p.startswith("hopper") for p in palette) or bool(s.get("entities"))
         if run["settle"] == "Placement" and not run["actions"] and not self_starting:
             # Nucleation placed these with block updates, which is what set
             # them going. We place quietly, so the redstone blocks that power
@@ -289,6 +303,19 @@ def convert(root, out):
                 grid[y][z][x] = "."
                 stimuli.append({"tick": 1, "action": "set", "pos": [x, y, z], "state": "redstone_block"})
             keys = {k: v for k, v in keys.items() if any(v in row for layer in grid for row in layer)}
+        # Entities saved with the build are summoned before the first tick.
+        for e in s.get("entities", []):
+            nbt = dict(e["nbt"])
+            kind = nbt.pop("id").removeprefix("minecraft:")
+            motion = nbt.pop("Motion", [0.0, 0.0, 0.0])
+            for k in ("Pos", "UUID", "Rotation"):
+                nbt.pop(k, None)
+            st = {"tick": 1, "action": "summon", "entity": kind, "at": [float(v) for v in e["pos"]]}
+            if nbt:
+                st["nbt"] = snbt(nbt)
+            if any(motion):
+                st["motion"] = [float(v) for v in motion]
+            stimuli.append(st)
         for tick, kind, pos, state in run["actions"]:
             st = {"tick": tick + 1, "pos": pos}
             if kind == "Use":
@@ -314,6 +341,9 @@ def convert(root, out):
             "layers": [["".join(row) for row in layer] for layer in grid],
             "stimuli": stimuli,
         }
+        if s.get("entities"):
+            fixture["tags"].append("entities")
+            fixture["entities"] = True
         if containers:
             fixture["containers"] = sorted(containers, key=lambda c: (c["pos"][1], c["pos"][2], c["pos"][0]))
         if comparators:

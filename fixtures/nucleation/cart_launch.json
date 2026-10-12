@@ -1,0 +1,73 @@
+{
+  "name": "nucleation_cart_launch",
+  "description": "The full circle: a pulse powers the chain, the launch branch reads the wall as a conductor and hands the resting cart 0.02 east, the boosts take over, and the cart runs out onto plain rail and off the end. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 56,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation",
+    "entities"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "powered_rail[powered=false,shape=east_west,waterlogged=false]",
+    "B": "rail[shape=east_west,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "##############",
+      "##############",
+      "##############"
+    ],
+    [
+      "..............",
+      "#AAAAAAAAABBB.",
+      ".............."
+    ],
+    [
+      "..............",
+      "..............",
+      ".............."
+    ],
+    [
+      "..............",
+      "..............",
+      ".............."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        1.5,
+        1.0625,
+        1.5
+      ]
+    },
+    {
+      "tick": 1,
+      "action": "set",
+      "pos": [
+        1,
+        2,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 41,
+      "action": "destroy",
+      "pos": [
+        1,
+        2,
+        1
+      ]
+    }
+  ],
+  "entities": true
+}
