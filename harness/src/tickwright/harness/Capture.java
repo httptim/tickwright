@@ -233,6 +233,7 @@ public final class Capture {
         final JsonArray rng = new JsonArray();
         /** Entity ids in the order they first appeared, numbered from 0. */
         final Map<Integer, Integer> entityNumbers = new java.util.HashMap<>();
+        final java.util.Set<Integer> loggedIds = new java.util.HashSet<>();
         int tick;
         String lastKey;
 
@@ -397,9 +398,6 @@ public final class Capture {
         } finally {
             recording = null;
             Hooks.seedThread = null;
-            if (idCounter != null) {
-                idCounter.log = false;
-            }
         }
 
         // Every kind of event phase 1 needs is recorded, so the trace is
@@ -664,6 +662,13 @@ public final class Capture {
 
     /** Every entity in the box at the end of tick {@code t}, in order of first appearance. */
     private static void snapshotEntities(Recording rec, int t) {
+        // Say where every new entity in the level came from, in or out of the box.
+        for (Entity e : level.getAllEntities()) {
+            if (!(e instanceof Player) && rec.loggedIds.add(e.getId())) {
+                System.out.printf("    %s tick %d: entity %d %s at %s, seeds used %d%n", rec.origin, t, e.getId(),
+                        BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()), e.position(), Hooks.nextSeed);
+            }
+        }
         AABB box = new AABB(rec.min.getX(), rec.min.getY(), rec.min.getZ(),
                 rec.max.getX() + 1, rec.max.getY() + 1, rec.max.getZ() + 1);
         List<Entity> found = new ArrayList<>(level.getEntitiesOfClass(Entity.class, box));
@@ -712,51 +717,29 @@ public final class Capture {
     }
 
     private static java.lang.reflect.Field entityCounter;
-    private static IdCounter idCounter;
 
-    @SuppressWarnings("removal")
-    private static final sun.misc.Unsafe UNSAFE;
-
-    static {
+    /** Sets {@code ServerLevel.ENTITY_COUNTER} to 0, so the next entity made gets id 1. */
+    private static void resetEntityIds() {
         try {
-            java.lang.reflect.Field f = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
-            f.setAccessible(true);
-            UNSAFE = (sun.misc.Unsafe) f.get(null);
-        } catch (ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError(e);
-        }
-    }
-
-    /** The entity id counter, logging where each id goes while a capture tracks entities. */
-    private static final class IdCounter extends java.util.concurrent.atomic.AtomicInteger {
-        volatile boolean log;
-
-        @Override
-        public int incrementAndGet() {
-            int id = super.incrementAndGet();
-            note(id);
-            return id;
-        }
-
-        @Override
-        public int getAndIncrement() {
-            int id = super.getAndIncrement();
-            note(id);
-            return id;
-        }
-
-        private void note(int id) {
-            if (log) {
-                List<String> frames = new ArrayList<>();
-                for (StackTraceElement f : Thread.currentThread().getStackTrace()) {
-                    String c = f.getClassName();
-                    if (c.startsWith("net.minecraft.") && !c.equals("net.minecraft.server.level.ServerLevel")
-                            && frames.size() < 6) {
-                        frames.add(c.substring(c.lastIndexOf('.') + 1) + "." + f.getMethodName());
+            if (entityCounter == null) {
+                // 26.3 keeps it on ServerLevel; older versions on Entity.
+                for (Class<?> c : List.of(ServerLevel.class, Entity.class)) {
+                    for (java.lang.reflect.Field f : c.getDeclaredFields()) {
+                        if (entityCounter == null && java.lang.reflect.Modifier.isStatic(f.getModifiers())
+                                && f.getType() == java.util.concurrent.atomic.AtomicInteger.class
+                                && f.getName().equals("ENTITY_COUNTER")) {
+                            f.setAccessible(true);
+                            entityCounter = f;
+                        }
                     }
                 }
-                System.out.printf("    entity id %d <- %s%n", id, String.join(" < ", frames));
+                if (entityCounter == null) {
+                    throw new IllegalStateException("no ENTITY_COUNTER on ServerLevel or Entity");
+                }
             }
+            ((java.util.concurrent.atomic.AtomicInteger) entityCounter.get(null)).set(0);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("cannot reset entity ids", e);
         }
     }
 

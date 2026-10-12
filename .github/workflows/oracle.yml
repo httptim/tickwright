@@ -93,6 +93,7 @@ jobs:
           log=harness/work/capture.log
           [ -f "$log" ] || exit 0
           grep -E '^(agent patched|Minecraft|entries by|captured|block writes)' "$log" || true
+          grep -E 'tick [0-9]+: entity [0-9]+' "$log" | head -200 || true
           grep -A 25 -m 3 ' FAILED: ' "$log" || true
           du -sh harness/work/traces || true
       - name: Explain a failed capture
