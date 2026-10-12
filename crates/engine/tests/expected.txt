@@ -103,3 +103,8 @@ hopper_chest_to_chest order
 hopper_locked_by_lever order
 bell_rings_on_power order
 copper_bulb_toggles order
+dropper_qc_bud order
+dust_piston_race_a order
+dust_piston_race_b order
+hoppers_share_hopper order
+pistons_face_off order
