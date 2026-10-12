@@ -9,6 +9,7 @@
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet, VecDeque};
 
+use crate::blocks::water::Fluid;
 use crate::blocks::{self, Kind};
 use crate::pos::{Dir, Pos, UPDATE_ORDER, UPDATE_SHAPE_ORDER};
 use crate::record::{Event, Recorder};
@@ -48,6 +49,14 @@ struct ScheduledTick {
     sub: u64,
 }
 
+#[derive(Clone, Copy, Debug)]
+struct FluidTick {
+    fluid: Fluid,
+    pos: Pos,
+    trigger: i64,
+    sub: u64,
+}
+
 /// One `NeighborUpdater` entry.
 #[derive(Clone, Debug)]
 enum Update {
@@ -79,7 +88,10 @@ pub struct Level {
     pending_ticks: Vec<ScheduledTick>,
     pending_keys: HashSet<(Pos, BlockId)>,
     running_ticks: HashSet<(Pos, BlockId)>,
+    /// `Level.subTickCount`: shared by block and fluid ticks.
     next_sub_tick: u64,
+    fluid_ticks: Vec<FluidTick>,
+    fluid_keys: HashSet<(Pos, Fluid)>,
 
     // ServerLevel.blockEvents: a linked hash set.
     events: VecDeque<BlockEvent>,
@@ -125,6 +137,8 @@ impl Level {
             pending_keys: HashSet::new(),
             running_ticks: HashSet::new(),
             next_sub_tick: 0,
+            fluid_ticks: Vec::new(),
+            fluid_keys: HashSet::new(),
             events: VecDeque::new(),
             stack: Vec::new(),
             added_this_layer: Vec::new(),
@@ -530,6 +544,38 @@ impl Level {
         }
     }
 
+    /// `Level.scheduleTick(pos, fluid, delay)`. The harness does not record
+    /// fluid schedules or ticks, only what they write.
+    pub fn schedule_fluid_tick(&mut self, pos: Pos, fluid: Fluid, delay: i32) {
+        let trigger = self.game_time + delay as i64;
+        let sub = self.next_sub_tick;
+        self.next_sub_tick += 1;
+        if self.fluid_keys.insert((pos, fluid)) {
+            self.fluid_ticks.push(FluidTick { fluid, pos, trigger, sub });
+        }
+    }
+
+    /// `ServerLevel.tickFluid` for each due tick, in order.
+    fn run_fluid_ticks(&mut self) {
+        let now = self.game_time;
+        let mut due: Vec<FluidTick> = Vec::new();
+        self.fluid_ticks.retain(|t| {
+            if t.trigger <= now {
+                due.push(*t);
+                false
+            } else {
+                true
+            }
+        });
+        due.sort_by_key(|t| (t.trigger, t.sub));
+        for t in &due {
+            self.fluid_keys.remove(&(t.pos, t.fluid));
+        }
+        for t in due {
+            blocks::water::tick(self, t.pos, t.fluid);
+        }
+    }
+
     // --- block events ------------------------------------------------------
 
     /// `ServerLevel.blockEvent`.
@@ -579,6 +625,8 @@ impl Level {
         self.game_time += 1;
         self.phase = Phase::BlockTicks;
         self.run_block_ticks();
+        self.phase = Phase::FluidTicks;
+        self.run_fluid_ticks();
         self.phase = Phase::BlockEvents;
         self.run_block_events();
         self.phase = Phase::BlockEntities;

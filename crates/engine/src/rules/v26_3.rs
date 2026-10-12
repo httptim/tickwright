@@ -36,6 +36,7 @@ fn block(name: &str) -> Option<Kind> {
         "cake" => Kind::Cake,
         "note_block" => Kind::NoteBlock,
         "powered_rail" | "activator_rail" => Kind::PoweredRail,
+        "water" => Kind::Water,
         n if n.ends_with("_trapdoor") => Kind::Trapdoor,
         n if n.ends_with("_door") => Kind::Door,
         _ => return None,

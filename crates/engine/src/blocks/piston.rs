@@ -28,7 +28,8 @@ fn push_reaction(level: &Level, state: StateId) -> PushReaction {
         | Kind::Repeater
         | Kind::Comparator
         | Kind::Cake
-        | Kind::Door => PushReaction::Destroy,
+        | Kind::Door
+        | Kind::Water => PushReaction::Destroy,
         Kind::MovingPiston | Kind::PistonHead => PushReaction::Block,
         _ => PushReaction::Normal,
     }

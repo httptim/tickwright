@@ -1,0 +1,51 @@
+{
+  "name": "water_falls_off_ledge",
+  "description": "Water runs along a ledge, washes away a repeater, finds the drop with its slope search, falls as falling water and spreads across the floor below.",
+  "ticks": 60,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "water"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "water[level=0]",
+    "r": "repeater[delay=1,facing=west,locked=false,powered=false]"
+  },
+  "layers": [
+    [
+      "#########",
+      "#########",
+      "#########"
+    ],
+    [
+      "#########",
+      "#####...#",
+      "#########"
+    ],
+    [
+      "#########",
+      "#A#.r...#",
+      "#########"
+    ],
+    [
+      ".........",
+      ".........",
+      "........."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "destroy",
+      "pos": [
+        2,
+        2,
+        1
+      ]
+    }
+  ]
+}

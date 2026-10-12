@@ -1,0 +1,49 @@
+{
+  "name": "water_new_source_slab",
+  "description": "Four walled sources around a gap and a bottom slab. The slab sits between two sources over stone, so their first fluid ticks waterlog it. Breaking the stone in the gap then makes a new source between two sources.",
+  "ticks": 24,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "water"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "water[level=0]",
+    "_": "stone_slab[type=bottom,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      "#####",
+      "#A#A#",
+      "#A_A#",
+      "#####"
+    ],
+    [
+      ".....",
+      ".....",
+      ".....",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 8,
+      "action": "destroy",
+      "pos": [
+        2,
+        1,
+        1
+      ]
+    }
+  ]
+}
