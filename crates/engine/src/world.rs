@@ -16,17 +16,20 @@ const VOLUME: usize = 16 * 16 * 16;
 /// different states; past that it stores states directly.
 const SMALL_PALETTE: usize = 256;
 
+#[derive(Clone)]
 pub struct World {
     air: StateId,
     sections: HashMap<(i32, i32, i32), Section>,
 }
 
+#[derive(Clone)]
 struct Section {
     /// Blocks that are not air, so empty sections can be dropped.
     non_air: u16,
     data: Data,
 }
 
+#[derive(Clone)]
 enum Data {
     /// Indices into `palette`, whose first entry is air.
     Paletted { palette: Vec<StateId>, index: Box<[u8; VOLUME]> },

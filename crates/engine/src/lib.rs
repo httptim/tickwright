@@ -12,6 +12,7 @@ pub mod record;
 pub mod registry;
 pub mod rules;
 pub mod run;
+pub mod session;
 pub mod world;
 
 pub use level::Level;

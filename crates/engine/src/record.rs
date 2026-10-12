@@ -17,6 +17,7 @@ pub enum Event {
     Items(String),
 }
 
+#[derive(Clone)]
 pub struct Recorder {
     pub origin: Pos,
     pub min: Pos,

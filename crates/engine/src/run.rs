@@ -73,7 +73,7 @@ pub fn run_unrecorded(fixture: &ResolvedFixture, mc_version: &str) -> Result<()>
 }
 
 /// A level with the fixture placed the way the harness places it.
-fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
+pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
     let reg = rules.reg;
     let [ox, oy, oz] = fixture.origin;
     let supported = |text: &str| -> Result<crate::registry::StateId> {

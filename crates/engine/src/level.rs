@@ -80,6 +80,7 @@ pub struct BlockEvent {
     pub b: i32,
 }
 
+#[derive(Clone)]
 pub struct Level {
     pub reg: &'static Registry,
     pub air: StateId,
@@ -520,6 +521,14 @@ impl Level {
         if self.pending_keys.insert((pos, block)) {
             self.pending_ticks.push(ScheduledTick { block, pos, trigger, priority, sub });
         }
+    }
+
+    /// Pending block ticks as `(pos, block, due game time, priority)`, in the
+    /// order they will run.
+    pub fn pending_block_ticks(&self) -> Vec<(Pos, BlockId, i64, Priority)> {
+        let mut ticks = self.pending_ticks.clone();
+        ticks.sort_by_key(|t| (t.trigger, t.priority, t.sub));
+        ticks.into_iter().map(|t| (t.pos, t.block, t.trigger, t.priority)).collect()
     }
 
     /// `LevelTicks.hasScheduledTick`.

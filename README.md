@@ -36,7 +36,7 @@ phase 1 has no comparators.
 |------|------------|
 | `crates/trace` | Fixture, trace and diff formats (`tickwright-trace`) |
 | `crates/engine` | The simulation engine (`tickwright-engine`) |
-| `crates/wasm` | The engine as a WebAssembly module with a plain C ABI |
+| `crates/wasm` | The engine as a WebAssembly module with a plain C ABI: fixture runs, and JSON-command sessions for the editor (build, click, step, rewind, inspect) |
 | `crates/cli` | The `tickwright` command: `resolve`, `run`, `diff` and `bench` |
 | `fixtures/phase1` | Phase 1 fixtures: dust, torches, repeaters, pistons, buttons |
 | `fixtures/phase2` | Phase 2 fixtures: observers, comparators, note blocks, doors, trapdoors, rails, water, hoppers, droppers, dispensers, barrels, copper bulbs, bells |
@@ -45,7 +45,7 @@ phase 1 has no comparators.
 | `traces/<version>/` | Ground-truth traces from the real game, gzipped |
 | `data/<version>/` | Blocks, items and block entity types from the game's data reports |
 | `tools/registry.py` | Turns the game's data reports into `data/<version>/` |
-| `tools/wasm-check.cjs` | Runs every fixture in headless Chromium and checks the traces match the native engine's |
+| `tools/wasm-check.cjs` | Runs every fixture in headless Chromium, as a fixture run and as an editor session, and checks the traces match the native engine's |
 
 ## Usage
 
