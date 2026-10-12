@@ -1,0 +1,45 @@
+{
+  "name": "nucleation_item_fall",
+  "description": "The strictest physics test the harness can express: an item authored in the structure (no dispenser RNG anywhere) falls three blocks and lands. The engine mirrors vanilla's arithmetic types \u2014 f32 drag widened to f64 \u2014 so every position matches to the diff's 1e-6 tolerance and the item goes silent once it rests. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 21,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation",
+    "entities"
+  ],
+  "palette": {
+    "#": "stone"
+  },
+  "layers": [
+    [
+      "#"
+    ],
+    [
+      "."
+    ],
+    [
+      "."
+    ],
+    [
+      "."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        0.5,
+        3.0,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:redstone\",count:1},PickupDelay:0,Age:0}"
+    }
+  ],
+  "entities": true
+}

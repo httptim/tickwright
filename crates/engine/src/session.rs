@@ -16,6 +16,7 @@ use tickwright_trace::{Entry, ResolvedFixture};
 
 use crate::blocks::{self, Kind};
 use crate::level::{Level, MAX_RECURSION, flags};
+use crate::physics::Vec3;
 use crate::pos::{Dir, Pos};
 use crate::record::Recorder;
 use crate::rules::Rules;
@@ -38,6 +39,18 @@ pub struct PendingTick {
     /// The tick it is due to run in.
     pub due: u32,
     pub priority: i32,
+}
+
+/// An entity, for the editor's view.
+#[derive(Clone, Debug, PartialEq)]
+pub struct EntityView {
+    pub id: i32,
+    /// Its type, such as `minecraft:item`.
+    pub kind: String,
+    pub pos: [f64; 3],
+    /// What else the trace records about it: an item's stack
+    /// (`minecraft:stone*3`), a TNT's `fuse=N`, a falling block's state.
+    pub detail: Option<String>,
 }
 
 /// What a position reads as, for the power views.
@@ -141,6 +154,15 @@ impl Session {
         Ok(())
     }
 
+    /// Summon an entity as `/summon <entity> x y z {nbt}` does, optionally
+    /// with a starting motion. Entities the engine can't simulate yet, and
+    /// data it doesn't understand, are refused by name.
+    pub fn summon(&mut self, entity: &str, at: [f64; 3], motion: Option<[f64; 3]>, nbt: Option<&str>) -> Result<()> {
+        let at = Vec3::new(at[0], at[1], at[2]);
+        let motion = motion.map(|m| Vec3::new(m[0], m[1], m[2]));
+        crate::entity::summon(&mut self.level, entity, at, motion, nbt)
+    }
+
     // --- running -------------------------------------------------------------
 
     /// Run one game tick and return its events, input first.
@@ -200,6 +222,21 @@ impl Session {
 
     pub fn block(&self, pos: Pos) -> String {
         self.level.reg.format(self.level.get(pos))
+    }
+
+    /// The entities in the world now, in the order they tick.
+    pub fn entities(&self) -> Vec<EntityView> {
+        self.level
+            .entities
+            .iter()
+            .filter(|e| !e.removed && !matches!(e.data, crate::entity::Data::Gone))
+            .map(|e| EntityView {
+                id: e.id,
+                kind: e.type_name().to_string(),
+                pos: [e.pos.x, e.pos.y, e.pos.z],
+                detail: e.detail(&self.level),
+            })
+            .collect()
     }
 
     /// The power the block at `pos` receives.
@@ -296,6 +333,26 @@ mod tests {
         assert_eq!(lamp(s.blocks_at(1).unwrap()), "minecraft:redstone_lamp[lit=false]");
         assert_eq!(lamp(s.blocks_at(2).unwrap()), "minecraft:redstone_lamp[lit=true]");
         assert!(s.blocks_at(3).is_none());
+    }
+
+    #[test]
+    fn a_summoned_item_falls_and_rewinding_brings_it_back() {
+        let mut s = Session::new("26.3").unwrap();
+        s.set_block(Pos::new(0, 0, 0), "stone", Placement::Quiet).unwrap();
+        s.summon("item", [0.5, 3.0, 0.5], None, Some(r#"{Item:{id:"minecraft:redstone",count:2}}"#)).unwrap();
+        s.step();
+        let e = s.entities();
+        assert_eq!(e.len(), 1);
+        assert_eq!((e[0].id, e[0].kind.as_str()), (1, "minecraft:item"));
+        assert_eq!(e[0].detail.as_deref(), Some("minecraft:redstone*2"));
+        assert!(e[0].pos[1] < 3.0, "it fell");
+        for _ in 0..40 {
+            s.step();
+        }
+        assert_eq!(s.entities()[0].pos[1], 1.0, "it rests on the stone");
+        s.rewind(0).unwrap();
+        assert!(s.entities().is_empty(), "the summon was input to tick 1");
+        assert!(s.summon("zombie", [0.5, 1.0, 0.5], None, None).is_err());
     }
 
     #[test]

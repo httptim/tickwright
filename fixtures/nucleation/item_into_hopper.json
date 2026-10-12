@@ -1,0 +1,46 @@
+{
+  "name": "nucleation_item_into_hopper",
+  "description": "The item falls into the suck column (a full block from y+11/16 to y+2 above the hopper) and the whole two-item stack is absorbed at once: inventory event and entity removal on the same tick. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 16,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation",
+    "entities"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "hopper[enabled=true,facing=down]"
+  },
+  "layers": [
+    [
+      "#"
+    ],
+    [
+      "A"
+    ],
+    [
+      "."
+    ],
+    [
+      "."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        0.5,
+        3.5,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:redstone\",count:2},PickupDelay:0,Age:0}"
+    }
+  ],
+  "entities": true
+}

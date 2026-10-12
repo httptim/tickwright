@@ -1,0 +1,59 @@
+{
+  "name": "nucleation_item_float_water",
+  "description": "Buoyancy, isolated: an authored item at the bottom of a two-deep walled column. setUnderwaterMovement's 5e-4 nudge accumulates against the 0.99 horizontal drag until the item bobs at the surface \u2014 120 ticks of pure fluid physics, no RNG anywhere. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 131,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation",
+    "entities"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "water[level=0]"
+  },
+  "layers": [
+    [
+      "###",
+      "###",
+      "###"
+    ],
+    [
+      "###",
+      "#A#",
+      "###"
+    ],
+    [
+      "###",
+      "#A#",
+      "###"
+    ],
+    [
+      "###",
+      "#.#",
+      "###"
+    ],
+    [
+      "...",
+      "...",
+      "..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        1.0,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:iron_ingot\",count:1},PickupDelay:0,Age:0}"
+    }
+  ],
+  "entities": true
+}

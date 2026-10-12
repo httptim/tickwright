@@ -1,0 +1,61 @@
+{
+  "name": "nucleation_item_stream",
+  "description": "The sorting-machine primitive: an authored source-to-level-7 gradient (quiet placement keeps it frozen, exactly as knownShape does) and an item dropped upstream. getFlow's height differences push it 0.014 a tick until it pins against the end wall six blocks later. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 111,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation",
+    "entities"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "water[level=0]",
+    "B": "water[level=1]",
+    "C": "water[level=2]",
+    "D": "water[level=3]",
+    "E": "water[level=4]",
+    "F": "water[level=5]",
+    "G": "water[level=6]",
+    "H": "water[level=7]"
+  },
+  "layers": [
+    [
+      "##########",
+      "##########",
+      "##########"
+    ],
+    [
+      "##########",
+      "#ABCDEFGH#",
+      "##########"
+    ],
+    [
+      "##########",
+      "#........#",
+      "##########"
+    ],
+    [
+      "..........",
+      "..........",
+      ".........."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        2.5,
+        1.2,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:iron_ingot\",count:1},PickupDelay:0,Age:0}"
+    }
+  ],
+  "entities": true
+}

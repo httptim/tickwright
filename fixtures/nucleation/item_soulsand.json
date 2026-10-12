@@ -1,0 +1,70 @@
+{
+  "name": "nucleation_item_soulsand",
+  "description": "Soul sand's collision column tops at 14/16: the item dropped on it lands at exactly y = 0.875 while its stone-lane twin lands at 1.0 \u2014 the partial-height solid in the collision clip. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 22,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation",
+    "entities"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "soul_sand"
+  },
+  "layers": [
+    [
+      "#####",
+      "#A###",
+      "#####"
+    ],
+    [
+      ".....",
+      ".....",
+      "....."
+    ],
+    [
+      ".....",
+      ".....",
+      "....."
+    ],
+    [
+      ".....",
+      ".....",
+      "....."
+    ],
+    [
+      ".....",
+      ".....",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        3.0,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:iron_ingot\",count:1},PickupDelay:0,Age:0}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        3.5,
+        3.0,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:gold_ingot\",count:1},PickupDelay:0,Age:0}"
+    }
+  ],
+  "entities": true
+}

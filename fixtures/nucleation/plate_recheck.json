@@ -1,0 +1,396 @@
+{
+  "name": "nucleation_plate_recheck",
+  "description": "`plate_recheck.json`, eleven lanes, two claims neither of which the engine had measured.  **The cadence.** `WeightedPressurePlateBlock.getPressedTime()` is 10, and until now that was bytecode only: every capture that read a weighted plate kept an item on it, and an item pressing a plate is an item *resting* on it \u2014 a plate's `TOUCH_AABB` and its collision shape have the same 14/16 footprint, so anything inside the touch box is standing on the plate and can never fall out of it. Only a gravityless entity shoved by a piston releases one. Five lanes do that at staggered ticks: the fireball leaves at roughly t3, t7, t11, t15 and t21, and the plates release at **t10, t10, t20, t20 and t30** \u2014 the press+10k grid, never departure+10. That is the interval, the release, and the fact that the `entityInside` firing every tick an entity sits there neither re-books nor resets the pending recheck. Two negative controls: a lane nothing shoves stays powered for all 44 ticks (four consecutive rechecks), and a lane with no entity never powers at all.  **The strong power.** `BasePressurePlateBlock.checkPressed` writes with flags **2** and then calls `updateNeighbours`, which is `updateNeighborsAt(pos)` *and* `updateNeighborsAt(pos.below())`. That second call is the whole point: `getDirectSignal` answers for `Direction.UP` alone, so a plate strongly powers the block underneath it and a component touching only that block hears about the change by no other route. Three lanes read it off dust that touches the *support* and never the plate: under the light weighted plate it reads 1, under an oak plate 15, and the control lane whose (5,2,z) is plain stone stays dark. Without the below-neighbour update the engine leaves all three at 0.  Not settled here: a *second* entity arriving while the plate is already pressed. The lane meant to test it (z=22) shoves its second fireball only 0.16625 west \u2014 a head-eject clears the vacated cell and no more \u2014 so it never reaches the touch box and the plate stays at 1 throughout. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 42,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation",
+    "entities"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "glass",
+    "B": "redstone_wire[east=none,north=none,power=0,south=none,west=none]",
+    "C": "piston[extended=false,facing=south]",
+    "D": "light_weighted_pressure_plate[power=0]",
+    "E": "piston[extended=false,facing=west]",
+    "F": "oak_pressure_plate[powered=false]"
+  },
+  "layers": [
+    [
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "....#.....",
+      "..........",
+      "..........",
+      "....#.....",
+      "..........",
+      "..........",
+      "....#.....",
+      "..........",
+      "..........",
+      ".........."
+    ],
+    [
+      "..........",
+      ".....A....",
+      "..........",
+      "..........",
+      ".....A....",
+      "..........",
+      "..........",
+      ".....A....",
+      "..........",
+      "..........",
+      ".....A....",
+      "..........",
+      "..........",
+      ".....A....",
+      "..........",
+      "..........",
+      ".....A....",
+      "..........",
+      "..........",
+      ".....A....",
+      "..........",
+      "..........",
+      ".....A....",
+      "..........",
+      "..........",
+      "....B#....",
+      "..........",
+      "..........",
+      "....B#....",
+      "..........",
+      "..........",
+      "....B#....",
+      "..........",
+      "..........",
+      ".........."
+    ],
+    [
+      "......C...",
+      ".....D....",
+      "..........",
+      "......C...",
+      ".....D....",
+      "..........",
+      "......C...",
+      ".....D....",
+      "..........",
+      "......C...",
+      ".....D....",
+      "..........",
+      "......C...",
+      ".....D....",
+      "..........",
+      "......C...",
+      ".....D....",
+      "..........",
+      "......C...",
+      ".....D....",
+      "..........",
+      "..........",
+      ".....D..E.",
+      "..........",
+      "..........",
+      ".....D....",
+      "..........",
+      "..........",
+      ".....#....",
+      "..........",
+      "..........",
+      ".....F....",
+      "..........",
+      "..........",
+      ".........."
+    ],
+    [
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      ".........."
+    ],
+    [
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      "..........",
+      ".........."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "small_fireball",
+      "at": [
+        6.0,
+        2.0,
+        1.5
+      ]
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "small_fireball",
+      "at": [
+        6.0,
+        2.0,
+        4.5
+      ]
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "small_fireball",
+      "at": [
+        6.0,
+        2.0,
+        7.5
+      ]
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "small_fireball",
+      "at": [
+        6.0,
+        2.0,
+        10.5
+      ]
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "small_fireball",
+      "at": [
+        6.0,
+        2.0,
+        13.5
+      ]
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "small_fireball",
+      "at": [
+        6.0,
+        2.0,
+        16.5
+      ]
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "small_fireball",
+      "at": [
+        6.0,
+        2.0,
+        22.3
+      ]
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "small_fireball",
+      "at": [
+        7.0,
+        2.0,
+        22.7
+      ]
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        5.5,
+        2.0625,
+        25.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:iron_ingot\",count:1},PickupDelay:32767,Age:0}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        5.5,
+        3.0,
+        28.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:iron_ingot\",count:1},PickupDelay:32767,Age:0}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        5.5,
+        2.0625,
+        31.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:iron_ingot\",count:1},PickupDelay:32767,Age:0}"
+    },
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        7,
+        2,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        7,
+        2,
+        18
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 4,
+      "action": "set",
+      "pos": [
+        9,
+        2,
+        22
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 6,
+      "action": "set",
+      "pos": [
+        7,
+        2,
+        3
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        7,
+        2,
+        6
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 14,
+      "action": "set",
+      "pos": [
+        7,
+        2,
+        9
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 20,
+      "action": "set",
+      "pos": [
+        7,
+        2,
+        12
+      ],
+      "state": "redstone_block"
+    }
+  ],
+  "entities": true
+}

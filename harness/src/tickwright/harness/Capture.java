@@ -293,8 +293,8 @@ public final class Capture {
             // block left there that ticks randomly (copper, grass) draws from
             // the level's random source at times no fixture controls.
             randomTicks(0);
-            // The phantom and patrol spawners count down and then draw from
-            // the level's random source, whether or not anything spawns.
+            // The phantom and patrol spawners and the weather count down
+            // and then draw from the level's random source, whatever happens.
             spawners(false);
         }
         setMaxChainedUpdates(fixture.has("max_chained_updates")
@@ -882,8 +882,10 @@ public final class Capture {
 
     private static void spawners(boolean on) {
         // The game rules' names changed in 1.21.11; the old ones are rejected quietly.
+        // The weather cycle draws too, whenever one of its timers runs out.
         for (String rule : new String[] {"spawn_phantoms", "doInsomnia", "spawn_patrols", "doPatrolSpawning",
-                "spawn_wandering_traders", "doTraderSpawning", "spawn_mobs", "doMobSpawning"}) {
+                "spawn_wandering_traders", "doTraderSpawning", "spawn_mobs", "doMobSpawning",
+                "advance_weather", "doWeatherCycle"}) {
             command("gamerule " + rule + " " + on);
         }
     }
