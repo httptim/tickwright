@@ -37,15 +37,17 @@ phase 1 has no comparators.
 | `crates/trace` | Fixture, trace and diff formats (`tickwright-trace`) |
 | `crates/engine` | The simulation engine (`tickwright-engine`) |
 | `crates/schematic` | Reads and writes Litematica `.litematic`, Sponge `.schem` and structure `.nbt` files, and converts them to and from fixtures (`tickwright-schematic`) |
-| `crates/wasm` | The engine as a WebAssembly module with a plain C ABI: fixture runs, and JSON-command sessions for the editor (build, click, step, rewind, inspect) |
-| `crates/cli` | The `tickwright` command: `resolve`, `run`, `diff`, `bench`, and `import`/`export` for schematics |
+| `crates/materials` | Material lists: the items a build takes, with stack and shulker box counts, from `data/<version>/materials.json` (`tickwright-materials`) |
+| `crates/wasm` | The engine as a WebAssembly module with a plain C ABI: fixture runs, JSON-command sessions for the editor (build, click, step, rewind, inspect, material list), and a fixture's material list |
+| `crates/cli` | The `tickwright` command: `resolve`, `run`, `diff`, `bench`, `materials`, and `import`/`export` for schematics |
 | `fixtures/phase1` | Phase 1 fixtures: dust, torches, repeaters, pistons, buttons |
 | `fixtures/phase2` | Phase 2 fixtures: observers, comparators, note blocks, doors, trapdoors, rails, water, hoppers, droppers, dispensers, barrels, copper bulbs, bells |
 | `fixtures/nucleation` | Builds from [Nucleation](https://github.com/Schem-at/Nucleation)'s conformance tests (MIT, © 2025 Schem-at), converted by `tools/nucleation.py` and recaptured on 26.3 |
 | `harness/` | Java capture harness for the vanilla server |
 | `traces/<version>/` | Ground-truth traces from the real game, gzipped |
-| `data/<version>/` | Blocks, items and block entity types from the game's data reports |
+| `data/<version>/` | Blocks, items and block entity types from the game's data reports, and `materials.json`: the items each block state takes and every item's stack size |
 | `tools/registry.py` | Turns the game's data reports into `data/<version>/` |
+| `tools/materials.py` | Rolls the server jar's block loot tables into `data/<version>/materials.json` |
 | `tools/wasm-check.cjs` | Runs every fixture in headless Chromium, as a fixture run and as an editor session, and checks the traces match the native engine's |
 
 ## Usage
@@ -63,6 +65,9 @@ cargo run -p tickwright -- diff expected.json actual.json --level phase
 # Turn a schematic into a fixture, or a fixture's build into a schematic
 cargo run -p tickwright -- import door.litematic --out door.json --ticks 100
 cargo run -p tickwright -- export door.json --out door.schem
+
+# The items a build takes, with stack and shulker box counts
+cargo run -p tickwright -- materials door.litematic
 
 # Ticks per second on a large dust-and-repeater build
 cargo run --release -p tickwright -- bench

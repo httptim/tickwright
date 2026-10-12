@@ -1,0 +1,13 @@
+[package]
+name = "tickwright-materials"
+description = "The items a Tickwright design takes to build, from the game's own data"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tickwright-trace = { path = "../trace" }

@@ -101,6 +101,20 @@ async function main() {
       }
       return bad;
     };
+    // A fixture's material list, from the materials export and from a
+    // session opened on it; they should agree.
+    window.materialLists = (fixtureText, version) => {
+      const fromFixture = JSON.parse(dec.decode(call(e.materials, fixtureText, version)));
+      const { session } = window.cmd({ op: "open", version, fixture: JSON.parse(fixtureText) });
+      const fromSession = window.cmd({ op: "materials", session, version });
+      window.cmd({ op: "close", session });
+      // The two answer with their keys in different orders.
+      const canon = (v) =>
+        Array.isArray(v) ? v.map(canon)
+        : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])]))
+        : v;
+      return [JSON.stringify(canon(fromFixture)), JSON.stringify(canon(fromSession)), fromFixture.items.length];
+    };
     // Play a resolved fixture through a session; return its events inside the
     // fixture's box, relative to the origin, as a trace would hold them.
     window.sessionEvents = (fixtureText, version) => {
@@ -142,6 +156,7 @@ async function main() {
   let failed = 0;
   let refused = 0;
   let roundTrips = 0;
+  let materialLists = 0;
   let totalMs = 0;
   for (const f of files) {
     const fixture = fs.readFileSync(path.join(resolvedDir, f), "utf8");
@@ -172,6 +187,13 @@ async function main() {
         continue;
       }
       roundTrips++;
+      const [a, b, n] = await page.evaluate(([fx, v]) => window.materialLists(fx, v), [fixture, version]);
+      if (a !== b || n === 0) {
+        console.log(`${f}: material lists from the fixture and from a session differ or are empty`);
+        failed++;
+        continue;
+      }
+      materialLists++;
     }
     const native = fs.readFileSync(nativePath, "utf8");
     if (native !== r.text) {
@@ -201,6 +223,7 @@ async function main() {
   }
   await browser.close();
   console.log(`${files.length - failed - refused} of ${files.length - refused} fixtures gave identical traces in the browser, as fixture runs and as editor sessions (${refused} refused by both), ${totalMs.toFixed(0)} ms in wasm`);
+  console.log(`${materialLists} builds gave the same material list from the fixture and from a session`);
   console.log(`${roundTrips} builds survived export to and import from .litematic, .schem and .nbt unchanged`);
   process.exit(failed ? 1 : 0);
 }

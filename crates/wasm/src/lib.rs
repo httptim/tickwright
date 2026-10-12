@@ -13,6 +13,10 @@
 //! [`import_schematic`] and [`export_schematic`] convert between schematic
 //! files and resolved fixtures, so the editor can open and save the files
 //! players share.
+//!
+//! [`materials`] gives a resolved fixture's material list, and the session
+//! command `materials` the list for a session's world as it stands (see
+//! `tickwright_materials::MaterialList` for the JSON's fields).
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -21,8 +25,9 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use tickwright_engine::Pos;
 use tickwright_engine::session::{Placement, Session};
+use tickwright_materials::Table;
 use tickwright_schematic::{Format, Schematic};
-use tickwright_trace::{ResolvedFixture, Transform};
+use tickwright_trace::{BlockState, ResolvedFixture, Transform};
 
 /// Allocate `len` bytes for the host to write into.
 #[unsafe(no_mangle)]
@@ -169,6 +174,12 @@ enum Command {
         session: u32,
         pos: [i32; 3],
     },
+    /// The material list for the world as it stands: its blocks and what
+    /// its containers hold. Rewind to tick 0 first for the build as placed.
+    Materials {
+        session: u32,
+        version: String,
+    },
 }
 
 fn one() -> u32 {
@@ -261,6 +272,15 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                 json!({ "ticks": ticks })
             }
             Command::Items { session, pos: p } => json!({ "items": get(sessions, session)?.items(pos(p)) }),
+            Command::Materials { session, version } => {
+                let s = get(sessions, session)?;
+                let states = s
+                    .blocks()
+                    .into_iter()
+                    .map(|(_, st)| BlockState::parse(&st))
+                    .collect::<anyhow::Result<Vec<_>>>()?;
+                serde_json::to_value(Table::for_version(&version)?.list(&states, &s.containers()))?
+            }
         })
     })
 }
@@ -298,6 +318,22 @@ pub unsafe extern "C" fn export_schematic(ptr: *const u8, len: usize, name_ptr: 
     })())
 }
 
+/// The material list for the resolved fixture in `ptr[..len]`, with the
+/// tables of `version` (`version_ptr[..version_len]`), as JSON.
+///
+/// # Safety
+/// Both ranges must be initialised memory inside this module's heap.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn materials(ptr: *const u8, len: usize, version_ptr: *const u8, version_len: usize) -> *mut u8 {
+    let input = unsafe { std::slice::from_raw_parts(ptr, len) };
+    let version = unsafe { std::slice::from_raw_parts(version_ptr, version_len) };
+    respond((|| {
+        let fixture: ResolvedFixture = serde_json::from_slice(input)?;
+        let list = Table::for_version(std::str::from_utf8(version)?)?.list_fixture(&fixture)?;
+        Ok(serde_json::to_string(&list)?)
+    })())
+}
+
 #[cfg(test)]
 mod tests {
     use super::command;
@@ -320,5 +356,21 @@ mod tests {
         let lamp = ok(&format!(r#"{{"op":"block","session":{id},"pos":[1,1,0]}}"#));
         assert_eq!(lamp["state"], "minecraft:redstone_lamp[lit=true]");
         assert!(command(br#"{"op":"step","session":999}"#).is_err());
+    }
+
+    #[test]
+    fn a_session_lists_its_materials() {
+        let id = ok(r#"{"op":"open","version":"26.3"}"#)["session"].as_u64().unwrap();
+        ok(&format!(r#"{{"op":"set","session":{id},"pos":[0,0,0],"state":"chest[facing=north,type=single]"}}"#));
+        ok(&format!(r#"{{"op":"item","session":{id},"pos":[0,0,0],"slot":0,"id":"minecraft:redstone","count":10}}"#));
+        ok(&format!(r#"{{"op":"set","session":{id},"pos":[1,0,0],"state":"stone"}}"#));
+        ok(&format!(r#"{{"op":"set","session":{id},"pos":[1,1,0],"state":"redstone_wire"}}"#));
+        let list = ok(&format!(r#"{{"op":"materials","session":{id},"version":"26.3"}}"#));
+        assert_eq!(list["items"][0]["item"], "minecraft:redstone");
+        assert_eq!(list["items"][0]["count"], 11);
+        assert_eq!(list["items"][0]["from_containers"], 10);
+        assert_eq!(list["items"][1]["item"], "minecraft:chest");
+        assert_eq!(list["items"][2]["item"], "minecraft:stone");
+        assert_eq!(list["shulker_boxes"], 1);
     }
 }
