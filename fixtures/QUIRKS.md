@@ -8,7 +8,7 @@ all eight orientations and must match at the order level
 
 | Quirk | In 26.3 | Fixtures | Status |
 | --- | --- | --- | --- |
-| `qc` quasi-connectivity | yes | `phase1/piston_qc_diagonal`, `phase2/dropper_qc_bud` | covered for pistons and droppers (dispensers share the dropper's trigger); the crafter, which is not QC, is not simulated yet |
+| `qc` quasi-connectivity | yes | `phase1/piston_qc_diagonal`, `phase2/dropper_qc_bud` | covered for pistons and droppers (dispensers share the dropper's trigger); the crafter is simulated, but no fixture checks yet that it ignores QC |
 | `bud` stale QC power | yes | `phase1/piston_qc_bud`, `phase2/dropper_qc_bud` | covered |
 | `piston-start-delay` | yes | `phase1/piston_from_repeater`, `phase1/piston_push` | covered |
 | `zero-tick-pulse` | yes | `phase1/piston_zero_tick`, `phase1/sticky_piston_zero_tick` | covered |
@@ -33,10 +33,10 @@ all eight orientations and must match at the order level
 | `flying-machines` | yes | `nucleation/flying_kick`, `nucleation/slime_extender` | covered |
 | `block-entities-immovable` | yes | `phase1/piston_block_entity`, `phase1/piston_immovable` | covered |
 | `push-limit` | yes | `phase1/piston_push_limit_12`, `phase1/piston_push_limit_13` | covered |
-| `headless-pistons` | yes | | needs TNT (phase 4) |
+| `headless-pistons` | yes | | not captured yet: TNT is simulated now, so this needs a fixture |
 | `powered-rail-order` | yes | `phase2/powered_rail_slope`, `phase2/activator_rail_chain`, `nucleation/rails_chain` | covered |
 | `minecart-improvements` | opt-in | | not simulated: the engine runs the default minecart physics (`OldMinecartBehavior`), which 26.3 worlds use unless the experiment is on |
-| `crafter-no-qc` | yes | | the crafter is not simulated yet |
+| `crafter-no-qc` | yes | | the crafter is simulated (`phase2/crafter_*`), but no fixture powers one quasi-connectedly yet |
 | `be-tick-order` | yes | `phase2/hoppers_share_hopper`, `phase2/hopper_chain_cooldown`, `nucleation/hopper_race` | covered |
 | `comparator-quirks` | unverified | `phase2/comparator_reads_composter`, `phase2/comparator_reads_cake`, `phase2/hopper_chest_to_chest` | covered for composters, cakes and blocked chests |
 | `item-shadowing` | no | | not present in 26.3 |
