@@ -1,0 +1,108 @@
+{
+  "name": "shelf_comparator",
+  "description": "Comparators read shelves holding different items in different slots, and dust shows the strengths.",
+  "ticks": 10,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "shelf",
+    "comparator"
+  ],
+  "palette": {
+    "#": "stone",
+    "S": "oak_shelf[facing=west,powered=false,side_chain=unconnected,waterlogged=false]",
+    "c": "comparator[facing=west,mode=compare,powered=false]",
+    "-": "redstone_wire[east=side,north=none,power=0,south=none,west=side]"
+  },
+  "layers": [
+    [
+      "####",
+      "####",
+      "####",
+      "####",
+      "####",
+      "####",
+      "####"
+    ],
+    [
+      "Sc--",
+      "....",
+      "Sc--",
+      "....",
+      "Sc--",
+      "....",
+      "Sc--"
+    ]
+  ],
+  "containers": [
+    {
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "stick",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "pos": [
+        0,
+        1,
+        2
+      ],
+      "items": [
+        {
+          "slot": 1,
+          "id": "stick",
+          "count": 64
+        }
+      ]
+    },
+    {
+      "pos": [
+        0,
+        1,
+        4
+      ],
+      "items": [
+        {
+          "slot": 2,
+          "id": "ender_pearl",
+          "count": 16
+        }
+      ]
+    },
+    {
+      "pos": [
+        0,
+        1,
+        6
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "stick",
+          "count": 1
+        },
+        {
+          "slot": 1,
+          "id": "stick",
+          "count": 1
+        },
+        {
+          "slot": 2,
+          "id": "stick",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

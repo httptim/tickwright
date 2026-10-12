@@ -1,0 +1,107 @@
+{
+  "name": "shelf_chain_power",
+  "description": "Four shelves in a row are powered one at a time from below, then unpowered, to show how powered shelves join into side chains.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "shelf"
+  ],
+  "palette": {
+    "#": "stone",
+    "S": "oak_shelf[facing=south,powered=false,side_chain=unconnected,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "####"
+    ],
+    [
+      "SSSS"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        0,
+        0,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 6,
+      "action": "set",
+      "pos": [
+        1,
+        0,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        2,
+        0,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 14,
+      "action": "set",
+      "pos": [
+        3,
+        0,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 20,
+      "action": "set",
+      "pos": [
+        1,
+        0,
+        0
+      ],
+      "state": "stone"
+    },
+    {
+      "tick": 26,
+      "action": "set",
+      "pos": [
+        0,
+        0,
+        0
+      ],
+      "state": "stone"
+    },
+    {
+      "tick": 28,
+      "action": "set",
+      "pos": [
+        2,
+        0,
+        0
+      ],
+      "state": "stone"
+    },
+    {
+      "tick": 30,
+      "action": "set",
+      "pos": [
+        3,
+        0,
+        0
+      ],
+      "state": "stone"
+    }
+  ]
+}

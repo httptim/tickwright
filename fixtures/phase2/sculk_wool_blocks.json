@@ -1,0 +1,39 @@
+{
+  "name": "sculk_wool_blocks",
+  "description": "Wool lies between a broken block and one sculk sensor, while a second sensor has a clear line to it; the second sensor's tendrils are also in reach of the first.",
+  "ticks": 80,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "sculk"
+  ],
+  "palette": {
+    "#": "stone",
+    "S": "sculk_sensor[power=0,sculk_sensor_phase=inactive,waterlogged=false]",
+    "W": "white_wool"
+  },
+  "layers": [
+    [
+      "#######",
+      "#######"
+    ],
+    [
+      "SW..#..",
+      "......S"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "destroy",
+      "pos": [
+        4,
+        1,
+        0
+      ]
+    }
+  ]
+}
