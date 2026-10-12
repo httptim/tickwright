@@ -21,14 +21,17 @@ pub fn from_nbt(root: &Tag) -> Result<Schematic> {
     if regions.is_empty() {
         bail!("the litematic has no regions");
     }
-    // Each region's least corner and size, in schematic space.
+    // Each region's least corner and size, in schematic space, and its
+    // `Position`, the corner its selection started from.
     let mut boxes = Vec::new();
+    let mut corners = Vec::new();
     for (name, r) in regions {
         let pos = xyz(r, "Position").with_context(|| format!("region {name}"))?;
         let size = xyz(r, "Size").with_context(|| format!("region {name}"))?;
         let min: Vec<i32> = (0..3).map(|i| pos[i] + if size[i] < 0 { size[i] + 1 } else { 0 }).collect();
         crate::check_volume(size).with_context(|| format!("region {name}"))?;
         boxes.push(([min[0], min[1], min[2]], size.map(i32::abs)));
+        corners.push(pos);
     }
     let lo: Vec<i32> = (0..3).map(|i| boxes.iter().map(|b| b.0[i]).min().unwrap()).collect();
     let hi: Vec<i32> = (0..3).map(|i| boxes.iter().map(|b| b.0[i] + b.1[i]).max().unwrap()).collect();
@@ -38,7 +41,7 @@ pub fn from_nbt(root: &Tag) -> Result<Schematic> {
         data_version: root.get("MinecraftDataVersion").and_then(Tag::as_i64).map(|v| v as i32),
         ..Default::default()
     };
-    for ((name, r), (min, size)) in regions.iter().zip(&boxes) {
+    for (((name, r), (min, size)), corner) in regions.iter().zip(&boxes).zip(&corners) {
         let states: Vec<_> = r
             .req("BlockStatePalette")?
             .list()
@@ -81,8 +84,9 @@ pub fn from_nbt(root: &Tag) -> Result<Schematic> {
                 data: strip_keys(te, &["x", "y", "z"]),
             });
         }
-        // Entity positions are relative to the region's own corner.
-        let offset = [(min[0] - lo[0]) as f64, (min[1] - lo[1]) as f64, (min[2] - lo[2]) as f64];
+        // Litematica keeps entity positions relative to the region's
+        // `Position`, which is its far corner on an axis with a negative size.
+        let offset = [(corner[0] - lo[0]) as f64, (corner[1] - lo[1]) as f64, (corner[2] - lo[2]) as f64];
         for e in r.get("Entities").map(Tag::list).unwrap_or(&[]) {
             out.entities.push(Entity::from_saved(e, offset).with_context(|| format!("region {name}"))?);
         }
@@ -151,7 +155,32 @@ pub fn write(s: &Schematic) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use super::bits_for;
+    use super::{bits_for, from_nbt};
+    use crate::nbt::{self, Tag};
+
+    #[test]
+    fn entities_sit_relative_to_the_region_position() {
+        let vec3 =
+            |x: i32, y: i32, z: i32| nbt::compound(vec![("x", Tag::Int(x)), ("y", Tag::Int(y)), ("z", Tag::Int(z))]);
+        // Selected from the far x corner: Position x=2 with size x=-3 covers
+        // x 0..=2, and the cart stored at x -0.5 from Position is at 1.5.
+        let cart = nbt::compound(vec![
+            ("id", Tag::String("minecraft:minecart".into())),
+            ("Pos", Tag::List(6, vec![Tag::Double(-0.5), Tag::Double(0.0), Tag::Double(0.5)])),
+        ]);
+        let region = nbt::compound(vec![
+            ("Position", vec3(2, 0, 0)),
+            ("Size", vec3(-3, 1, 1)),
+            ("BlockStatePalette", nbt::list(vec![nbt::compound(vec![("Name", Tag::String("minecraft:air".into()))])])),
+            ("BlockStates", Tag::LongArray(vec![0])),
+            ("TileEntities", Tag::List(10, vec![])),
+            ("Entities", Tag::List(10, vec![cart])),
+        ]);
+        let root = nbt::compound(vec![("Regions", Tag::Compound(vec![("R".to_string(), region)]))]);
+        let s = from_nbt(&root).unwrap();
+        assert_eq!(s.size, [3, 1, 1]);
+        assert_eq!(s.entities[0].pos, [1.5, 0.0, 0.5]);
+    }
 
     #[test]
     fn widths_match_litematica() {
