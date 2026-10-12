@@ -44,6 +44,14 @@ jobs:
           else
             harness/run.sh
           fi
+      - name: Print unrotated traces
+        if: always()
+        run: |
+          for t in harness/work/traces/*@r0.json; do
+            echo "::group::$(basename "$t" .json)"
+            jq -c '{initial: .initial | length, levels}, (.entries[] | [.tick, .phase, .pos, .state])' "$t"
+            echo "::endgroup::"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
