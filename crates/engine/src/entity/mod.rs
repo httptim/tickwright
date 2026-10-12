@@ -212,23 +212,59 @@ fn tick(level: &mut Level, e: &mut Entity) {
     }
 }
 
-/// `/summon <entity> x y z {nbt}`.
+/// `/summon <entity> x y z {nbt}`. Entity types and data the engine
+/// doesn't simulate are refused.
 pub fn summon(level: &mut Level, entity: &str, at: Vec3, motion: Option<Vec3>, nbt: Option<&str>) -> Result<()> {
-    let tag = match nbt {
-        Some(t) => snbt::parse(t).with_context(|| format!("summon data {t}"))?,
-        None => snbt::Tag::Compound(Default::default()),
-    };
     let name = entity.strip_prefix("minecraft:").unwrap_or(entity);
-    let num = |key: &str| tag.get(key).and_then(|t| t.number());
-    let known: &[&str] = match name {
-        "item" => &["Item", "PickupDelay", "Age"],
-        "tnt" => &["fuse"],
-        "minecart" | "furnace_minecart" => &[],
-        _ => bail!("summoning {entity} is not supported by the engine yet"),
+    let Some(known) = known_data(name) else {
+        bail!("summoning {entity} is not supported by the engine yet");
     };
+    let tag = parse_data(nbt)?;
     if let Some(k) = tag.keys().into_iter().find(|k| !known.contains(k)) {
         bail!("summon data {k} for {entity} is not supported by the engine yet");
     }
+    spawn(level, name, &tag, at, motion)
+}
+
+/// An entity that is part of a build when it is placed. Types the engine
+/// doesn't simulate are left out, and so is saved data it doesn't model
+/// (a saved entity carries its UUID, rotation, air supply and the like).
+/// Returns whether the entity was created.
+pub fn place_start_entity(
+    level: &mut Level,
+    entity: &str,
+    at: Vec3,
+    motion: Option<Vec3>,
+    nbt: Option<&str>,
+) -> Result<bool> {
+    let name = entity.strip_prefix("minecraft:").unwrap_or(entity);
+    if known_data(name).is_none() {
+        return Ok(false);
+    }
+    spawn(level, name, &parse_data(nbt)?, at, motion)?;
+    Ok(true)
+}
+
+/// The summon data keys the engine reads for each type it simulates.
+fn known_data(name: &str) -> Option<&'static [&'static str]> {
+    Some(match name {
+        "item" => &["Item", "PickupDelay", "Age"],
+        "tnt" => &["fuse"],
+        "falling_block" => &["BlockState", "Time", "DropItem", "CancelDrop"],
+        "minecart" | "furnace_minecart" => &[],
+        _ => return None,
+    })
+}
+
+fn parse_data(nbt: Option<&str>) -> Result<snbt::Tag> {
+    Ok(match nbt {
+        Some(t) => snbt::parse(t).with_context(|| format!("summon data {t}"))?,
+        None => snbt::Tag::Compound(Default::default()),
+    })
+}
+
+fn spawn(level: &mut Level, name: &str, tag: &snbt::Tag, at: Vec3, motion: Option<Vec3>) -> Result<()> {
+    let num = |key: &str| tag.get(key).and_then(|t| t.number());
     let data = match name {
         "item" => {
             let it = tag.get("Item").context("an item needs Item")?;
@@ -244,6 +280,32 @@ pub fn summon(level: &mut Level, entity: &str, at: Vec3, motion: Option<Vec3>, n
             Data::Item(item)
         }
         "tnt" => Data::Tnt(tnt::Tnt { fuse: num("fuse").unwrap_or(80.0) as i32 }),
+        "falling_block" => {
+            // `FallingBlockEntity.readAdditionalSaveData`: sand unless told.
+            let state = match tag.get("BlockState") {
+                Some(b) => {
+                    let name = b.get("Name").and_then(|t| t.string()).context("BlockState.Name")?;
+                    let props: Vec<String> = match b.get("Properties") {
+                        Some(snbt::Tag::Compound(m)) => {
+                            m.iter().map(|(k, v)| format!("{k}={}", v.string().unwrap_or_default())).collect()
+                        }
+                        _ => Vec::new(),
+                    };
+                    let text = if props.is_empty() { name.to_string() } else { format!("{name}[{}]", props.join(",")) };
+                    level.reg.parse(&text)?
+                }
+                None => level.default_state(level.block_id("sand")),
+            };
+            if level.kind(state) == Kind::Other {
+                bail!("a falling {} is not supported by the engine yet", level.reg.name(state));
+            }
+            Data::FallingBlock(falling::Falling {
+                state,
+                time: num("Time").unwrap_or(0.0) as i32,
+                drop_item: num("DropItem").is_none_or(|v| v != 0.0),
+                cancel_drop: num("CancelDrop").is_some_and(|v| v != 0.0),
+            })
+        }
         _ => Data::Minecart(minecart::Minecart { furnace: name == "furnace_minecart" }),
     };
     let mut e = Entity::new(level, data, at);

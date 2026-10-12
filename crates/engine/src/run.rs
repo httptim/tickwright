@@ -205,6 +205,15 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
         blocks::lectern::set_book(&mut level, pos, l.pages as i32);
         blocks::lectern::set_page(&mut level, pos, l.page as i32);
     }
+    // Entities that come with the build: the ones the engine simulates are
+    // created before the first tick; the rest are carried in the fixture
+    // only.
+    for e in &fixture.start_entities {
+        let at = Vec3::new(ox as f64 + e.at[0], oy as f64 + e.at[1], oz as f64 + e.at[2]);
+        let motion = e.motion.map(|m| Vec3::new(m[0], m[1], m[2]));
+        entity::place_start_entity(&mut level, &e.entity, at, motion, e.nbt.as_deref())
+            .with_context(|| format!("{}: entity {}", fixture.id, e.entity))?;
+    }
     Ok(level)
 }
 

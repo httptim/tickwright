@@ -66,6 +66,7 @@ pub fn redstone_rings(rings: i32, length: i32, ticks: u32) -> ResolvedFixture {
         day_time: None,
         max_chained_updates: None,
         entities: false,
+        start_entities: Vec::new(),
     }
 }
 
