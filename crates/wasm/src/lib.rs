@@ -161,9 +161,21 @@ enum Command {
         session: u32,
         tick: u32,
     },
-    /// Every non-air block as `[x, y, z, state]`.
+    /// Every non-air block as `[x, y, z, state]`: now, or just after tick
+    /// `tick` when given.
     Blocks {
         session: u32,
+        tick: Option<u32>,
+    },
+    /// Every non-air block that receives power, as `[x, y, z, weak, strong]`.
+    Powers {
+        session: u32,
+    },
+    /// Each change of the block at `pos`, as `[tick, state]`, oldest first,
+    /// including edits waiting for the next tick.
+    History {
+        session: u32,
+        pos: [i32; 3],
     },
     Block {
         session: u32,
@@ -270,10 +282,38 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                 json!({})
             }
             Command::Events { session, tick } => json!({ "events": get(sessions, session)?.events(tick) }),
-            Command::Blocks { session } => {
+            Command::Blocks { session, tick } => {
                 let s = get(sessions, session)?;
-                let blocks: Vec<Value> = s.blocks().into_iter().map(|(p, st)| json!([p.x, p.y, p.z, st])).collect();
-                json!({ "tick": s.tick(), "blocks": blocks })
+                let blocks = match tick {
+                    Some(t) => s.blocks_at(t).ok_or_else(|| anyhow::anyhow!("tick {t} has not run yet"))?,
+                    None => s.blocks(),
+                };
+                let blocks: Vec<Value> = blocks.into_iter().map(|(p, st)| json!([p.x, p.y, p.z, st])).collect();
+                json!({ "tick": tick.unwrap_or(s.tick()), "blocks": blocks })
+            }
+            Command::Powers { session } => {
+                let s = get(sessions, session)?;
+                let powers: Vec<Value> = s
+                    .blocks()
+                    .into_iter()
+                    .filter_map(|(p, _)| {
+                        let w = s.power(p);
+                        (w.weak > 0 || w.strong > 0).then(|| json!([p.x, p.y, p.z, w.weak, w.strong]))
+                    })
+                    .collect();
+                json!({ "powers": powers })
+            }
+            Command::History { session, pos: p } => {
+                let s = get(sessions, session)?;
+                let mut changes = Vec::new();
+                for t in 0..=s.tick() + 1 {
+                    for e in s.events(t) {
+                        if e.kind == tickwright_trace::Kind::Set && e.pos == p {
+                            changes.push(json!([t, e.state]));
+                        }
+                    }
+                }
+                json!({ "changes": changes })
             }
             Command::Block { session, pos: p } => json!({ "state": get(sessions, session)?.block(pos(p)) }),
             Command::Power { session, pos: p } => {
@@ -354,6 +394,12 @@ mod tests {
         assert!(repeater["state"].as_str().unwrap().contains("facing=west"), "{repeater}");
         assert_eq!(lamp["state"], "minecraft:redstone_lamp[lit=true]");
         assert!(command(br#"{"op":"step","session":999}"#).is_err());
+        let history = ok(&format!(r#"{{"op":"history","session":{id},"pos":[1,1,0]}}"#));
+        assert!(!history["changes"].as_array().unwrap().is_empty(), "{history}");
+        let powers = ok(&format!(r#"{{"op":"powers","session":{id}}}"#));
+        assert!(powers["powers"].as_array().unwrap().iter().any(|p| p[0] == 1 && p[3] == 15), "{powers}");
+        let before = ok(&format!(r#"{{"op":"blocks","session":{id},"tick":0}}"#));
+        assert_eq!(before["tick"], 0);
         let turned = ok(
             r#"{"op":"transform","transform":"r90","states":["repeater[delay=1,facing=north,locked=false,powered=false]","stone"]}"#,
         );
