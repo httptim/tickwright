@@ -1,0 +1,58 @@
+{
+  "name": "dust_piston_race_b",
+  "description": "Quirk dust-locational: one dust line feeds two pistons that push blocks into the same cell. Dust updates its neighbors in HashSet order, which depends on the absolute position, so the winner can differ between copies of the build placed elsewhere.",
+  "ticks": 12,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "quirk",
+    "dust",
+    "piston"
+  ],
+  "origin": [
+    37,
+    100,
+    -21
+  ],
+  "palette": {
+    "#": "stone",
+    "s": "stone",
+    "P": "piston[extended=false,facing=east]",
+    "Q": "piston[extended=false,facing=north]",
+    "|": "redstone_wire[east=none,north=side,power=0,south=side,west=none]",
+    "-": "redstone_wire[east=side,north=none,power=0,south=none,west=side]",
+    "+": "redstone_wire[east=side,north=side,power=0,south=none,west=side]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".Ps..",
+      ".|.s.",
+      ".+-Q."
+    ],
+    [
+      ".....",
+      ".....",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        2
+      ],
+      "state": "redstone_block"
+    }
+  ]
+}

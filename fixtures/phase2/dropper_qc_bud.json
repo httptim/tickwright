@@ -1,0 +1,109 @@
+{
+  "name": "dropper_qc_bud",
+  "description": "Quirk qc and bud for droppers: a redstone block diagonally above a dropper powers it only quasi-connectively, so it fires only when a block placed beside it sends an update. Later the power goes without an update and the dropper stays triggered until the next one.",
+  "ticks": 45,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "quirk",
+    "dropper"
+  ],
+  "palette": {
+    "#": "stone",
+    "D": "dropper[facing=east,triggered=false]",
+    "C": "chest[facing=north,type=single,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "###",
+      "###"
+    ],
+    [
+      ".DC",
+      "..."
+    ],
+    [
+      "...",
+      "..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        1,
+        2,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 8,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "state": "stone"
+    },
+    {
+      "tick": 20,
+      "action": "destroy",
+      "pos": [
+        1,
+        2,
+        1
+      ]
+    },
+    {
+      "tick": 26,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 30,
+      "action": "set",
+      "pos": [
+        1,
+        2,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 34,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "state": "stone"
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        1,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "stone",
+          "count": 2
+        }
+      ]
+    }
+  ]
+}
