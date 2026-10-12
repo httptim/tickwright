@@ -90,3 +90,10 @@ nucleation_trapdoor_toggle order
 activator_rail_chain order
 powered_rail_slope order
 nucleation_rails_chain order
+nucleation_water_hole order
+nucleation_water_spread order
+water_falls_off_ledge order
+water_new_source_slab order
+water_piston_rail order
+water_three_sources_over_hole order
+water_washes_redstone order
