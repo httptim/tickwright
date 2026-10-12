@@ -108,3 +108,16 @@ dust_piston_race_a order
 dust_piston_race_b order
 hoppers_share_hopper order
 pistons_face_off order
+dispenser_buckets_waterlog order
+dispenser_fed_by_hopper order
+nucleation_bucket_dispense order
+nucleation_bucket_pickup order
+nucleation_comparator_barrel order
+nucleation_comparator_drain order
+nucleation_comparator_dust order
+nucleation_dropper_eject order
+nucleation_dropper_fill order
+nucleation_dropper_into_barrel order
+nucleation_hopper_locked order
+nucleation_hopper_pull order
+nucleation_hopper_race order
