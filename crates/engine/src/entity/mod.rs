@@ -7,6 +7,7 @@
 
 pub mod explosion;
 mod falling;
+mod fluid;
 pub mod item;
 pub mod snbt;
 mod tnt;
@@ -52,6 +53,12 @@ pub struct Entity {
     pub random: JavaRandom,
     main_support: Option<Pos>,
     on_ground_no_blocks: bool,
+    /// `stuckSpeedMultiplier`, set by cobwebs for the next move.
+    pub stuck_speed_multiplier: Vec3,
+    /// `wasTouchingWater` and the water's height over the entity's feet.
+    pub was_touching_water: bool,
+    pub fluid_height: f64,
+    pub first_tick: bool,
 }
 
 impl Entity {
@@ -66,7 +73,7 @@ impl Entity {
             random.next_float();
             random.next_float();
         }
-        Entity { id: level.entity_counter, data, pos, random, ..Default::default() }
+        Entity { id: level.entity_counter, data, pos, random, first_tick: true, ..Default::default() }
     }
 
     pub fn type_name(&self) -> &'static str {
@@ -252,27 +259,110 @@ fn mth_equal(a: f64, b: f64) -> bool {
     (b - a).abs() < 1.0E-5f32 as f64
 }
 
-/// `applyEffectsFromBlocks`: `entityInside` for each block the entity's
-/// box is in.
-pub fn apply_effects_from_blocks(level: &mut Level, e: &Entity) {
-    let b = e.bounding_box();
-    let lo = [floor(b.min[0] + 1.0E-5), floor(b.min[1] + 1.0E-5), floor(b.min[2] + 1.0E-5)];
-    let hi = [floor(b.max[0] - 1.0E-5), floor(b.max[1] - 1.0E-5), floor(b.max[2] - 1.0E-5)];
-    for x in lo[0]..=hi[0] {
+/// `Entity.applyEffectsFromBlocks(from, to)`: every block the entity
+/// passed through this tick, from where it started to where it is now,
+/// feels it once. Blocks are visited in the order the move reaches them.
+/// The entity being ticked is out of the level's list, so it goes back on
+/// the end while blocks see it, and comes back changed.
+pub fn apply_effects_from_blocks(level: &mut Level, e: &mut Entity, from: Vec3) {
+    for p in blocks_between(from, e.pos, e.bounding_box().deflate(1.0E-5f32 as f64)) {
+        let state = level.get(p);
+        if !level.is_air(state) && !e.removed {
+            level.entities.push(std::mem::take(e));
+            crate::blocks::entity_inside(level, p, state);
+            *e = level.entities.pop().unwrap();
+        }
+    }
+}
+
+/// `BlockGetter.forEachBlockIntersectedBetween`, as far as 26.3 captures
+/// show it: the blocks the box ends up in, in the order the move reaches
+/// them. Blocks the box starts in come first; then the walk steps through
+/// the blocks its corner crosses.
+fn blocks_between(from: Vec3, to: Vec3, target: Aabb) -> Vec<Pos> {
+    let lo = [floor(target.min[0]), floor(target.min[1]), floor(target.min[2])];
+    let hi = [floor(target.max[0]), floor(target.max[1]), floor(target.max[2])];
+    let mut out: Vec<Pos> = Vec::new();
+    let visit = |out: &mut Vec<Pos>, from: [i32; 3], to: [i32; 3]| {
+        for x in from[0].max(lo[0])..=to[0].min(hi[0]) {
+            for y in from[1].max(lo[1])..=to[1].min(hi[1]) {
+                for z in from[2].max(lo[2])..=to[2].min(hi[2]) {
+                    let p = Pos::new(x, y, z);
+                    if !out.contains(&p) {
+                        out.push(p);
+                    }
+                }
+            }
+        }
+    };
+    let travel = to - from;
+    if travel.length_sqr() >= (1.0E-5f32 as f64).powi(2) {
+        let size = [target.max[0] - target.min[0], target.max[1] - target.min[1], target.max[2] - target.min[2]];
+        let end = [target.min[0], target.min[1], target.min[2]];
+        let start = [end[0] - travel.x, end[1] - travel.y, end[2] - travel.z];
+        let d = [travel.x, travel.y, travel.z];
+        let mut cell = [floor(start[0]), floor(start[1]), floor(start[2])];
+        let corner = |cell: [i32; 3], hit: [f64; 3]| -> [i32; 3] {
+            let mut c = [0; 3];
+            for a in 0..3 {
+                let h = hit[a].clamp(cell[a] as f64 + 1.0E-5f32 as f64, cell[a] as f64 + 1.0 - 1.0E-5f32 as f64);
+                c[a] = floor(h + size[a]);
+            }
+            c
+        };
+        visit(&mut out, cell, corner(cell, start));
+        let mut step = [0i32; 3];
+        let mut t_delta = [f64::MAX; 3];
+        let mut t = [f64::MAX; 3];
+        for a in 0..3 {
+            step[a] = if d[a] > 0.0 {
+                1
+            } else if d[a] < 0.0 {
+                -1
+            } else {
+                0
+            };
+            if step[a] != 0 {
+                t_delta[a] = step[a] as f64 / d[a];
+                let frac = start[a] - start[a].floor();
+                t[a] = t_delta[a] * if step[a] > 0 { 1.0 - frac } else { frac };
+            }
+        }
+        while t[0] <= 1.0 || t[1] <= 1.0 || t[2] <= 1.0 {
+            let a = if t[0] < t[1] {
+                if t[0] < t[2] { 0 } else { 2 }
+            } else if t[1] < t[2] {
+                1
+            } else {
+                2
+            };
+            cell[a] += step[a];
+            t[a] += t_delta[a];
+            let cell_box = Aabb::new(
+                cell[0] as f64,
+                cell[1] as f64,
+                cell[2] as f64,
+                cell[0] as f64 + 1.0,
+                cell[1] as f64 + 1.0,
+                cell[2] as f64 + 1.0,
+            );
+            if let Some(hit) = cell_box.clip(start, end) {
+                visit(&mut out, cell, corner(cell, hit));
+            }
+        }
+    }
+    // `BlockPos.betweenClosed`: x fastest, then y, then z.
+    for z in lo[2]..=hi[2] {
         for y in lo[1]..=hi[1] {
-            for z in lo[2]..=hi[2] {
+            for x in lo[0]..=hi[0] {
                 let p = Pos::new(x, y, z);
-                let state = level.get(p);
-                if !level.is_air(state) {
-                    // The entity being ticked is out of the level's list;
-                    // put a copy back so blocks that count entities see it.
-                    level.entities.push(e.clone());
-                    crate::blocks::entity_inside(level, p, state);
-                    level.entities.pop();
+                if !out.contains(&p) {
+                    out.push(p);
                 }
             }
         }
     }
+    out
 }
 
 /// `applyGravity`.
@@ -280,8 +370,25 @@ pub fn apply_gravity(e: &mut Entity, gravity: f64) {
     e.motion = Vec3::new(e.motion.x, e.motion.y - gravity, e.motion.z);
 }
 
+/// `Entity.baseTick`, for what the engine's entities do in it.
+pub fn base_tick(level: &Level, e: &mut Entity) {
+    fluid::update_in_water(level, e);
+    e.first_tick = false;
+}
+
+/// `updateInWaterStateAndDoFluidPushing`.
+pub fn update_in_water(level: &Level, e: &mut Entity) {
+    fluid::update_in_water(level, e);
+}
+
 /// `Entity.move(MoverType.SELF, movement)`.
-pub fn move_entity(level: &mut Level, e: &mut Entity, movement: Vec3) {
+pub fn move_entity(level: &mut Level, e: &mut Entity, mut movement: Vec3) {
+    if e.stuck_speed_multiplier.length_sqr() > 1.0E-7 {
+        let s = e.stuck_speed_multiplier;
+        movement = movement.multiply(s.x, s.y, s.z);
+        e.stuck_speed_multiplier = Vec3::ZERO;
+        e.motion = Vec3::ZERO;
+    }
     let moved = collide(level, e, movement);
     let d = moved.length_sqr();
     if d > 1.0E-7 || movement.length_sqr() - d < 1.0E-7 {

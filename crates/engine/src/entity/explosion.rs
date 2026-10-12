@@ -49,9 +49,11 @@ fn exploded_positions(level: &mut Level, center: Vec3, radius: f32) -> Vec<Pos> 
                         break;
                     }
                     let state = level.get(p);
+                    // Water's resistance is its fluid's, 100, whatever block holds it.
+                    let wet = !crate::blocks::water::fluid_state(level, state).is_empty();
                     let resistance = match level.kind(state) {
                         Kind::Air => None,
-                        Kind::Water => Some(physics.factors(level.block(state)).resistance.max(100.0)),
+                        _ if wet => Some(physics.factors(level.block(state)).resistance.max(100.0)),
                         _ => Some(physics.factors(level.block(state)).resistance),
                     };
                     if let Some(r) = resistance {

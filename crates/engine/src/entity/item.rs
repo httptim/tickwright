@@ -81,6 +81,7 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
         e.discard();
         return;
     }
+    super::base_tick(level, e);
     {
         let i = item(e);
         if i.pickup_delay > 0 && i.pickup_delay != INFINITE_PICKUP_DELAY {
@@ -88,7 +89,15 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
         }
     }
     let old = e.pos;
-    apply_gravity(e, 0.04);
+    if e.was_touching_water && e.fluid_height > 0.1f32 as f64 {
+        // `setUnderwaterMovement`.
+        let m = e.motion;
+        let f = 0.99f32 as f64;
+        let lift = if m.y < 0.06f32 as f64 { 5.0E-4f32 as f64 } else { 0.0 };
+        e.motion = Vec3::new(m.x * f, m.y + lift, m.z * f);
+    } else {
+        apply_gravity(e, 0.04);
+    }
     if !no_block_collision(level, e.bounding_box().deflate(1.0E-7)) {
         // `moveTowardsClosestSpace` pushes by the entity's own random,
         // which captures can't repeat.
@@ -96,7 +105,7 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
     }
     if !e.on_ground || e.motion.horizontal_distance_sqr() > 1.0E-5f32 as f64 || (e.tick_count + e.id) % 4 == 0 {
         move_entity(level, e, e.motion);
-        super::apply_effects_from_blocks(level, e);
+        super::apply_effects_from_blocks(level, e, old);
         let mut f = 0.98f32;
         if e.on_ground {
             let below = level.get(e.pos_below_affecting_movement(level));
@@ -106,6 +115,10 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
         if e.on_ground && e.motion.y < 0.0 {
             e.motion = e.motion.multiply(1.0, -0.5, 1.0);
         }
+    } else {
+        // Fitted from 26.3 captures: a resting item still feels the
+        // blocks it is in.
+        super::apply_effects_from_blocks(level, e, old);
     }
     let moved_block = super::floor(old.x) != super::floor(e.pos.x)
         || super::floor(old.y) != super::floor(e.pos.y)
@@ -118,7 +131,9 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
     if i.age != INFINITE_LIFETIME {
         i.age += 1;
     }
-    if i.age >= LIFETIME {
+    // Water pushes items a second time each tick, after they move.
+    super::update_in_water(level, e);
+    if item(e).age >= LIFETIME {
         e.discard();
     }
 }

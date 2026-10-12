@@ -180,3 +180,13 @@ tnt_knockback order
 tnt_lit_by_lever order
 tnt_summoned order
 tripwire_item_drop order
+nucleation_bubble order
+nucleation_item_fall order
+nucleation_item_float_water order
+nucleation_item_ice order
+nucleation_item_into_hopper order
+nucleation_item_merge order
+nucleation_item_soulsand order
+nucleation_item_stream order
+nucleation_item_web order
+nucleation_plate_item order

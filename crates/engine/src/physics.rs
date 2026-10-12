@@ -56,6 +56,12 @@ impl Vec3 {
         self.length_sqr().sqrt()
     }
 
+    /// `Vec3.normalize`.
+    pub fn normalize(self) -> Vec3 {
+        let d = self.length();
+        if d < 1.0E-5f32 as f64 { Vec3::ZERO } else { Vec3::new(self.x / d, self.y / d, self.z / d) }
+    }
+
     pub fn horizontal_distance_sqr(self) -> f64 {
         self.x * self.x + self.z * self.z
     }
@@ -120,6 +126,38 @@ impl Aabb {
     /// `AABB.inflate`.
     pub fn inflate(self, x: f64, y: f64, z: f64) -> Aabb {
         Aabb::new(self.min[0] - x, self.min[1] - y, self.min[2] - z, self.max[0] + x, self.max[1] + y, self.max[2] + z)
+    }
+
+    /// `AABB.clip(from, to)`: where the segment first enters the box, if
+    /// it does.
+    pub fn clip(&self, from: [f64; 3], to: [f64; 3]) -> Option<[f64; 3]> {
+        let d = [to[0] - from[0], to[1] - from[1], to[2] - from[2]];
+        let mut scale = 1.0;
+        let mut hit = false;
+        for a in 0..3 {
+            let plane = if d[a] > 1.0E-7 {
+                self.min[a]
+            } else if d[a] < -1.0E-7 {
+                self.max[a]
+            } else {
+                continue;
+            };
+            let t = (plane - from[a]) / d[a];
+            let (b, c) = ((a + 1) % 3, (a + 2) % 3);
+            let pb = from[b] + t * d[b];
+            let pc = from[c] + t * d[c];
+            if 0.0 < t
+                && t < scale
+                && self.min[b] - 1.0E-7 < pb
+                && pb < self.max[b] + 1.0E-7
+                && self.min[c] - 1.0E-7 < pc
+                && pc < self.max[c] + 1.0E-7
+            {
+                scale = t;
+                hit = true;
+            }
+        }
+        hit.then(|| [from[0] + scale * d[0], from[1] + scale * d[1], from[2] + scale * d[2]])
     }
 
     pub fn deflate(self, d: f64) -> Aabb {
