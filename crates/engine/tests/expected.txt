@@ -61,3 +61,15 @@ nucleation_piston_race_quiet order
 nucleation_slime_drag order
 nucleation_slime_extender order
 nucleation_wire_corner_pull order
+nucleation_flying_kick order
+observer_chain order
+observer_clock order
+observer_pulse order
+observer_removed_mid_pulse order
+observer_sticky_piston order
+observer_watches_dust order
+comparator_locks_repeater order
+comparator_modes order
+comparator_reads_cake order
+comparator_reads_composter order
+comparator_through_block order
