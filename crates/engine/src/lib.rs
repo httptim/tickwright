@@ -12,6 +12,7 @@ pub mod record;
 pub mod registry;
 pub mod rules;
 pub mod run;
+pub mod world;
 
 pub use level::Level;
 pub use pos::{Dir, Pos};
