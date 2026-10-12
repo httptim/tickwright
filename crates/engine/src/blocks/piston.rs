@@ -38,7 +38,8 @@ fn push_reaction(level: &Level, state: StateId) -> PushReaction {
         | Kind::Tripwire
         | Kind::Water
         | Kind::BubbleColumn
-        | Kind::Cobweb => PushReaction::Destroy,
+        | Kind::Cobweb
+        | Kind::Fire => PushReaction::Destroy,
         Kind::MovingPiston | Kind::PistonHead => PushReaction::Block,
         _ => PushReaction::Normal,
     }

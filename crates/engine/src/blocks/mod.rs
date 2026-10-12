@@ -20,6 +20,7 @@ pub mod daylight;
 pub mod dispenser;
 mod door;
 mod falling;
+pub(crate) mod fire;
 mod lamp;
 pub mod lectern;
 pub mod plate;
@@ -31,7 +32,7 @@ mod note;
 mod observer;
 mod piston;
 pub mod placement;
-mod plain;
+pub(crate) mod plain;
 pub(crate) mod rail;
 mod repeater;
 mod torch;
@@ -129,6 +130,8 @@ pub enum Kind {
     /// Wool and moss carpets.
     Carpet,
     DeadCoralWallFan,
+    /// Fire, which never spreads in captures.
+    Fire,
     Other,
 }
 
@@ -427,6 +430,7 @@ pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId, moved
         Kind::Shelf => shelf::on_place(level, pos, state, old),
         Kind::FallingBlock => falling::on_place(level, pos, state),
         Kind::Tnt => falling::tnt_on_place(level, pos, state, old),
+        Kind::Fire => fire::on_place(level, pos, state, old),
         _ => {}
     }
 }
@@ -534,6 +538,7 @@ pub fn update_shape(
         Kind::BubbleColumn => bubble::column_update_shape(level, pos, state, dir, neighbor_state),
         Kind::DeadCoral | Kind::DeadCoralWallFan => plain::coral_update_shape(level, pos, state, dir),
         Kind::Carpet => plain::carpet_update_shape(level, pos, state, dir),
+        Kind::Fire => fire::update_shape(level, pos, state),
         _ => state,
     }
 }
@@ -585,12 +590,14 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
         Kind::TripwireHook => tripwire::hook_tick(level, pos, state),
         Kind::SculkSensor | Kind::CalibratedSculkSensor => sculk::tick(level, pos, state),
         Kind::Leaves => plain::leaves_tick(level, pos, state),
+        Kind::Target => plain::target_tick(level, pos, state),
         Kind::FallingBlock => falling::tick(level, pos, state),
         Kind::PressurePlate | Kind::WeightedPlate => plate::tick(level, pos, state),
         Kind::DetectorRail => rail::detector_tick(level, pos, state),
         Kind::Tripwire => tripwire::tick(level, pos, state),
         Kind::SoulSand | Kind::Magma => bubble::source_tick(level, pos, state),
         Kind::BubbleColumn => bubble::column_tick(level, pos, state),
+        Kind::Fire => fire::tick(level, pos, state),
         _ => {}
     }
 }
@@ -613,6 +620,8 @@ pub fn entity_inside(level: &mut Level, pos: Pos, state: StateId) {
         Kind::Hopper => container::hopper_entity_inside(level, pos),
         Kind::BubbleColumn => bubble::column_entity_inside(level, pos, state),
         Kind::Cobweb => bubble::web_entity_inside(level),
+        Kind::Button => button::entity_inside(level, pos, state),
+        Kind::Fire => fire::entity_inside(level),
         _ => {}
     }
 }

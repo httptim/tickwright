@@ -208,3 +208,6 @@ slime_launch_tnt order
 slime_bounce_heights order
 tnt_dupe_coral order
 nucleation_plate_recheck order
+arrow_flight order
+arrow_hits order
+fireball_hits order

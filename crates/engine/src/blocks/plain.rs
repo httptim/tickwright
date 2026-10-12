@@ -49,6 +49,32 @@ pub fn target_signal(level: &Level, state: StateId) -> i32 {
     level.int(state, "power")
 }
 
+/// `TargetBlock.onProjectileHit`: the nearer the hit is to the middle of
+/// the face, the stronger the signal, for 20 ticks after an arrow and 8
+/// after anything else. A hit while it is still powered changes nothing.
+pub fn target_hit(level: &mut Level, pos: Pos, state: StateId, at: [f64; 3], face: Dir, arrow: bool) {
+    let off = |v: f64| (v - v.floor() - 0.5).abs();
+    let (dx, dy, dz) = (off(at[0]), off(at[1]), off(at[2]));
+    let d = match face.axis() {
+        1 => dx.max(dz),
+        2 => dx.max(dy),
+        _ => dy.max(dz),
+    };
+    let power = ((15.0 * ((0.5 - d) / 0.5).clamp(0.0, 1.0)).ceil() as i32).max(1);
+    let block = level.block(state);
+    if !level.has_scheduled_tick(pos, block) {
+        level.set_block(pos, level.with_int(state, "power", power), flags::ALL);
+        level.schedule_tick(pos, block, if arrow { 20 } else { 8 }, 0);
+    }
+}
+
+/// `TargetBlock.tick`: the signal ends.
+pub fn target_tick(level: &mut Level, pos: Pos, state: StateId) {
+    if level.int(state, "power") != 0 {
+        level.set_block(pos, level.with_int(state, "power", 0), flags::ALL);
+    }
+}
+
 // --- TripWireHookBlock -----------------------------------------------------------
 
 /// Weak power from a powered hook, in every direction.

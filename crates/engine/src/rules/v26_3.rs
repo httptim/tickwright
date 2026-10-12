@@ -58,6 +58,7 @@ fn block(name: &str) -> Option<Kind> {
         "magma_block" => Kind::Magma,
         "bubble_column" => Kind::BubbleColumn,
         "cobweb" => Kind::Cobweb,
+        "fire" => Kind::Fire,
         "honey_block" => Kind::Honey,
         "chest" | "trapped_chest" => Kind::Chest,
         "observer" => Kind::Observer,

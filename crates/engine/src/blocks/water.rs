@@ -122,6 +122,7 @@ pub fn is_solid(level: &Level, state: StateId) -> bool {
             | Kind::TripwireHook
             | Kind::Tripwire
             | Kind::BubbleColumn
+            | Kind::Fire
     )
 }
 
@@ -147,7 +148,8 @@ fn collision(level: &Level, state: StateId) -> Shape {
         | Kind::Tripwire
         | Kind::PoweredRail
         | Kind::DetectorRail
-        | Kind::Rail => Shape::Empty,
+        | Kind::Rail
+        | Kind::Fire => Shape::Empty,
         Kind::Solid
         | Kind::Glass
         | Kind::RedstoneBlock
