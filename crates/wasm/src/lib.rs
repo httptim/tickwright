@@ -208,6 +208,11 @@ enum Command {
         session: u32,
         pos: [i32; 3],
     },
+    /// What the world's block entities hold, in a resolved fixture's
+    /// shape and world positions: `{"containers": [...], "comparators": [...]}`.
+    Contents {
+        session: u32,
+    },
     /// The material list for the world as it stands: its blocks and what
     /// its containers hold. Rewind to tick 0 first for the build as placed.
     Materials {
@@ -359,6 +364,10 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                 json!({ "ticks": ticks })
             }
             Command::Items { session, pos: p } => json!({ "items": get(sessions, session)?.items(pos(p)) }),
+            Command::Contents { session } => {
+                let s = get(sessions, session)?;
+                json!({ "containers": s.containers(), "comparators": s.comparators() })
+            }
             Command::Materials { session, version } => {
                 let s = get(sessions, session)?;
                 let states = s
@@ -476,5 +485,22 @@ mod tests {
         assert_eq!(list["items"][1]["item"], "minecraft:chest");
         assert_eq!(list["items"][2]["item"], "minecraft:stone");
         assert_eq!(list["shulker_boxes"], 1);
+    }
+
+    #[test]
+    fn a_session_lists_what_its_block_entities_hold() {
+        let id = ok(r#"{"op":"open","version":"26.3"}"#)["session"].as_u64().unwrap();
+        ok(&format!(r#"{{"op":"set","session":{id},"pos":[0,0,0],"state":"chest[facing=north,type=single]"}}"#));
+        ok(&format!(r#"{{"op":"set","session":{id},"pos":[1,-1,0],"state":"stone"}}"#));
+        ok(&format!(r#"{{"op":"set","session":{id},"pos":[1,0,0],"state":"comparator[facing=west]"}}"#));
+        ok(&format!(r#"{{"op":"item","session":{id},"pos":[0,0,0],"slot":3,"id":"minecraft:redstone","count":64}}"#));
+        ok(&format!(r#"{{"op":"step","session":{id},"count":4}}"#));
+        let contents = ok(&format!(r#"{{"op":"contents","session":{id}}}"#));
+        assert_eq!(contents["containers"][0]["pos"], serde_json::json!([0, 0, 0]), "{contents}");
+        assert_eq!(
+            contents["containers"][0]["items"][0],
+            serde_json::json!({"slot": 3, "id": "minecraft:redstone", "count": 64})
+        );
+        assert_eq!(contents["comparators"], serde_json::json!([{"pos": [1, 0, 0], "output": 1}]), "{contents}");
     }
 }

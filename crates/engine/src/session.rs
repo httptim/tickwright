@@ -11,7 +11,7 @@
 //! timelines read. Positions are absolute.
 
 use anyhow::{Result, bail};
-use tickwright_trace::fixture::{Container, ItemSlot};
+use tickwright_trace::fixture::{ComparatorOutput, Container, ItemSlot};
 use tickwright_trace::{Entry, ResolvedFixture};
 
 use crate::blocks::{self, Kind};
@@ -246,6 +246,24 @@ impl Session {
                     .map(|(slot, s)| ItemSlot { slot: slot as u32, id: s.id.clone(), count: s.count as u32 })
                     .collect();
                 (!items.is_empty()).then_some(Container { pos: [pos.x, pos.y, pos.z], items })
+            })
+            .collect();
+        out.sort_by_key(|c| (c.pos[1], c.pos[2], c.pos[0]));
+        out
+    }
+
+    /// Every comparator whose stored output isn't 0, in y, z, x order, so a
+    /// saved build keeps what its comparators remember.
+    pub fn comparators(&self) -> Vec<ComparatorOutput> {
+        let mut out: Vec<ComparatorOutput> = self
+            .level
+            .block_entities
+            .iter()
+            .filter_map(|(pos, e)| match e {
+                blocks::BlockEntity::Comparator(output) if *output != 0 => {
+                    Some(ComparatorOutput { pos: [pos.x, pos.y, pos.z], output: *output })
+                }
+                _ => None,
             })
             .collect();
         out.sort_by_key(|c| (c.pos[1], c.pos[2], c.pos[0]));
