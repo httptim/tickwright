@@ -337,9 +337,9 @@ fn add_or_append(drops: &mut Vec<(Pos, item::Stack)>, mut stack: item::Stack, p:
 struct JavaHashSet {
     /// Elements in insertion order, with their spread hashes.
     items: Vec<(Pos, u32)>,
-    seen: std::collections::HashSet<Pos>,
+    seen: crate::fxhash::FxHashSet<Pos>,
     /// Nodes per bin at the current capacity.
-    bins: std::collections::HashMap<usize, usize>,
+    bins: crate::fxhash::FxHashMap<usize, usize>,
     capacity: usize,
     treeified: bool,
 }

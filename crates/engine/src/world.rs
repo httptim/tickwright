@@ -4,7 +4,8 @@
 //! per block, so a big build costs about a byte per block, and space with
 //! nothing in it costs nothing: a section is dropped once it is all air.
 
-use std::collections::HashMap;
+use crate::fxhash::FxHashMap;
+use std::cell::Cell;
 
 use crate::pos::Pos;
 use crate::registry::StateId;
@@ -19,8 +20,17 @@ const SMALL_PALETTE: usize = 256;
 #[derive(Clone)]
 pub struct World {
     air: StateId,
-    sections: HashMap<(i32, i32, i32), Section>,
+    /// Sections, and where each one's key is in `slots`.
+    sections: Vec<(Key, Section)>,
+    slots: FxHashMap<Key, usize>,
+    /// The section the last lookup found, as most lookups are next to it.
+    last: Cell<(Key, usize)>,
 }
+
+type Key = (i32, i32, i32);
+
+/// No section: `last` is never this.
+const NONE: usize = usize::MAX;
 
 #[derive(Clone)]
 struct Section {
@@ -37,7 +47,7 @@ enum Data {
     Direct(Box<[StateId; VOLUME]>),
 }
 
-fn split(pos: Pos) -> ((i32, i32, i32), usize) {
+fn split(pos: Pos) -> (Key, usize) {
     let key = (pos.x >> 4, pos.y >> 4, pos.z >> 4);
     let i = (((pos.y & (SIDE - 1)) << 8) | ((pos.z & (SIDE - 1)) << 4) | (pos.x & (SIDE - 1))) as usize;
     (key, i)
@@ -122,32 +132,66 @@ impl Section {
 
 impl World {
     pub fn new(air: StateId) -> World {
-        World { air, sections: HashMap::new() }
+        World { air, sections: Vec::new(), slots: FxHashMap::default(), last: Cell::new(((0, 0, 0), NONE)) }
+    }
+
+    /// Where the section with this key is in `sections`, or `NONE`.
+    fn slot(&self, key: Key) -> usize {
+        let (k, slot) = self.last.get();
+        if k == key && slot != NONE {
+            return slot;
+        }
+        let slot = self.slots.get(&key).copied().unwrap_or(NONE);
+        if slot != NONE {
+            self.last.set((key, slot));
+        }
+        slot
     }
 
     pub fn get(&self, pos: Pos) -> StateId {
         let (key, i) = split(pos);
-        self.sections.get(&key).map_or(self.air, |s| s.get(i))
+        match self.slot(key) {
+            NONE => self.air,
+            slot => self.sections[slot].1.get(i),
+        }
     }
 
     pub fn set(&mut self, pos: Pos, state: StateId) {
         let (key, i) = split(pos);
-        if state == self.air {
-            if let Some(section) = self.sections.get_mut(&key) {
-                section.set(i, state, self.air);
+        let air = self.air;
+        let slot = self.slot(key);
+        if state == air {
+            if slot != NONE {
+                let section = &mut self.sections[slot].1;
+                section.set(i, state, air);
                 if section.non_air == 0 {
-                    self.sections.remove(&key);
+                    self.drop_section(slot);
                 }
             }
             return;
         }
-        let air = self.air;
-        self.sections.entry(key).or_insert_with(|| Section::new(air)).set(i, state, air);
+        let slot = if slot == NONE {
+            self.sections.push((key, Section::new(air)));
+            self.slots.insert(key, self.sections.len() - 1);
+            self.sections.len() - 1
+        } else {
+            slot
+        };
+        self.sections[slot].1.set(i, state, air);
+    }
+
+    fn drop_section(&mut self, slot: usize) {
+        let (key, _) = self.sections.swap_remove(slot);
+        self.slots.remove(&key);
+        if let Some(&(moved, _)) = self.sections.get(slot) {
+            self.slots.insert(moved, slot);
+        }
+        self.last.set(((0, 0, 0), NONE));
     }
 
     /// Every block that is not air, in no particular order.
     pub fn non_air(&self) -> impl Iterator<Item = (Pos, StateId)> + '_ {
-        self.sections.iter().flat_map(move |(&key, section)| {
+        self.sections.iter().flat_map(move |&(key, ref section)| {
             (0..VOLUME).filter_map(move |i| {
                 let s = section.get(i);
                 (s != self.air).then(|| (join(key, i), s))
@@ -218,6 +262,6 @@ mod tests {
         for i in 0..100 {
             assert_eq!(w.get(join((0, 0, 0), i)), StateId(901 + i as u32));
         }
-        assert!(matches!(w.sections[&(0, 0, 0)].data, Data::Paletted { .. }));
+        assert!(matches!(w.sections[w.slot((0, 0, 0))].1.data, Data::Paletted { .. }));
     }
 }

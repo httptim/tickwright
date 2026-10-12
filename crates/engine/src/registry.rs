@@ -39,6 +39,8 @@ pub struct Registry {
     by_name: HashMap<String, BlockId>,
     /// Block ids sorted by first state, for state-to-block lookup.
     by_first_state: Vec<(u32, BlockId)>,
+    /// The block of every state id, the same lookup done ahead of time.
+    block_by_state: Vec<BlockId>,
 }
 
 static REGISTRY_26_3: LazyLock<Registry> = LazyLock::new(|| {
@@ -85,7 +87,16 @@ impl Registry {
         let mut by_first_state: Vec<(u32, BlockId)> =
             blocks.iter().enumerate().map(|(i, b)| (b.first_state, BlockId(i as u16))).collect();
         by_first_state.sort();
-        Ok(Registry { version, blocks, by_name, by_first_state })
+        let end = blocks.iter().map(|b| b.first_state + b.states).max().unwrap_or(0);
+        let mut block_by_state = Vec::with_capacity(end as usize);
+        for (k, &(first, id)) in by_first_state.iter().enumerate() {
+            let next = by_first_state.get(k + 1).map_or(end, |n| n.0);
+            if block_by_state.is_empty() {
+                block_by_state.resize(first as usize, id);
+            }
+            block_by_state.resize(next as usize, id);
+        }
+        Ok(Registry { version, blocks, by_name, by_first_state, block_by_state })
     }
 
     pub fn len(&self) -> usize {
@@ -106,6 +117,9 @@ impl Registry {
     }
 
     pub fn block_of(&self, state: StateId) -> BlockId {
+        if let Some(&b) = self.block_by_state.get(state.0 as usize) {
+            return b;
+        }
         let i = self.by_first_state.partition_point(|(first, _)| *first <= state.0) - 1;
         self.by_first_state[i].1
     }
@@ -122,19 +136,27 @@ impl Registry {
         (info, idx)
     }
 
-    fn compose(info: &BlockInfo, idx: &[usize]) -> StateId {
-        let mut offset = 0u32;
-        for (p, &i) in info.properties.iter().zip(idx) {
-            offset = offset * p.values.len() as u32 + i as u32;
-        }
-        StateId(info.first_state + offset)
-    }
-
     /// The value of property `name`, if the state's block has it.
     pub fn value<'a>(&'a self, state: StateId, name: &str) -> Option<&'a str> {
-        let (info, idx) = self.offset_parts(state);
-        let i = info.properties.iter().position(|p| p.name == name)?;
-        Some(info.properties[i].values[idx[i]].as_str())
+        let info = self.block(self.block_of(state));
+        let (p, index, _) = Self::locate(info, state, name)?;
+        Some(p.values[index].as_str())
+    }
+
+    /// Property `name` of the state's block, the index of the state's value
+    /// for it, and how far apart in state ids its values are. States list
+    /// the last property's values fastest.
+    fn locate<'a>(info: &'a BlockInfo, state: StateId, name: &str) -> Option<(&'a Property, usize, u32)> {
+        let rem = state.0 - info.first_state;
+        let mut stride = 1u32;
+        for p in info.properties.iter().rev() {
+            let n = p.values.len() as u32;
+            if p.name == name {
+                return Some((p, ((rem / stride) % n) as usize, stride));
+            }
+            stride *= n;
+        }
+        None
     }
 
     /// The same state with property `name` set to `value`.
@@ -142,18 +164,15 @@ impl Registry {
     /// Panics if the block has no such property or value: that is a bug in a
     /// block's behaviour, not something a fixture can cause.
     pub fn with(&self, state: StateId, name: &str, value: &str) -> StateId {
-        let (info, mut idx) = self.offset_parts(state);
-        let i = info
-            .properties
-            .iter()
-            .position(|p| p.name == name)
-            .unwrap_or_else(|| panic!("{} has no property {name}", info.name));
-        idx[i] = info.properties[i]
+        let info = self.block(self.block_of(state));
+        let (p, old, stride) =
+            Self::locate(info, state, name).unwrap_or_else(|| panic!("{} has no property {name}", info.name));
+        let new = p
             .values
             .iter()
             .position(|v| v == value)
             .unwrap_or_else(|| panic!("{}.{name} has no value {value}", info.name));
-        Self::compose(info, &idx)
+        StateId(state.0 - old as u32 * stride + new as u32 * stride)
     }
 
     pub fn parse(&self, text: &str) -> Result<StateId> {

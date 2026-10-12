@@ -6,8 +6,9 @@
 //! closely enough that the same calls happen in the same order, because the
 //! order is what the traces check.
 
+use crate::fxhash::{FxHashMap, FxHashSet};
 use std::cell::Cell;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::VecDeque;
 
 use crate::blocks::water::Fluid;
 use crate::blocks::{self, Kind};
@@ -100,12 +101,12 @@ pub struct Level {
 
     // LevelTicks
     pending_ticks: Vec<ScheduledTick>,
-    pending_keys: HashSet<(Pos, BlockId)>,
-    running_ticks: HashSet<(Pos, BlockId)>,
+    pending_keys: FxHashSet<(Pos, BlockId)>,
+    running_ticks: FxHashSet<(Pos, BlockId)>,
     /// `Level.subTickCount`: shared by block and fluid ticks.
     next_sub_tick: u64,
     fluid_ticks: Vec<FluidTick>,
-    fluid_keys: HashSet<(Pos, Fluid)>,
+    fluid_keys: FxHashSet<(Pos, Fluid)>,
 
     // ServerLevel.blockEvents: a linked hash set.
     events: VecDeque<BlockEvent>,
@@ -119,12 +120,12 @@ pub struct Level {
     pub max_chained_updates: usize,
 
     /// Block entities by position, and the order they tick in.
-    pub block_entities: HashMap<Pos, blocks::BlockEntity>,
+    pub block_entities: FxHashMap<Pos, blocks::BlockEntity>,
     /// `RebindableTickingBlockEntityWrapper`s: each is a position and
     /// whether it is still bound. A block entity replaced at the same
     /// position keeps its wrapper's place in the list.
     ticker_slots: Vec<(Pos, bool)>,
-    ticker_at: HashMap<Pos, usize>,
+    ticker_at: FxHashMap<Pos, usize>,
     tickers: Vec<usize>,
     pending_tickers: Vec<usize>,
     ticking_block_entities: bool,
@@ -180,19 +181,19 @@ impl Level {
             game_time: 0,
             day_time: 6000,
             pending_ticks: Vec::new(),
-            pending_keys: HashSet::new(),
-            running_ticks: HashSet::new(),
+            pending_keys: FxHashSet::default(),
+            running_ticks: FxHashSet::default(),
             next_sub_tick: 0,
             fluid_ticks: Vec::new(),
-            fluid_keys: HashSet::new(),
+            fluid_keys: FxHashSet::default(),
             events: VecDeque::new(),
             stack: Vec::new(),
             added_this_layer: Vec::new(),
             update_count: 0,
             max_chained_updates: DEFAULT_MAX_CHAINED_UPDATES,
-            block_entities: HashMap::new(),
+            block_entities: FxHashMap::default(),
             ticker_slots: Vec::new(),
-            ticker_at: HashMap::new(),
+            ticker_at: FxHashMap::default(),
             tickers: Vec::new(),
             pending_tickers: Vec::new(),
             ticking_block_entities: false,
