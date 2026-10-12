@@ -1,0 +1,143 @@
+# Engine handoff
+
+Where the Tickwright engine stands as of 2026-10-12, what to do next, and
+how to check your work. The [README](README.md) explains the layout, the
+CLI and how to write fixtures. This file is the short version for someone
+picking the work up.
+
+## Status
+
+- The engine targets Java Edition 26.3. Every behaviour is checked against
+  traces captured from the real 26.3 server (`traces/26.3`).
+- There are 214 fixtures (`fixtures/`) and 1698 traces, one per fixture
+  and orientation. Every trace matches at the strictest level ("order"),
+  and no fixture is refused. The 215 fixtures listed in
+  `crates/engine/tests/expected.txt` must keep matching in every
+  orientation.
+- What is simulated:
+  - **Redstone:** dust (with and without Redstone Experiments), torches,
+    repeaters, comparators, observers, pistons and sticky pistons with
+    their update order and quasi-connectivity, lamps, levers, buttons,
+    note blocks, doors, trapdoors, copper bulbs, bells, target blocks,
+    daylight detectors, lecterns, tripwire, and sculk and calibrated
+    sculk sensors.
+  - **Containers:** chests, barrels, hoppers, droppers, dispensers,
+    crafters and shelves.
+  - **Rails:** plain, powered, activator and detector rails.
+  - **Fluids:** water.
+  - **Entities (phase 4):**
+    - items
+    - falling blocks
+    - primed TNT and explosions
+    - minecarts (plain, furnace, chest and hopper)
+    - slime bounces and launches
+    - bubble columns
+    - cobwebs
+    - pressure plates
+    - arrows
+    - small fireballs, and the fire they light
+  - **Known duplication glitches:** the TNT dupe and the rail and carpet
+    dupes behave as they do in 26.3.
+- Mechanics the engine can't simulate yet are refused by name rather than
+  guessed. A run stops with an "unsupported" message, or with
+  `run --partial` it records the ticks it could simulate.
+  `grep -rn 'unsupported("' crates/engine/src` lists every refusal.
+- `fixtures/QUIRKS.md` tracks which known quirks have fixtures.
+
+## Next engine work, in order
+
+1. **Honey and slime carrying entities.** A flying machine moving an entity
+   is refused today (`a honey block moving entities` in
+   `blocks/piston.rs`). Capture an item and a minecart riding a moving
+   slime and honey block, then implement `moveStuckEntities`.
+2. **Headless pistons and crafter quasi-connectivity.** Both quirks are
+   present in 26.3 but have no fixture yet (see `fixtures/QUIRKS.md`).
+3. **Lava.** Its spread delay draws from the level random, which the
+   engine already reproduces. Add lava with source rules, cobblestone and
+   stone generation, and items burning.
+4. **Projectiles hitting entities and burning arrows.** Arrows and
+   fireballs that would hit an entity, a bell or TNT are refused. Flaming
+   arrows light TNT.
+5. **TNT minecarts.** Their explosion power depends on speed, and the
+   activator rail primes them.
+6. **Fire beyond fireballs.** Fire on flammable blocks, and fire beside
+   obsidian (portals), are refused. Captures never spread fire because no
+   player is nearby, so the engine only reschedules it.
+7. **Stack sizes from data.** `container::max_stack_size` should read
+   `data/26.3/materials.json` (`stack_sizes`) instead of a heuristic.
+8. **Performance.** The bench went from about 540 to more than 2000 ticks
+   a second. The next hotspots are `Registry::value` name comparisons,
+   wire `update_power_strength` and `run_updates`. Profile with
+   `valgrind --tool=callgrind target/release/tickwright bench`, because
+   wall-clock timings are noisy.
+9. **Minecart Improvements** (an opt-in experiment in 26.3). The engine
+   runs the default `OldMinecartBehavior` only.
+10. **New game versions.** Add a rule module under
+    `crates/engine/src/rules/` layered on 26.3, set `MC_VERSION` in the
+    oracle workflow, and capture a new `traces/<version>`.
+
+## Running the conformance tests
+
+You need Rust stable. Captures also need Java 25 and network access to
+Mojang's servers.
+
+```sh
+# Everything, including conformance
+cargo test --release --workspace
+
+# The conformance table: one row per fixture, orientations matching
+cargo test --release -p tickwright-engine --test conformance -- --nocapture
+
+# One fixture, or the first divergence for one orientation
+TICKWRIGHT_ONLY=arrow_hits cargo test --release -p tickwright-engine --test conformance -- --nocapture
+TICKWRIGHT_SHOW=arrow_hits@r0 cargo test --release -p tickwright-engine --test conformance -- --nocapture
+
+# Lint and format, as CI runs them
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+```
+
+Orientations are `r0`, `r90`, `r180` and `r270`, and their mirrored forms
+`mr0` to `mr270`.
+
+## Capturing new traces
+
+Traces only come from the real game. Never write or edit one by hand.
+
+1. Add a fixture JSON under `fixtures/<phase>/`, then validate it with
+   `cargo run --release -p tickwright -- resolve <file> --out /tmp/res`.
+2. Push the branch, then run the `oracle` workflow on it with
+   `commit_data=true`:
+   ```sh
+   gh workflow run oracle.yml --ref <branch> -f commit_data=true
+   ```
+   It downloads the official 26.3 server jar from Mojang's version
+   manifest and checks its SHA-1 (`harness/run.sh`). The jar is never
+   committed. The workflow then captures every fixture with the agent in
+   `harness/` and commits the traces back to the branch.
+3. Pull the bot's commit, then make your engine change match the traces.
+   `-f only=<name>` captures a subset when you are debugging, and does not
+   commit.
+
+On `main` and on pull requests, the oracle job fails if a fresh capture
+differs from the committed traces. That keeps them honest.
+
+## Gotchas
+
+- **Determinism:** entity fixtures depend on the harness reseeding the
+  level random, resetting entity ids, turning spawners, weather and
+  random ticks off, and waiting for lighting to settle. Captures repeat
+  byte for byte. If one stops repeating, look for a new source of
+  randomness in the game before touching the engine.
+- **Write the vanilla code path:** match its order of operations,
+  float32 constants (`0.98f32 as f64`) and its use of the level random.
+  When a rule is unknown, capture a fixture that sweeps the input and fit
+  the rule from the trace.
+- **Summon positions:** the summon command centres whole-number x and z,
+  so `[1, y, 1]` means `[1.5, y, 1.5]`. Write positions as short exact
+  decimals.
+- **Check the capture:** make sure a new fixture really does what its
+  description says. It's easy to aim an arrow or drop an item that never
+  touches the block under test.
+- **Some refused cases are close to supported:** an arrow is refused once
+  the block it is stuck in goes. The full list is in the code.
