@@ -204,6 +204,7 @@ fn can_survive(level: &Level, pos: Pos, state: StateId) -> bool {
         | Kind::RedstoneTorch
         | Kind::Torch
         | Kind::DeadCoral => sturdy(level, below, Dir::Up),
+        Kind::Carpet => !level.is_air(level.get(below)),
         Kind::Door => level.prop(state, "half") != "lower" || sturdy(level, below, Dir::Up),
         Kind::RedstoneWallTorch | Kind::WallTorch | Kind::TripwireHook | Kind::DeadCoralWallFan => {
             let facing = level.dir(state, "facing");

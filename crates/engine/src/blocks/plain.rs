@@ -79,6 +79,12 @@ pub fn coral_update_shape(level: &mut Level, pos: Pos, state: StateId, dir: Dir)
     }
 }
 
+/// `CarpetBlock.updateShape`: a carpet with nothing under it pops. Any
+/// block holds it up, even a moving piston.
+pub fn carpet_update_shape(level: &mut Level, pos: Pos, state: StateId, dir: Dir) -> StateId {
+    if dir == Dir::Down && level.is_air(level.get(pos.below())) { level.air } else { state }
+}
+
 /// `TripWireHookBlock.updateShape`: a hook whose wall goes pops off.
 pub fn hook_update_shape(level: &Level, pos: Pos, state: StateId, dir: Dir) -> StateId {
     let facing = level.dir(state, "facing");

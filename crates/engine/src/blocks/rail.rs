@@ -132,6 +132,9 @@ fn update_state(level: &mut Level, pos: Pos, state: StateId) {
 /// `BaseRailBlock.neighborChanged`.
 pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId, moved_by_piston: bool) {
     if should_be_removed(level, pos, level.prop(state, "shape")) {
+        if level.simulate_entities {
+            level.drop_resources(pos, state);
+        }
         let f = if moved_by_piston { flags::ALL | flags::MOVE_BY_PISTON } else { flags::ALL };
         level.set_block(pos, level.air, f);
     } else {
@@ -193,6 +196,9 @@ pub fn plain_neighbor_changed(
     moved_by_piston: bool,
 ) {
     if should_be_removed(level, pos, level.prop(state, "shape")) {
+        if level.simulate_entities {
+            level.drop_resources(pos, state);
+        }
         let f = if moved_by_piston { flags::ALL | flags::MOVE_BY_PISTON } else { flags::ALL };
         level.set_block(pos, level.air, f);
     } else if super::is_signal_source(level, level.default_state(source))

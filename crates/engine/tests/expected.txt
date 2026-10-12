@@ -192,8 +192,10 @@ nucleation_item_web order
 nucleation_plate_item order
 nucleation_cart_launch order
 nucleation_piston_cart_support order
+carpet_dupe order
 piston_push_item order
 piston_push_tnt_up order
 piston_push_minecart order
 sticky_slime_item order
+rail_dupe order
 tnt_dupe_coral order

@@ -125,6 +125,8 @@ pub enum Kind {
     /// Dead coral and dead coral fans on a floor; live ones die out of
     /// water, which isn't simulated.
     DeadCoral,
+    /// Wool and moss carpets.
+    Carpet,
     DeadCoralWallFan,
     Other,
 }
@@ -520,6 +522,7 @@ pub fn update_shape(
         Kind::SoulSand | Kind::Magma => bubble::source_update_shape(level, pos, state, dir, neighbor_state),
         Kind::BubbleColumn => bubble::column_update_shape(level, pos, state, dir, neighbor_state),
         Kind::DeadCoral | Kind::DeadCoralWallFan => plain::coral_update_shape(level, pos, state, dir),
+        Kind::Carpet => plain::carpet_update_shape(level, pos, state, dir),
         _ => state,
     }
 }
