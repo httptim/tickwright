@@ -44,7 +44,9 @@ pub enum Kind {
     Shape,
     /// A comparator (analog output) update was delivered to `pos`.
     Comparator,
-    /// A scheduled tick was requested for `pos`. `detail` holds delay and priority.
+    /// A scheduled tick was requested for `pos`. `detail` holds delay and
+    /// priority. Recorded on every request, including one the game drops
+    /// because the same tick is already queued.
     Schedule,
     /// A scheduled tick ran at `pos`.
     Tick,
