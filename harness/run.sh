@@ -72,7 +72,19 @@ java -javaagent:"$WORK/agent.jar" -cp "$WORK/classes:$WORK/agent.jar:$CP" \
 echo "==> checking traces"
 n=0
 for t in "$WORK"/traces/*.json; do
-    target/release/tickwright diff "$t" "$t" --level phase >/dev/null
+    target/release/tickwright diff "$t" "$t" --level order >/dev/null
     n=$((n + 1))
 done
 echo "    $n trace(s) parse and self-compare"
+echo "    traces total: $(du -sh "$WORK/traces" | cut -f1)"
+
+# --- data reports -------------------------------------------------------------
+# The game's own dump of every block, its properties and default state, and
+# every registry. tools/registry.py condenses it into data/<version>/.
+if [[ -n "${REPORTS:-}" ]]; then
+    echo "==> generating data reports"
+    rm -rf "$WORK/reports"
+    (cd "$WORK" && java -DbundlerMainClass=net.minecraft.data.Main -jar "server-$MC_VERSION.jar" \
+        --reports --output reports >/dev/null)
+    python3 -I tools/registry.py "$WORK/reports/reports" "data/$MC_VERSION"
+fi
