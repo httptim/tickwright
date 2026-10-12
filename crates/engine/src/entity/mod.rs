@@ -5,6 +5,7 @@
 //! order the game ticks them in. Entities added while entities are ticking
 //! wait for the next tick, as in `EntityTickList`.
 
+mod arrow;
 pub mod explosion;
 mod falling;
 mod fireball;
@@ -37,6 +38,7 @@ pub enum Data {
     Tnt(tnt::Tnt),
     Minecart(minecart::Minecart),
     SmallFireball,
+    Arrow(arrow::Arrow),
     /// A slot whose entity is being ticked, or one that was removed.
     #[default]
     Gone,
@@ -93,6 +95,7 @@ impl Entity {
             Data::Minecart(ref m) if m.furnace => "minecraft:furnace_minecart",
             Data::Minecart(_) => "minecraft:minecart",
             Data::SmallFireball => "minecraft:small_fireball",
+            Data::Arrow(_) => "minecraft:arrow",
             Data::Gone => "minecraft:none",
         }
     }
@@ -103,6 +106,7 @@ impl Entity {
             Data::Item(_) => (0.25, 0.25),
             Data::Minecart(_) => (0.98, 0.7),
             Data::SmallFireball => (0.3125, 0.3125),
+            Data::Arrow(_) => (0.5, 0.5),
             Data::FallingBlock(_) | Data::Tnt(_) | Data::Gone => (0.98, 0.98),
         }
     }
@@ -136,7 +140,7 @@ impl Entity {
             Data::Item(i) => Some(format!("minecraft:{}*{}", i.stack.id, i.stack.count)),
             Data::Tnt(t) => Some(format!("fuse={}", t.fuse)),
             Data::FallingBlock(f) => Some(level.reg.format(f.state)),
-            Data::Minecart(_) | Data::SmallFireball | Data::Gone => None,
+            Data::Minecart(_) | Data::SmallFireball | Data::Arrow(_) | Data::Gone => None,
         }
     }
 
@@ -219,6 +223,7 @@ fn tick(level: &mut Level, e: &mut Entity) {
         Data::Tnt(_) => tnt::tick(level, e),
         Data::Minecart(_) => minecart::tick(level, e),
         Data::SmallFireball => fireball::tick(level, e),
+        Data::Arrow(_) => arrow::tick(level, e),
         Data::Gone => {}
     }
 }
@@ -263,7 +268,7 @@ fn known_data(name: &str) -> Option<&'static [&'static str]> {
         "tnt" => &["fuse"],
         "falling_block" => &["BlockState", "Time", "DropItem", "CancelDrop"],
         "minecart" | "furnace_minecart" => &[],
-        "small_fireball" => &[],
+        "small_fireball" | "arrow" => &[],
         _ => return None,
     })
 }
@@ -319,6 +324,7 @@ fn spawn(level: &mut Level, name: &str, tag: &snbt::Tag, at: Vec3, motion: Optio
             })
         }
         "small_fireball" => Data::SmallFireball,
+        "arrow" => Data::Arrow(Default::default()),
         _ => Data::Minecart(minecart::Minecart::new(name == "furnace_minecart")),
     };
     let mut e = Entity::new(level, data, at);
