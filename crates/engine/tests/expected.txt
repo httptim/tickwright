@@ -121,3 +121,9 @@ nucleation_dropper_into_barrel order
 nucleation_hopper_locked order
 nucleation_hopper_pull order
 nucleation_hopper_race order
+nucleation_door_3x3_flush_quiet order
+nucleation_door_4x4_sliding_cycle order
+nucleation_door_4x4_vault_inworld order
+nucleation_door_4x4_vault_stress order
+nucleation_door_6x6_cycle order
+nucleation_door_6x6_inworld order

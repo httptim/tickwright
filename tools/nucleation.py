@@ -20,7 +20,12 @@ from pathlib import Path
 
 CONTAINERS = {"minecraft:barrel", "minecraft:chest", "minecraft:hopper", "minecraft:dropper", "minecraft:dispenser"}
 
+# Block entities that carry nothing a fixture needs when they are empty.
+EMPTY_BLOCK_ENTITIES = {"minecraft:jukebox", "minecraft:shulker_box"}
+
 CHARS = "#ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@$%&*+=?!<>^~"
+# Big builds run past ASCII; any single character works as a palette key.
+CHARS += "".join(chr(c) for c in range(0x3B1, 0x3CA)) + "".join(chr(c) for c in range(0x391, 0x3AA) if c != 0x3A2)
 
 
 def parse_snbt(text):
@@ -165,6 +170,28 @@ def runs(conformance):
                 "comment": " ".join(comment).strip(),
             }
         )
+    # Doors: `run_door_cycle(structure, golden, label, &[(Pos::new(x, y, z), tick), ...])`
+    # and `run_door(structure, golden, label, Some((Pos::new(x, y, z), tick)))`
+    # click levers after Nucleation's placement updates.
+    for m in re.finditer(r"run_door(?:_cycle)?\(\s*\"([^\"]+)\.snbt\",\s*\"([^\"]+)\.json\",\s*\"[^\"]*\",\s*([^;]*?)\);", conformance):
+        if m.group(0).startswith("run_door(structure_file") or m.group(0).startswith("run_door_cycle(structure_file"):
+            continue
+        clicks = re.findall(r"Pos::new\(([^)]*)\),\s*(\d+)\)", m.group(3))
+        actions = [(int(t), "Use", [int(v) for v in p.replace(" ", "").split(",")], None) for p, t in clicks]
+        head = conformance[: m.start()]
+        fn = head.rfind("fn ")
+        start = head.rfind("#[test]", 0, fn)
+        comment = re.findall(r"^\s*// ?(.*)$", head[start:fn], re.M)
+        calls.append(
+            {
+                "structure": m.group(1),
+                "golden": m.group(2),
+                "actions": actions,
+                "complete": True,
+                "settle": "Placement",
+                "comment": " ".join(comment).strip(),
+            }
+        )
     return calls
 
 
@@ -187,11 +214,17 @@ def convert(root, out):
         if s.get("entities"):
             skipped.append((name, "has entities"))
             continue
-        containers = []
+        containers, comparators = [], []
         expressible = True
         for b in s["blocks"]:
             nbt = b.get("nbt")
             if nbt is None:
+                continue
+            if state_string(s["palette"][b["state"]]).startswith("comparator") and set(nbt) <= {"id", "OutputSignal"}:
+                if nbt.get("OutputSignal", 0):
+                    comparators.append({"pos": b["pos"], "output": nbt["OutputSignal"]})
+                continue
+            if nbt.get("id") in EMPTY_BLOCK_ENTITIES and set(nbt) == {"id"}:
                 continue
             items = nbt.get("Items", [])
             if nbt.get("id") not in CONTAINERS or set(nbt) - {"id", "Items"} or any("components" in i for i in items):
@@ -283,6 +316,8 @@ def convert(root, out):
         }
         if containers:
             fixture["containers"] = sorted(containers, key=lambda c: (c["pos"][1], c["pos"][2], c["pos"][0]))
+        if comparators:
+            fixture["comparators"] = sorted(comparators, key=lambda c: (c["pos"][1], c["pos"][2], c["pos"][0]))
         (out / f"{name}.json").write_text(json.dumps(fixture, indent=2) + "\n")
         written.append(name)
     return written, skipped

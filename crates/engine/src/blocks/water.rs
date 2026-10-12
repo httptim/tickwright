@@ -107,6 +107,7 @@ pub fn is_solid(level: &Level, state: StateId) -> bool {
             | Kind::Repeater
             | Kind::Comparator
             | Kind::PoweredRail
+            | Kind::TripwireHook
     )
 }
 
@@ -128,6 +129,7 @@ fn collision(level: &Level, state: StateId) -> Shape {
         | Kind::RedstoneWire
         | Kind::RedstoneTorch
         | Kind::RedstoneWallTorch
+        | Kind::TripwireHook
         | Kind::PoweredRail => Shape::Empty,
         Kind::Solid
         | Kind::Glass
@@ -139,6 +141,11 @@ fn collision(level: &Level, state: StateId) -> Shape {
         | Kind::Dispenser
         | Kind::Barrel
         | Kind::PowderSnow
+        | Kind::Log
+        | Kind::Leaves
+        | Kind::Target
+        | Kind::Jukebox
+        | Kind::ShulkerBox
         | Kind::CopperBulb
         | Kind::Slime => Shape::Full,
         Kind::Slab if level.prop(state, "type") == "double" => Shape::Full,

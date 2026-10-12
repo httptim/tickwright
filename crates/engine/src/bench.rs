@@ -60,6 +60,7 @@ pub fn redstone_rings(rings: i32, length: i32, ticks: u32) -> ResolvedFixture {
         blocks,
         stimuli: Vec::new(),
         containers: Vec::new(),
+        comparators: Vec::new(),
     }
 }
 

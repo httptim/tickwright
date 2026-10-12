@@ -1,0 +1,189 @@
+{
+  "name": "nucleation_door_3x3_flush_quiet",
+  "description": "Nucleation's door_3x3_flush_quiet build. (From Nucleation, MIT, (c) 2025 Schem-at. Nucleation's placement updates set it going; here its redstone blocks are placed on the first tick instead.)",
+  "ticks": 23,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "pink_wool",
+    "A": "cyan_wool",
+    "B": "red_wool",
+    "D": "sticky_piston[extended=false,facing=west]",
+    "E": "repeater[delay=3,facing=south,locked=false,powered=true]",
+    "F": "redstone_wire[east=side,north=none,power=14,south=none,west=side]",
+    "G": "redstone_wire[east=none,north=side,power=15,south=up,west=side]",
+    "H": "redstone_wire[east=none,north=side,power=0,south=side,west=none]",
+    "I": "comparator[facing=west,mode=compare,powered=false]",
+    "J": "redstone_wall_torch[facing=east,lit=false]",
+    "K": "repeater[delay=1,facing=south,locked=false,powered=true]",
+    "L": "sticky_piston[extended=false,facing=up]",
+    "M": "redstone_wall_torch[facing=east,lit=true]",
+    "N": "redstone_wall_torch[facing=north,lit=false]",
+    "O": "redstone_wire[east=side,north=side,power=0,south=up,west=none]",
+    "P": "redstone_wire[east=side,north=none,power=0,south=none,west=side]",
+    "Q": "redstone_wall_torch[facing=west,lit=false]",
+    "R": "orange_wool",
+    "S": "redstone_torch[lit=false]",
+    "T": "redstone_wire[east=none,north=side,power=15,south=side,west=none]",
+    "U": "redstone_wire[east=up,north=side,power=14,south=none,west=none]",
+    "V": "redstone_torch[lit=true]",
+    "W": "redstone_wall_torch[facing=south,lit=false]",
+    "X": "redstone_wire[east=side,north=side,power=0,south=side,west=side]",
+    "Y": "piston_head[facing=north,short=false,type=sticky]",
+    "Z": "redstone_wire[east=none,north=up,power=0,south=side,west=none]",
+    "a": "sticky_piston[extended=true,facing=north]",
+    "b": "redstone_wall_torch[facing=west,lit=true]",
+    "c": "redstone_wire[east=none,north=none,power=0,south=side,west=side]",
+    "d": "repeater[delay=1,facing=north,locked=false,powered=false]",
+    "e": "redstone_wire[east=side,north=none,power=13,south=none,west=side]",
+    "f": "quartz_block",
+    "g": "repeater[delay=1,facing=south,locked=false,powered=false]",
+    "h": "sticky_piston[extended=false,facing=north]",
+    "i": "redstone_wire[east=up,north=none,power=0,south=none,west=side]",
+    "j": "white_stained_glass",
+    "k": "sticky_piston[extended=false,facing=south]",
+    "l": "sticky_piston[extended=false,facing=east]",
+    "m": "repeater[delay=3,facing=west,locked=false,powered=false]",
+    "n": "repeater[delay=3,facing=south,locked=false,powered=false]",
+    "o": "lime_wool",
+    "p": "redstone_wire[east=side,north=none,power=0,south=side,west=up]",
+    "q": "redstone_wire[east=none,north=none,power=0,south=up,west=side]",
+    "r": "redstone_wire[east=none,north=up,power=0,south=up,west=none]",
+    "s": "sticky_piston[extended=false,facing=down]",
+    "t": "redstone_wire[east=side,north=up,power=0,south=side,west=none]",
+    "u": "redstone_wire[east=side,north=side,power=0,south=none,west=side]",
+    "v": "redstone_wire[east=none,north=up,power=0,south=none,west=side]",
+    "w": "redstone_wire[east=side,north=none,power=0,south=side,west=none]",
+    "x": "repeater[delay=3,facing=north,locked=false,powered=false]"
+  },
+  "layers": [
+    [
+      "....",
+      "###.",
+      "...#",
+      ".A..",
+      "#.B.",
+      "#...",
+      "##..",
+      "....",
+      "...."
+    ],
+    [
+      "#..D",
+      "EFG#",
+      "#.#H",
+      "#IBJ",
+      "H.KL",
+      "HBMN",
+      "OPQR",
+      "#.R.",
+      "...."
+    ],
+    [
+      "S...",
+      "##..",
+      "T#U#",
+      "V..W",
+      "...L",
+      "BX.R",
+      ".BRY",
+      "H.Za",
+      "AbRM"
+    ],
+    [
+      "A...",
+      "Sc..",
+      ".d.e",
+      "ffff",
+      "ffff",
+      "ffff",
+      ".gHh",
+      ".N.N",
+      "VRAR"
+    ],
+    [
+      "iAAj",
+      "Akkj",
+      "flfj",
+      "....",
+      "....",
+      "....",
+      "flfj",
+      ".hhf",
+      "AAXj"
+    ],
+    [
+      ".PPj",
+      ".kkj",
+      "flfj",
+      "....",
+      "....",
+      "....",
+      "flfj",
+      ".hhj",
+      "SmAj"
+    ],
+    [
+      ".AAj",
+      "Akkj",
+      "flfj",
+      "....",
+      "....",
+      "....",
+      "flfj",
+      ".hhj",
+      "AAXj"
+    ],
+    [
+      "APPj",
+      "nooj",
+      "oo.j",
+      "fffj",
+      "flfj",
+      "fffj",
+      ".o.j",
+      "oooj",
+      "Z..j"
+    ],
+    [
+      ".ooj",
+      "opqj",
+      "rdoj",
+      "oHoj",
+      "ossj",
+      "oH.j",
+      "ogoj",
+      "tuvj",
+      "...j"
+    ],
+    [
+      "...j",
+      "w..j",
+      "..Hj",
+      "Hoxj",
+      "H.oj",
+      "Hooj",
+      "H.Hj",
+      "...j",
+      "...j"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "set",
+      "pos": [
+        2,
+        1,
+        0
+      ],
+      "state": "redstone_block"
+    }
+  ]
+}

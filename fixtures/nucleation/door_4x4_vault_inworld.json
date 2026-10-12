@@ -1,0 +1,329 @@
+{
+  "name": "nucleation_door_4x4_vault_inworld",
+  "description": "Nucleation's door_4x4_vault_inworld build. (From Nucleation, MIT, (c) 2025 Schem-at.)",
+  "ticks": 92,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "nucleation"
+  ],
+  "palette": {
+    "#": "gray_concrete",
+    "A": "cyan_concrete",
+    "B": "redstone_wire[east=side,north=none,power=0,south=none,west=side]",
+    "C": "redstone_wire[east=side,north=none,power=0,south=side,west=side]",
+    "D": "redstone_wire[east=side,north=none,power=1,south=none,west=side]",
+    "E": "redstone_wire[east=side,north=none,power=0,south=up,west=side]",
+    "F": "redstone_wire[east=side,north=up,power=0,south=up,west=side]",
+    "G": "piston_head[facing=north,short=false,type=sticky]",
+    "H": "composter[level=1]",
+    "I": "comparator[facing=west,mode=compare,powered=true]",
+    "J": "comparator[facing=east,mode=compare,powered=true]",
+    "K": "sticky_piston[extended=true,facing=north]",
+    "L": "redstone_wire[east=side,north=up,power=0,south=none,west=none]",
+    "M": "redstone_wire[east=side,north=up,power=0,south=none,west=side]",
+    "N": "redstone_wire[east=none,north=up,power=0,south=none,west=side]",
+    "O": "redstone_wire[east=none,north=side,power=0,south=side,west=none]",
+    "P": "sticky_piston[extended=false,facing=south]",
+    "Q": "oak_leaves[distance=7,persistent=true,waterlogged=false]",
+    "R": "observer[facing=west,powered=false]",
+    "S": "piston[extended=false,facing=up]",
+    "T": "sticky_piston[extended=false,facing=up]",
+    "U": "observer[facing=east,powered=false]",
+    "V": "redstone_block",
+    "W": "sticky_piston[extended=true,facing=up]",
+    "X": "redstone_wire[east=side,north=side,power=0,south=side,west=none]",
+    "Y": "redstone_wire[east=side,north=side,power=0,south=side,west=side]",
+    "Z": "redstone_wire[east=none,north=side,power=0,south=side,west=side]",
+    "a": "redstone_wire[east=none,north=up,power=0,south=side,west=none]",
+    "b": "note_block[instrument=harp,note=0,powered=false]",
+    "c": "white_concrete",
+    "d": "smooth_stone_slab[type=top,waterlogged=false]",
+    "e": "observer[facing=north,powered=false]",
+    "f": "piston_head[facing=up,short=false,type=sticky]",
+    "g": "lever[face=floor,facing=west,powered=false]",
+    "h": "redstone_wire[east=side,north=none,power=0,south=side,west=none]",
+    "i": "oak_wood[axis=y]",
+    "j": "redstone_wire[east=none,north=none,power=0,south=side,west=side]",
+    "k": "sticky_piston[extended=false,facing=east]",
+    "l": "sticky_piston[extended=false,facing=west]",
+    "m": "redstone_wire[east=up,north=side,power=0,south=none,west=none]",
+    "n": "barrel[facing=up,open=false]",
+    "o": "repeater[delay=1,facing=south,locked=true,powered=true]",
+    "p": "redstone_wire[east=none,north=side,power=0,south=none,west=up]",
+    "q": "redstone_wire[east=up,north=none,power=0,south=none,west=side]",
+    "r": "sticky_piston[extended=false,facing=down]",
+    "s": "piston[extended=false,facing=east]",
+    "t": "piston[extended=false,facing=west]",
+    "u": "redstone_wire[east=side,north=none,power=0,south=none,west=up]",
+    "v": "slime_block",
+    "w": "repeater[delay=2,facing=north,locked=false,powered=false]",
+    "x": "target[power=0]",
+    "y": "redstone_wire[east=side,north=side,power=0,south=none,west=none]",
+    "z": "redstone_wire[east=none,north=side,power=0,south=none,west=side]",
+    "0": "redstone_wire[east=side,north=none,power=0,south=up,west=none]",
+    "1": "redstone_wire[east=none,north=none,power=0,south=up,west=side]",
+    "2": "piston_head[facing=down,short=false,type=sticky]",
+    "3": "repeater[delay=1,facing=north,locked=false,powered=false]",
+    "4": "sticky_piston[extended=true,facing=down]",
+    "5": "piston_head[facing=west,short=false,type=sticky]",
+    "6": "sticky_piston[extended=true,facing=west]",
+    "7": "sticky_piston[extended=true,facing=east]",
+    "8": "piston_head[facing=east,short=false,type=sticky]",
+    "9": "redstone_torch[lit=true]",
+    "@": "piston[extended=false,facing=down]",
+    "$": "note_block[instrument=harp,note=0,powered=true]",
+    "%": "redstone_wire[east=side,north=up,power=0,south=side,west=none]",
+    "&": "observer[facing=south,powered=false]",
+    "*": "observer[facing=up,powered=false]",
+    "+": "repeater[delay=1,facing=east,locked=false,powered=false]",
+    "=": "redstone_wire[east=side,north=side,power=0,south=none,west=side]",
+    "?": "repeater[delay=1,facing=west,locked=false,powered=false]"
+  },
+  "layers": [
+    [
+      "#################",
+      "#################",
+      "#################",
+      "#################",
+      "#################",
+      "#################",
+      "#################",
+      "#################",
+      "#################"
+    ],
+    [
+      ".................",
+      ".................",
+      "...AAAAAAAAAA....",
+      "....A......A.....",
+      "......AAAA.......",
+      ".................",
+      ".................",
+      ".................",
+      "................."
+    ],
+    [
+      ".................",
+      ".......A.........",
+      "..ABCDEFEEDCBA...",
+      "..GHIAAAAAAJHG...",
+      ".AK...LMMN...KA..",
+      ".................",
+      ".................",
+      ".................",
+      "................."
+    ],
+    [
+      ".................",
+      ".......O.........",
+      "..PQRSTTTTSUQP...",
+      ".AV..WXYYZW..VA..",
+      ".a..bSTTTTSb..a..",
+      ".................",
+      ".................",
+      ".................",
+      "................."
+    ],
+    [
+      ".................",
+      ".....cccccc......",
+      ".d..QccccccQ..d..",
+      ".O..efccccfe..O..",
+      ".d.AAccccccAA.d..",
+      ".....cccccc......",
+      ".................",
+      ".................",
+      "................."
+    ],
+    [
+      ".................",
+      ".....c.g..c......",
+      ".hdi.c....c.idj..",
+      "..kA.c....c.Al...",
+      ".mnIoc....coJnp..",
+      ".....c....c......",
+      ".................",
+      ".................",
+      "................."
+    ],
+    [
+      ".................",
+      ".....c....c......",
+      "..qrsc....ctru...",
+      ".A.kvc....cvl.A..",
+      ".dBdsc....ctdBd..",
+      ".....c....c......",
+      ".................",
+      ".................",
+      "................."
+    ],
+    [
+      ".................",
+      ".....c....c......",
+      ".AdBsc....ctBdA..",
+      ".wxkvc....cvlxw..",
+      ".ydBsc....ctBdz..",
+      ".....c....c......",
+      ".................",
+      ".................",
+      "................."
+    ],
+    [
+      ".................",
+      ".....c....c......",
+      ".0B..c....c.dB1..",
+      ".A2b.c....c.b2A..",
+      "..B..c....c..B...",
+      ".....c....c......",
+      ".................",
+      ".................",
+      "................."
+    ],
+    [
+      ".................",
+      ".....cccccc......",
+      ".d.x..cccc..3....",
+      ".O4mA2cccc2Ap4O..",
+      ".A56d.cccc.d78A..",
+      ".....cccccc......",
+      ".................",
+      ".................",
+      "................."
+    ],
+    [
+      ".................",
+      ".................",
+      ".hd9.@rrrr@U.t...",
+      "..$dj4.A.A4%k&...",
+      ".kV.O@rrrr@O.Vl..",
+      ".................",
+      ".................",
+      ".................",
+      "................."
+    ],
+    [
+      ".................",
+      ".................",
+      "..j78*BCBCBj.....",
+      ".HIDA..OHI.......",
+      "....Rl+=B?kU.....",
+      ".................",
+      ".................",
+      ".................",
+      "................."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 11,
+      "action": "use",
+      "pos": [
+        7,
+        5,
+        1
+      ]
+    },
+    {
+      "tick": 41,
+      "action": "use",
+      "pos": [
+        7,
+        5,
+        1
+      ]
+    },
+    {
+      "tick": 71,
+      "action": "use",
+      "pos": [
+        7,
+        5,
+        1
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        2,
+        5,
+        4
+      ],
+      "items": [
+        {
+          "slot": 9,
+          "id": "oak_log",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "pos": [
+        13,
+        5,
+        4
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "oak_log",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "comparators": [
+    {
+      "pos": [
+        4,
+        2,
+        3
+      ],
+      "output": 1
+    },
+    {
+      "pos": [
+        11,
+        2,
+        3
+      ],
+      "output": 1
+    },
+    {
+      "pos": [
+        3,
+        5,
+        4
+      ],
+      "output": 1
+    },
+    {
+      "pos": [
+        12,
+        5,
+        4
+      ],
+      "output": 1
+    },
+    {
+      "pos": [
+        2,
+        11,
+        3
+      ],
+      "output": 1
+    },
+    {
+      "pos": [
+        9,
+        11,
+        3
+      ],
+      "output": 1
+    }
+  ]
+}

@@ -81,6 +81,15 @@ pub struct Container {
     pub items: Vec<ItemSlot>,
 }
 
+/// A comparator's stored output (`ComparatorBlockEntity.output`), which a
+/// build can carry from the world it was made in.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ComparatorOutput {
+    pub pos: [i32; 3],
+    pub output: i32,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Stimulus {
     /// Applied just before this game tick's world tick runs, which is where
@@ -116,6 +125,8 @@ pub struct FixtureSource {
     pub stimuli: Vec<Stimulus>,
     #[serde(default)]
     pub containers: Vec<Container>,
+    #[serde(default)]
+    pub comparators: Vec<ComparatorOutput>,
 }
 
 fn default_levels() -> Vec<Level> {
@@ -143,6 +154,9 @@ pub struct ResolvedFixture {
     /// full (`minecraft:stone`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub containers: Vec<Container>,
+    /// Comparator outputs, set after the containers are filled.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comparators: Vec<ComparatorOutput>,
 }
 
 pub const RESOLVED_FORMAT: u32 = 1;
@@ -226,6 +240,15 @@ impl FixtureSource {
                 ensure!(item.count > 0, "{}: container at {:?} has an empty stack", self.name, c.pos);
             }
         }
+        for c in &self.comparators {
+            ensure!(
+                (0..3).all(|i| (0..size[i]).contains(&c.pos[i])) && (0..=15).contains(&c.output),
+                "{}: comparator output {:?} = {} is outside the fixture or 0..15",
+                self.name,
+                c.pos,
+                c.output
+            );
+        }
         self.transform_list()?;
         Ok(())
     }
@@ -295,6 +318,8 @@ impl FixtureSource {
                     .collect(),
             })
             .collect();
+        let comparators =
+            self.comparators.iter().map(|c| ComparatorOutput { pos: t.pos(c.pos, size), output: c.output }).collect();
         Ok(ResolvedFixture {
             format: RESOLVED_FORMAT,
             id: format!("{}@{t}", self.name),
@@ -308,6 +333,7 @@ impl FixtureSource {
             blocks,
             stimuli,
             containers,
+            comparators,
         })
     }
 

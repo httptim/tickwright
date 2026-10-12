@@ -106,6 +106,13 @@ fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
             blocks::container::set_item(&mut level, pos, item.slot as usize, stack);
         }
     }
+    for c in &fixture.comparators {
+        let pos = Pos::new(ox + c.pos[0], oy + c.pos[1], oz + c.pos[2]);
+        match level.block_entities.get_mut(&pos) {
+            Some(blocks::BlockEntity::Comparator(output)) => *output = c.output,
+            _ => bail!("{}: no comparator at {:?}", fixture.id, c.pos),
+        }
+    }
     Ok(level)
 }
 
