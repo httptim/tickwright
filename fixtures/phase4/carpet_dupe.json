@@ -1,6 +1,6 @@
 {
   "name": "carpet_dupe",
-  "description": "A carpet duper. A sticky piston pushes two slime blocks with a carpet on each. The piston head moves into the first slime's spot and air takes the second's, so each carpet's support changes while the piston is still placing its cached copy.",
+  "description": "A carpet duper. A sticky piston pushes a slime block carrying a dead coral fan with a carpet on top. The piston head replaces the slime under the fan, so the fan pops, and the carpet over the gap pops too, while the piston still places its cached copy.",
   "ticks": 30,
   "levels": [
     "state",
@@ -16,6 +16,7 @@
     "#": "stone",
     "P": "sticky_piston[extended=false,facing=east]",
     "S": "slime_block",
+    "F": "dead_tube_coral_fan[waterlogged=false]",
     "C": "white_carpet"
   },
   "layers": [
@@ -28,13 +29,19 @@
     [
       ".....",
       "PS...",
-      ".S...",
+      ".....",
+      "....."
+    ],
+    [
+      ".....",
+      ".F...",
+      ".....",
       "....."
     ],
     [
       ".....",
       ".C...",
-      ".C...",
+      ".....",
       "....."
     ],
     [
