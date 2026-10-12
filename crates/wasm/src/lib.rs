@@ -208,6 +208,21 @@ enum Command {
         session: u32,
         pos: [i32; 3],
     },
+    /// The entities in the world now, in the order they tick:
+    /// `{"entities": [{"id", "type", "pos": [x, y, z], "detail"}]}`.
+    Entities {
+        session: u32,
+    },
+    /// Summon an entity as `/summon` does, before the next tick. `at` is
+    /// its position, `motion` its starting velocity and `nbt` its data in
+    /// SNBT, such as `{fuse:40}`.
+    Summon {
+        session: u32,
+        entity: String,
+        at: [f64; 3],
+        motion: Option<[f64; 3]>,
+        nbt: Option<String>,
+    },
     /// What the world's block entities hold, in a resolved fixture's
     /// shape and world positions: `{"containers": [...], "comparators": [...]}`.
     Contents {
@@ -364,6 +379,18 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                 json!({ "ticks": ticks })
             }
             Command::Items { session, pos: p } => json!({ "items": get(sessions, session)?.items(pos(p)) }),
+            Command::Entities { session } => {
+                let entities: Vec<_> = get(sessions, session)?
+                    .entities()
+                    .into_iter()
+                    .map(|e| json!({ "id": e.id, "type": e.kind, "pos": e.pos, "detail": e.detail }))
+                    .collect();
+                json!({ "entities": entities })
+            }
+            Command::Summon { session, entity, at, motion, nbt } => {
+                get(sessions, session)?.summon(&entity, at, motion, nbt.as_deref())?;
+                json!({})
+            }
             Command::Contents { session } => {
                 let s = get(sessions, session)?;
                 json!({ "containers": s.containers(), "comparators": s.comparators() })
@@ -485,6 +512,20 @@ mod tests {
         assert_eq!(list["items"][1]["item"], "minecraft:chest");
         assert_eq!(list["items"][2]["item"], "minecraft:stone");
         assert_eq!(list["shulker_boxes"], 1);
+    }
+
+    #[test]
+    fn a_session_summons_and_lists_entities() {
+        let id = ok(r#"{"op":"open","version":"26.3"}"#)["session"].as_u64().unwrap();
+        ok(&format!(r#"{{"op":"set","session":{id},"pos":[0,0,0],"state":"stone"}}"#));
+        ok(&format!(r#"{{"op":"summon","session":{id},"entity":"tnt","at":[0.5,1.0,0.5],"nbt":"{{fuse:40}}"}}"#));
+        ok(&format!(r#"{{"op":"step","session":{id}}}"#));
+        let list = ok(&format!(r#"{{"op":"entities","session":{id}}}"#));
+        assert_eq!(list["entities"][0]["type"], "minecraft:tnt", "{list}");
+        assert_eq!(list["entities"][0]["detail"], "fuse=39", "{list}");
+        assert!(
+            command(format!(r#"{{"op":"summon","session":{id},"entity":"zombie","at":[0,1,0]}}"#).as_bytes()).is_err()
+        );
     }
 
     #[test]
