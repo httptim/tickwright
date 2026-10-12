@@ -250,6 +250,7 @@ mod tests {
             entries,
             entities: Vec::new(),
             rng: Vec::new(),
+            unsupported: None,
         }
     }
 

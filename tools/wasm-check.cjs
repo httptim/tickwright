@@ -38,11 +38,11 @@ async function main() {
       new Uint8Array(e.memory.buffer, p, b.length).set(b);
       return [p, b.length];
     };
-    window.runFixture = (fixture, version) => {
+    window.runFixture = (fixture, version, fn = "run") => {
       const [fp, fl] = put(fixture);
       const [vp, vl] = put(version);
       const t0 = performance.now();
-      const out = e.run(fp, fl, vp, vl);
+      const out = e[fn](fp, fl, vp, vl);
       const ms = performance.now() - t0;
       const view = new DataView(e.memory.buffer);
       const len = view.getUint32(out, true);
@@ -159,6 +159,7 @@ async function main() {
 
   let failed = 0;
   let refused = 0;
+  let partial = 0;
   let roundTrips = 0;
   let materialLists = 0;
   let totalMs = 0;
@@ -175,6 +176,21 @@ async function main() {
         failed++;
       } else {
         refused++;
+        // A run that met something unsimulated mid-way still has a trace
+        // up to that tick; one refused at setup is refused here too.
+        const p = await page.evaluate(([fx, v]) => window.runFixture(fx, v, "run_partial"), [fixture, version]);
+        if (p.status === 0) {
+          const u = JSON.parse(p.text).unsupported;
+          if (!u || !r.text.endsWith(u.message)) {
+            console.log(`${f}: run_partial gave a trace without the reason run refused it for: ${r.text}`);
+            failed++;
+          } else {
+            partial++;
+          }
+        } else if (p.text !== r.text) {
+          console.log(`${f}: run_partial and run refused it differently: ${p.text} / ${r.text}`);
+          failed++;
+        }
       }
       continue;
     }
@@ -230,7 +246,7 @@ async function main() {
     }
   }
   await browser.close();
-  console.log(`${files.length - failed - refused} of ${files.length - refused} fixtures gave identical traces in the browser, as fixture runs and as editor sessions (${refused} refused by both), ${totalMs.toFixed(0)} ms in wasm`);
+  console.log(`${files.length - failed - refused} of ${files.length - refused} fixtures gave identical traces in the browser, as fixture runs and as editor sessions (${refused} refused by both, ${partial} of them with a partial trace), ${totalMs.toFixed(0)} ms in wasm`);
   console.log(`${materialLists} builds gave the same material list from the fixture and from a session`);
   console.log(`${roundTrips} builds survived export to and import from .litematic, .schem and .nbt unchanged`);
   process.exit(failed ? 1 : 0);

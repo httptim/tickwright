@@ -124,6 +124,21 @@ pub struct Trace {
     /// random numbers. Only fixtures that track entities record it.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub rng: Vec<(u32, i64)>,
+    /// Set when the engine stopped early because the build needs something
+    /// it doesn't simulate yet. The trace then covers the ticks before
+    /// that one. Game captures never have it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unsupported: Option<Unsupported>,
+}
+
+/// Why and where an engine run stopped early.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Unsupported {
+    /// The tick that needed it. The trace stops at the tick before.
+    pub tick: u32,
+    /// The engine's sentence for it, such as "a plain rail turned by a
+    /// signal is not simulated by the engine yet".
+    pub message: String,
 }
 
 impl Trace {
