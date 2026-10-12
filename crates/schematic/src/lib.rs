@@ -199,6 +199,10 @@ impl Schematic {
             stimuli: Vec::new(),
             containers: self.containers(),
             comparators: self.comparators(),
+            lecterns: Vec::new(),
+            experiments: Vec::new(),
+            day_time: None,
+            max_chained_updates: None,
         };
         Ok(fixture)
     }

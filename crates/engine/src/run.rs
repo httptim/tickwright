@@ -88,7 +88,16 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
     }
     let blocks = fixture.blocks.iter().map(|(x, y, z, s)| Ok((Pos::new(ox + x, oy + y, oz + z), supported(s)?)));
     let blocks: Result<Vec<_>> = blocks.collect();
+    if let Some(e) = fixture.experiments.first() {
+        bail!("{}: the {e} experiment is not supported by the engine yet", fixture.id);
+    }
+    if !fixture.lecterns.is_empty() || fixture.day_time.is_some() {
+        bail!("{}: lecterns and the time of day are not supported by the engine yet", fixture.id);
+    }
     let mut level = Level::new(rules);
+    if let Some(n) = fixture.max_chained_updates {
+        level.max_chained_updates = n as usize;
+    }
     for (pos, state) in blocks? {
         level.set_block(pos, state, QUIET);
     }
@@ -151,6 +160,7 @@ fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result
                 let p = s.place.as_ref().context("place stimulus without item, face and look")?;
                 blocks::placement::place(level, &p.item, click(pos, p)?).with_context(|| fixture.id.clone())?;
             }
+            Action::Page | Action::Time => bail!("{}: {:?} stimuli are not supported yet", fixture.id, s.action),
         }
     }
     Ok(())

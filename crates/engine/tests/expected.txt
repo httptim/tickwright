@@ -132,3 +132,5 @@ place_doors_trapdoors_slabs order
 place_levers_and_buttons order
 place_pistons_and_observers order
 place_rails_and_more order
+update_skipping_dust order
+update_skipping_rails order

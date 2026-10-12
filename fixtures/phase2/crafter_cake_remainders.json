@@ -1,0 +1,98 @@
+{
+  "name": "crafter_cake_remainders",
+  "description": "A crafter facing down into a chest crafts a cake when the button on its side is pressed. The three milk buckets leave empty buckets, which the crafter puts in the chest after the cake.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "crafter",
+    "container"
+  ],
+  "palette": {
+    "#": "stone",
+    "C": "crafter[crafting=false,orientation=down_north,triggered=false]",
+    "h": "chest[facing=north,type=single,waterlogged=false]",
+    "b": "stone_button[face=wall,facing=east,powered=false]"
+  },
+  "layers": [
+    [
+      "##"
+    ],
+    [
+      "h."
+    ],
+    [
+      "Cb"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        1,
+        2,
+        0
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        0,
+        2,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "milk_bucket",
+          "count": 1
+        },
+        {
+          "slot": 1,
+          "id": "milk_bucket",
+          "count": 1
+        },
+        {
+          "slot": 2,
+          "id": "milk_bucket",
+          "count": 1
+        },
+        {
+          "slot": 3,
+          "id": "sugar",
+          "count": 1
+        },
+        {
+          "slot": 4,
+          "id": "egg",
+          "count": 1
+        },
+        {
+          "slot": 5,
+          "id": "sugar",
+          "count": 1
+        },
+        {
+          "slot": 6,
+          "id": "wheat",
+          "count": 1
+        },
+        {
+          "slot": 7,
+          "id": "wheat",
+          "count": 1
+        },
+        {
+          "slot": 8,
+          "id": "wheat",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

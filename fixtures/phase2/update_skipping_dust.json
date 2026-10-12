@@ -1,0 +1,53 @@
+{
+  "name": "update_skipping_dust",
+  "description": "Update skipping: with max-chained-neighbor-updates lowered to 40, a lever powers a 14-wire dust line into a lamp. Every wire that changes power queues updates around it in one chain; once 40 are queued the rest are dropped, so the far end of the line keeps its old power until something updates it. A second lever at the far end is then flipped, which updates the stale wires.",
+  "ticks": 20,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "quirk",
+    "update_skipping",
+    "dust"
+  ],
+  "max_chained_updates": 40,
+  "palette": {
+    "#": "stone",
+    "l": "lever[face=floor,facing=north,powered=false]",
+    "-": "redstone_wire[east=side,north=none,power=0,south=none,west=side]",
+    "L": "redstone_lamp[lit=false]",
+    "m": "lever[face=floor,facing=north,powered=false]"
+  },
+  "layers": [
+    [
+      "################",
+      "################"
+    ],
+    [
+      "l--------------L",
+      "..............m."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 8,
+      "action": "use",
+      "pos": [
+        14,
+        1,
+        1
+      ]
+    }
+  ]
+}

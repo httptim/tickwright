@@ -1,0 +1,174 @@
+{
+  "name": "crafter_iron_block",
+  "description": "A crafter holding two iron ingots in each slot faces a chest. A floor lever beside it is switched on three times: the first two rising edges each craft an iron block into the chest, the third finds the grid empty. A second crafter holding a recipe that matches nothing is triggered by its own lever and only plays its failure event. Comparators read the first crafter and the chest into lamps.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "crafter",
+    "comparator",
+    "container"
+  ],
+  "palette": {
+    "#": "stone",
+    "l": "lever[face=floor,facing=north,powered=false]",
+    "C": "crafter[crafting=false,orientation=east_up,triggered=false]",
+    "D": "crafter[crafting=false,orientation=east_up,triggered=false]",
+    "h": "chest[facing=north,type=single,waterlogged=false]",
+    "c": "comparator[facing=south,mode=compare,powered=false]",
+    "L": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "####",
+      "####",
+      "####",
+      "####"
+    ],
+    [
+      "lCh.",
+      ".cc.",
+      ".LL.",
+      "lD.."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 12,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 14,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 24,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 26,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 3,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        3
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        1,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "iron_ingot",
+          "count": 2
+        },
+        {
+          "slot": 1,
+          "id": "iron_ingot",
+          "count": 2
+        },
+        {
+          "slot": 2,
+          "id": "iron_ingot",
+          "count": 2
+        },
+        {
+          "slot": 3,
+          "id": "iron_ingot",
+          "count": 2
+        },
+        {
+          "slot": 4,
+          "id": "iron_ingot",
+          "count": 2
+        },
+        {
+          "slot": 5,
+          "id": "iron_ingot",
+          "count": 2
+        },
+        {
+          "slot": 6,
+          "id": "iron_ingot",
+          "count": 2
+        },
+        {
+          "slot": 7,
+          "id": "iron_ingot",
+          "count": 2
+        },
+        {
+          "slot": 8,
+          "id": "iron_ingot",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "pos": [
+        1,
+        1,
+        3
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "dirt",
+          "count": 1
+        },
+        {
+          "slot": 4,
+          "id": "stick",
+          "count": 3
+        },
+        {
+          "slot": 8,
+          "id": "dirt",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

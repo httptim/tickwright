@@ -53,7 +53,12 @@ rm -rf "$WORK/agent-classes" "$WORK/classes"
 javac -d "$WORK/agent-classes" $(find harness/agent -name '*.java')
 printf 'Premain-Class: tickwright.harness.agent.Agent\n' > "$WORK/agent.mf"
 jar --create --file "$WORK/agent.jar" --manifest "$WORK/agent.mf" -C "$WORK/agent-classes" .
-javac -nowarn -cp "$WORK/agent.jar:$CP" -d "$WORK/classes" $(find harness/src -name '*.java')
+if ! javac -nowarn -cp "$WORK/agent.jar:$CP" -d "$WORK/classes" $(find harness/src -name '*.java') 2> "$WORK/javac.log"; then
+    cat "$WORK/javac.log" >&2
+    # One annotation, readable through the API when the log is not.
+    echo "::error::$(head -c 6000 "$WORK/javac.log" | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')"
+    exit 1
+fi
 
 # --- resolve fixtures ---------------------------------------------------------
 echo "==> resolving fixtures"
@@ -105,6 +110,8 @@ v = next(filter(None, map(read, sys.argv[2:])))
 out = {"name": v["name"], "data_version": v["world_version"], "protocol_version": v["protocol_version"]}
 open(sys.argv[1], "w").write(json.dumps(out, indent=2) + "\n")
 PY
+    # Crafting recipes and item tags, for the crafter.
+    python3 -I tools/recipes.py "$INNER" "data/$MC_VERSION"
 fi
 
 # --- data reports -------------------------------------------------------------

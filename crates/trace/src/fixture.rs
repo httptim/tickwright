@@ -64,6 +64,11 @@ pub enum Action {
     /// looking `look` (and `pitch` degrees down) would, so the block's own
     /// placement rules choose its state.
     Place,
+    /// Turn the book on the lectern at `pos` to `page`, as a player
+    /// reading it would (`LecternBlockEntity.setPage`).
+    Page,
+    /// Set the time of day to `time`, as `/time set` does. `pos` is unused.
+    Time,
 }
 
 /// One stack in a container: `count` of item `id` in `slot`.
@@ -85,6 +90,16 @@ pub struct Container {
     pub items: Vec<ItemSlot>,
 }
 
+/// A lectern holding a book of `pages` pages, open at `page`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Lectern {
+    pub pos: [i32; 3],
+    pub pages: u32,
+    #[serde(default)]
+    pub page: u32,
+}
+
 /// A comparator's stored output (`ComparatorBlockEntity.output`), which a
 /// build can carry from the world it was made in.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -100,9 +115,16 @@ pub struct Stimulus {
     /// player input lands in the real game. Tick 1 is the first tick.
     pub tick: u32,
     pub action: Action,
+    #[serde(default)]
     pub pos: [i32; 3],
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub state: Option<String>,
+    /// The page a `page` stimulus turns to.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub page: Option<u32>,
+    /// The time of day a `time` stimulus sets, in ticks (0 is sunrise).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time: Option<i64>,
     #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
     pub place: Option<PlaceInput>,
 }
@@ -193,6 +215,20 @@ pub struct FixtureSource {
     pub containers: Vec<Container>,
     #[serde(default)]
     pub comparators: Vec<ComparatorOutput>,
+    #[serde(default)]
+    pub lecterns: Vec<Lectern>,
+    /// Feature flags the world is created with, such as
+    /// `redstone_experiments`.
+    #[serde(default)]
+    pub experiments: Vec<String>,
+    /// The time of day when the fixture starts. Fixtures that set it start
+    /// on a game time that is a multiple of 20, the period of the daylight
+    /// detector's update.
+    #[serde(default)]
+    pub day_time: Option<i64>,
+    /// `max-chained-neighbor-updates`, for fixtures about update skipping.
+    #[serde(default)]
+    pub max_chained_updates: Option<i32>,
 }
 
 fn default_levels() -> Vec<Level> {
@@ -223,7 +259,19 @@ pub struct ResolvedFixture {
     /// Comparator outputs, set after the containers are filled.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub comparators: Vec<ComparatorOutput>,
+    /// Books on lecterns, set after the comparator outputs.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub lecterns: Vec<Lectern>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub experiments: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub day_time: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_chained_updates: Option<i32>,
 }
+
+/// Feature flags a fixture may ask for.
+pub const EXPERIMENTS: [&str; 1] = ["redstone_experiments"];
 
 pub const RESOLVED_FORMAT: u32 = 1;
 
@@ -292,6 +340,18 @@ impl FixtureSource {
                 (_, Some(_)) => bail!("{}: only place stimuli take item, face and look", self.name),
                 _ => {}
             }
+            match (&s.action, s.page, s.time) {
+                (Action::Page, None, _) => bail!("{}: a page stimulus needs a page", self.name),
+                (Action::Time, _, None) => bail!("{}: a time stimulus needs a time", self.name),
+                (Action::Page, _, Some(_)) | (Action::Time, Some(_), _) => {
+                    bail!("{}: a stimulus takes a page or a time, not both", self.name)
+                }
+                (Action::Page | Action::Time, _, _) => {}
+                (_, Some(_), _) | (_, _, Some(_)) => {
+                    bail!("{}: only page and time stimuli take a page or a time", self.name)
+                }
+                _ => {}
+            }
             match (&s.action, &s.state) {
                 (Action::Set, None) => bail!("{}: a set stimulus needs a state", self.name),
                 (Action::Set, Some(st)) => {
@@ -311,6 +371,20 @@ impl FixtureSource {
             for item in &c.items {
                 ensure!(item.count > 0, "{}: container at {:?} has an empty stack", self.name, c.pos);
             }
+        }
+        for l in &self.lecterns {
+            ensure!(
+                (0..3).all(|i| (0..size[i]).contains(&l.pos[i])) && l.pages > 0 && l.page < l.pages,
+                "{}: lectern at {:?} must be inside the fixture, with page < pages",
+                self.name,
+                l.pos
+            );
+        }
+        for e in &self.experiments {
+            ensure!(EXPERIMENTS.contains(&e.as_str()), "{}: unknown experiment {e:?}", self.name);
+        }
+        if let Some(n) = self.max_chained_updates {
+            ensure!(n > 0, "{}: max_chained_updates must be positive", self.name);
         }
         for c in &self.comparators {
             ensure!(
@@ -377,6 +451,8 @@ impl FixtureSource {
                     .transpose()
                     .unwrap(),
                 place: s.place.as_ref().map(|p| p.transform(t)),
+                page: s.page,
+                time: s.time,
             })
             .collect();
         let containers = self
@@ -407,6 +483,14 @@ impl FixtureSource {
             stimuli,
             containers,
             comparators,
+            lecterns: self
+                .lecterns
+                .iter()
+                .map(|l| Lectern { pos: t.pos(l.pos, size), pages: l.pages, page: l.page })
+                .collect(),
+            experiments: self.experiments.clone(),
+            day_time: self.day_time,
+            max_chained_updates: self.max_chained_updates,
         })
     }
 

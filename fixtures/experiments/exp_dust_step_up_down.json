@@ -1,0 +1,56 @@
+{
+  "name": "exp_dust_step_up_down",
+  "description": "Redstone Experiments: dust step up down, the same build as `dust_step_up_down` in a world with the redstone_experiments feature on, so dust uses the experimental evaluator. Dust climbs onto a stone block and steps back down to a lamp. Checks diagonal connections and power through the step.",
+  "experiments": [
+    "redstone_experiments"
+  ],
+  "ticks": 10,
+  "levels": [
+    "state",
+    "phase"
+  ],
+  "tags": [
+    "dust",
+    "experiments"
+  ],
+  "palette": {
+    "#": "stone",
+    "L": "lever[face=floor,facing=north,powered=false]",
+    "-": "redstone_wire[east=side,north=none,power=0,south=none,west=side]",
+    "u": "redstone_wire[east=up,north=none,power=0,south=none,west=side]",
+    "t": "redstone_wire[east=side,north=none,power=0,south=none,west=side]",
+    "d": "redstone_wire[east=side,north=none,power=0,south=none,west=up]",
+    "o": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "#######"
+    ],
+    [
+      "L-u#d-o"
+    ],
+    [
+      "...t..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 6,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}

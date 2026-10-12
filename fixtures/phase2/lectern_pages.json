@@ -1,0 +1,95 @@
+{
+  "name": "lectern_pages",
+  "description": "A lectern holding a five-page book open at the first page. Turning to another page powers the lectern for two ticks: it lights the lamp beside it, and strongly powers the block below it, lighting the lamp beside that. A comparator reads the page (page 1 of 5 is 1, the last page is 15) into a lamp. Turning to the page it is already on does nothing.",
+  "ticks": 60,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "lectern",
+    "comparator"
+  ],
+  "palette": {
+    "#": "stone",
+    "T": "lectern[facing=north,has_book=true,powered=false]",
+    "c": "comparator[facing=south,mode=compare,powered=false]",
+    "L": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "L###",
+      "###.",
+      "###."
+    ],
+    [
+      ".TL.",
+      ".c..",
+      ".L.."
+    ]
+  ],
+  "lecterns": [
+    {
+      "pos": [
+        1,
+        1,
+        0
+      ],
+      "pages": 5,
+      "page": 0
+    }
+  ],
+  "stimuli": [
+    {
+      "tick": 5,
+      "action": "page",
+      "pos": [
+        1,
+        1,
+        0
+      ],
+      "page": 1
+    },
+    {
+      "tick": 15,
+      "action": "page",
+      "pos": [
+        1,
+        1,
+        0
+      ],
+      "page": 2
+    },
+    {
+      "tick": 16,
+      "action": "page",
+      "pos": [
+        1,
+        1,
+        0
+      ],
+      "page": 4
+    },
+    {
+      "tick": 30,
+      "action": "page",
+      "pos": [
+        1,
+        1,
+        0
+      ],
+      "page": 4
+    },
+    {
+      "tick": 40,
+      "action": "page",
+      "pos": [
+        1,
+        1,
+        0
+      ],
+      "page": 0
+    }
+  ]
+}
