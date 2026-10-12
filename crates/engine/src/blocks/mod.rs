@@ -10,6 +10,8 @@
 
 mod lamp;
 mod lever;
+mod torch;
+mod wire;
 
 use crate::level::Level;
 use crate::pos::{Dir, Pos};
@@ -21,6 +23,7 @@ pub enum Kind {
     /// A full, opaque block with no behaviour: stone, obsidian and the like.
     Solid,
     Lever,
+    RedstoneBlock,
     RedstoneLamp,
     RedstoneWire,
     RedstoneTorch,
@@ -43,6 +46,7 @@ impl Kind {
             "stone" | "obsidian" | "cobblestone" | "dirt" | "smooth_stone" | "white_wool" | "iron_block"
             | "gold_block" | "diamond_block" | "bedrock" => Kind::Solid,
             "lever" => Kind::Lever,
+            "redstone_block" => Kind::RedstoneBlock,
             "redstone_lamp" => Kind::RedstoneLamp,
             "redstone_wire" => Kind::RedstoneWire,
             "redstone_torch" => Kind::RedstoneTorch,
@@ -105,10 +109,24 @@ pub fn is_conductor(level: &Level, _pos: Pos, state: StateId) -> bool {
 
 /// `isSignalSource`.
 pub fn is_signal_source(level: &Level, state: StateId) -> bool {
-    matches!(
-        level.kind(state),
-        Kind::Lever | Kind::RedstoneWire | Kind::RedstoneTorch | Kind::RedstoneWallTorch | Kind::Repeater
-    )
+    match level.kind(state) {
+        Kind::RedstoneWire => level.wire_signals.get(),
+        k => matches!(
+            k,
+            Kind::Lever | Kind::RedstoneBlock | Kind::RedstoneTorch | Kind::RedstoneWallTorch | Kind::Repeater
+        ),
+    }
+}
+
+/// `isFaceSturdy(level, pos, dir)` for the blocks phase 1 uses: whether the
+/// block's support shape covers its whole `dir` face.
+pub fn is_face_sturdy(level: &Level, _pos: Pos, state: StateId, dir: Dir) -> bool {
+    match level.kind(state) {
+        Kind::Solid | Kind::RedstoneLamp | Kind::RedstoneBlock | Kind::Slime => true,
+        Kind::Piston | Kind::StickyPiston => !level.flag(state, "extended") || level.dir(state, "facing") != dir,
+        Kind::PistonHead => level.dir(state, "facing") == dir,
+        _ => false,
+    }
 }
 
 /// `getSignal(state, level, pos, dir)`: weak power out of `pos`, as seen by
@@ -116,6 +134,9 @@ pub fn is_signal_source(level: &Level, state: StateId) -> bool {
 pub fn get_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i32 {
     match level.kind(state) {
         Kind::Lever => lever::get_signal(level, pos, state, dir),
+        Kind::RedstoneBlock => 15,
+        Kind::RedstoneWire => wire::get_signal(level, pos, state, dir),
+        Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::get_signal(level, pos, state, dir),
         _ => 0,
     }
 }
@@ -124,6 +145,8 @@ pub fn get_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i32 {
 pub fn get_direct_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i32 {
     match level.kind(state) {
         Kind::Lever => lever::get_direct_signal(level, pos, state, dir),
+        Kind::RedstoneWire => wire::get_direct_signal(level, pos, state, dir),
+        Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::get_direct_signal(level, pos, state, dir),
         _ => 0,
     }
 }
@@ -131,12 +154,21 @@ pub fn get_direct_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i
 // --- lifecycle ---------------------------------------------------------------
 
 pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId, moved_by_piston: bool) {
-    let _ = (level, pos, state, old, moved_by_piston);
+    let _ = moved_by_piston;
+    match level.kind(state) {
+        Kind::RedstoneWire => wire::on_place(level, pos, state, old),
+        Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::on_place(level, pos, state),
+        _ => {}
+    }
 }
 
 pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateId, moved_by_piston: bool) {
     match level.kind(state) {
         Kind::Lever => lever::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
+        Kind::RedstoneWire => wire::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
+        Kind::RedstoneTorch | Kind::RedstoneWallTorch => {
+            torch::affect_neighbors_after_removal(level, pos, state, moved_by_piston)
+        }
         _ => {}
     }
 }
@@ -145,6 +177,8 @@ pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId, source: Blo
     let _ = (source, moved_by_piston);
     match level.kind(state) {
         Kind::RedstoneLamp => lamp::neighbor_changed(level, pos, state),
+        Kind::RedstoneWire => wire::neighbor_changed(level, pos, state),
+        Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::neighbor_changed(level, pos, state),
         _ => {}
     }
 }
@@ -157,20 +191,24 @@ pub fn update_shape(
     neighbor: Pos,
     neighbor_state: StateId,
 ) -> StateId {
-    let _ = (pos, dir, neighbor, neighbor_state);
     match level.kind(state) {
+        Kind::RedstoneWire => wire::update_shape(level, pos, state, dir, neighbor, neighbor_state),
+        Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::update_shape(level, pos, state, dir),
         _ => state,
     }
 }
 
 /// `updateIndirectNeighbourShapes`: only dust has any.
 pub fn update_indirect_neighbour_shapes(level: &mut Level, pos: Pos, state: StateId, flags: i32, recursion: i32) {
-    let _ = (level, pos, state, flags, recursion);
+    if level.kind(state) == Kind::RedstoneWire {
+        wire::update_indirect_neighbour_shapes(level, pos, state, flags, recursion);
+    }
 }
 
 pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
     match level.kind(state) {
         Kind::RedstoneLamp => lamp::tick(level, pos, state),
+        Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::tick(level, pos, state),
         _ => {}
     }
 }

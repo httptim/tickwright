@@ -6,6 +6,7 @@
 //! closely enough that the same calls happen in the same order, because the
 //! order is what the traces check.
 
+use std::cell::Cell;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::blocks::{self, Kind};
@@ -91,6 +92,12 @@ pub struct Level {
     tickers: Vec<Pos>,
     pending_tickers: Vec<Pos>,
 
+    /// `RedStoneWireBlock.shouldSignal`: off while dust measures the power
+    /// around it, so wires do not count each other.
+    pub wire_signals: Cell<bool>,
+    /// `RedstoneTorchBlock.RECENT_TOGGLES`: forced turn-offs, oldest first.
+    pub torch_toggles: Vec<(Pos, i64)>,
+
     pub phase: Phase,
     pub recorder: Option<Recorder>,
 }
@@ -121,6 +128,8 @@ impl Level {
             block_entities: HashMap::new(),
             tickers: Vec::new(),
             pending_tickers: Vec::new(),
+            wire_signals: Cell::new(true),
+            torch_toggles: Vec::new(),
             phase: Phase::Input,
             recorder: None,
         }
