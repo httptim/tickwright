@@ -8,7 +8,7 @@
 //! during the recording, so the engine places blocks the same way.
 
 use anyhow::{Context, Result, bail};
-use tickwright_trace::{Action, Level as TraceLevel, ResolvedFixture, TRACE_FORMAT, Trace};
+use tickwright_trace::{Action, Level as TraceLevel, ResolvedFixture, TRACE_FORMAT, Trace, Unsupported};
 
 use crate::blocks::{self, Kind};
 use crate::entity;
@@ -21,7 +21,26 @@ use crate::rules::Rules;
 /// How the harness places fixture blocks.
 const QUIET: i32 = flags::CLIENTS | flags::KNOWN_SHAPE;
 
+/// Run a fixture and record its trace. Fails if the build needs something
+/// the engine doesn't simulate, so fixture tests never compare a partial
+/// trace.
 pub fn run(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace> {
+    let trace = run_partial(fixture, mc_version)?;
+    if let Some(u) = &trace.unsupported {
+        bail!("{}: {}", fixture.id, u.message);
+    }
+    Ok(trace)
+}
+
+/// Like [`run`], but a run that meets something the engine doesn't
+/// simulate stops there and still returns its trace: the ticks before that
+/// one, with `unsupported` saying which tick and why. A build the engine
+/// can't even set up (an unsupported block, a bad stimulus) is still an
+/// error.
+pub fn run_partial(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace> {
+    if fixture.format != 1 {
+        bail!("resolved fixture format {} is not supported", fixture.format);
+    }
     let mut level = place(fixture, Rules::for_version(mc_version)?)?;
     let reg = level.reg;
     let [ox, oy, oz] = fixture.origin;
@@ -44,6 +63,7 @@ pub fn run(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace> {
     let mut entities = Vec::new();
     let mut rng = Vec::new();
     let mut numbers: Vec<i32> = Vec::new();
+    let mut unsupported = None;
     if fixture.entities {
         rng.push((0, level.random.internal()));
     }
@@ -52,7 +72,8 @@ pub fn run(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace> {
         apply_stimuli(&mut level, fixture, t)?;
         level.tick();
         if let Some(what) = &level.unsupported {
-            bail!("{}: {what} is not simulated by the engine yet", fixture.id);
+            unsupported = Some(Unsupported { tick: t, message: format!("{what} is not simulated by the engine yet") });
+            break;
         }
         if fixture.entities {
             snapshot_entities(&level, origin, min, max, t, &mut numbers, &mut entities);
@@ -60,22 +81,22 @@ pub fn run(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace> {
         }
     }
 
-    let entries = level.recorder.take().unwrap().entries;
-    if fixture.format != 1 {
-        bail!("resolved fixture format {} is not supported", fixture.format);
-    }
+    let mut entries = level.recorder.take().unwrap().entries;
+    let ticks = unsupported.as_ref().map_or(fixture.ticks, |u| u.tick - 1);
+    entries.retain(|e| e.tick <= ticks);
     Ok(Trace {
         format: TRACE_FORMAT,
         source: format!("tickwright {}", env!("CARGO_PKG_VERSION")),
         mc_version: mc_version.to_string(),
         fixture: fixture.id.clone(),
         origin: fixture.origin,
-        ticks: fixture.ticks,
+        ticks,
         levels: vec![TraceLevel::State, TraceLevel::Phase, TraceLevel::Order],
         initial,
         entries,
         entities,
         rng,
+        unsupported,
     })
 }
 
@@ -284,5 +305,28 @@ mod tests {
         let fixture = source.resolve(Transform::IDENTITY).unwrap();
         let err = super::run(&fixture, "26.3").unwrap_err().to_string();
         assert!(err.contains("minecraft:furnace is not supported"), "{err}");
+    }
+
+    #[test]
+    fn a_partial_run_stops_before_the_unsupported_tick() {
+        let source = FixtureSource::from_json(
+            r###"{"name": "t", "ticks": 10, "entities": true, "palette": {"#": "stone"}, "layers": [["##"], [".."]],
+                "stimuli": [
+                    {"tick": 3, "action": "summon", "entity": "minecart", "at": [0.5, 1.0, 0.5]},
+                    {"tick": 3, "action": "summon", "entity": "minecart", "at": [0.6, 1.0, 0.5]}
+                ]}"###,
+        )
+        .unwrap();
+        let fixture = source.resolve(Transform::IDENTITY).unwrap();
+        let trace = super::run_partial(&fixture, "26.3").unwrap();
+        let u = trace.unsupported.as_ref().unwrap();
+        assert_eq!(u.tick, 3);
+        assert_eq!(u.message, "minecarts pushing each other is not simulated by the engine yet");
+        assert_eq!(trace.ticks, 2);
+        assert!(trace.entries.iter().all(|e| e.tick <= 2));
+        assert_eq!(trace.rng.last().map(|r| r.0), Some(2));
+        // A full run refuses the same fixture with the same sentence.
+        let err = super::run(&fixture, "26.3").unwrap_err().to_string();
+        assert_eq!(err, format!("{}: {}", fixture.id, u.message));
     }
 }

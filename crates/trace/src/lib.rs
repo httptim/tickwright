@@ -15,5 +15,5 @@ pub mod transform;
 pub use diff::{Divergence, compare};
 pub use fixture::{Action, FixtureSource, Level, ResolvedFixture, Stimulus};
 pub use state::BlockState;
-pub use trace::{EntityRow, Entry, Kind, Phase, TRACE_FORMAT, Trace};
+pub use trace::{EntityRow, Entry, Kind, Phase, TRACE_FORMAT, Trace, Unsupported};
 pub use transform::Transform;

@@ -4,7 +4,9 @@
 //! The host copies a resolved fixture's JSON into memory from [`alloc`],
 //! calls [`run`], and reads the result: a little-endian `u32` length, a
 //! status byte (0 for a trace, 1 for an error message), then that many bytes
-//! of UTF-8. It hands both buffers back with [`dealloc`].
+//! of UTF-8. It hands both buffers back with [`dealloc`]. [`run_partial`]
+//! does the same but returns the trace up to a tick the engine can't
+//! simulate.
 //!
 //! [`session`] drives an interactive simulation for the editor the same way:
 //! the host writes a JSON command and reads back a JSON answer (see
@@ -60,6 +62,24 @@ pub unsafe extern "C" fn run(ptr: *const u8, len: usize, version_ptr: *const u8,
     respond(simulate(input, version))
 }
 
+/// Like [`run`], but a run that meets something the engine doesn't simulate
+/// yet still returns a trace: the ticks before that one, with an
+/// `unsupported` field (`{"tick", "message"}`) saying which tick and why.
+///
+/// # Safety
+/// As for [`run`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn run_partial(
+    ptr: *const u8,
+    len: usize,
+    version_ptr: *const u8,
+    version_len: usize,
+) -> *mut u8 {
+    let input = unsafe { std::slice::from_raw_parts(ptr, len) };
+    let version = unsafe { std::slice::from_raw_parts(version_ptr, version_len) };
+    respond(simulate_with(input, version, tickwright_engine::run::run_partial))
+}
+
 /// The result buffer: length, status byte, then the body.
 fn respond(result: anyhow::Result<String>) -> *mut u8 {
     respond_bytes(result.map(String::into_bytes))
@@ -96,8 +116,16 @@ pub unsafe extern "C" fn bench(ptr: *const u8, len: usize, version_ptr: *const u
 }
 
 fn simulate(input: &[u8], version: &[u8]) -> anyhow::Result<String> {
+    simulate_with(input, version, tickwright_engine::run::run)
+}
+
+fn simulate_with(
+    input: &[u8],
+    version: &[u8],
+    run: fn(&ResolvedFixture, &str) -> anyhow::Result<tickwright_trace::Trace>,
+) -> anyhow::Result<String> {
     let fixture = serde_json::from_str::<ResolvedFixture>(std::str::from_utf8(input)?)?;
-    let trace = tickwright_engine::run::run(&fixture, std::str::from_utf8(version)?)?;
+    let trace = run(&fixture, std::str::from_utf8(version)?)?;
     Ok(serde_json::to_string(&trace)? + "\n")
 }
 

@@ -47,6 +47,11 @@ enum Command {
         /// Minecraft version whose rules to simulate.
         #[arg(long, default_value = "26.3")]
         mc_version: String,
+        /// When a build needs something the engine doesn't simulate yet,
+        /// still write the trace up to the tick before, with its
+        /// `unsupported` field saying which tick and why.
+        #[arg(long)]
+        partial: bool,
     },
     /// Turn a `.litematic`, `.schem` or structure `.nbt` into a fixture.
     Import {
@@ -148,7 +153,7 @@ fn run(cli: Cli) -> Result<ExitCode> {
             println!("resolved {} fixture(s) into {written} file(s) in {}", files.len(), out.display());
             Ok(ExitCode::SUCCESS)
         }
-        Command::Run { inputs, out, mc_version } => {
+        Command::Run { inputs, out, mc_version, partial } => {
             let files = collect_json(&inputs)?;
             fs::create_dir_all(&out)?;
             let mut refused = 0;
@@ -158,8 +163,16 @@ fn run(cli: Cli) -> Result<ExitCode> {
                     serde_json::from_str(&text).with_context(|| format!("in {}", file.display()))?;
                 // A build with blocks the engine doesn't simulate yet gets no
                 // trace; the browser check expects the same refusal there.
-                match tickwright_engine::run::run(&fixture, &mc_version) {
+                let result = if partial {
+                    tickwright_engine::run::run_partial(&fixture, &mc_version)
+                } else {
+                    tickwright_engine::run::run(&fixture, &mc_version)
+                };
+                match result {
                     Ok(trace) => {
+                        if let Some(u) = &trace.unsupported {
+                            eprintln!("stopped {} at tick {}: {}", fixture.id, u.tick, u.message);
+                        }
                         fs::write(out.join(format!("{}.json", fixture.id)), serde_json::to_string(&trace)? + "\n")?
                     }
                     Err(e) => {
