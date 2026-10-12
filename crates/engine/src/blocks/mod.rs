@@ -145,7 +145,7 @@ pub fn is_signal_source(level: &Level, state: StateId) -> bool {
 
 /// `isFaceSturdy(level, pos, dir)` for the blocks phase 1 uses: whether the
 /// block's support shape covers its whole `dir` face.
-pub fn is_face_sturdy(level: &Level, _pos: Pos, state: StateId, dir: Dir) -> bool {
+pub fn is_face_sturdy(level: &Level, pos: Pos, state: StateId, dir: Dir) -> bool {
     match level.kind(state) {
         Kind::Solid | Kind::RedstoneLamp | Kind::RedstoneBlock | Kind::Slime | Kind::Glass => true,
         Kind::Slab => match level.prop(state, "type") {
@@ -158,6 +158,7 @@ pub fn is_face_sturdy(level: &Level, _pos: Pos, state: StateId, dir: Dir) -> boo
             !level.flag(state, "extended") || level.dir(state, "facing").opposite() == dir
         }
         Kind::PistonHead => level.dir(state, "facing") == dir,
+        Kind::MovingPiston => piston::moving_face_sturdy(level, pos, dir),
         _ => false,
     }
 }

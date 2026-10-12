@@ -21,28 +21,13 @@ const QUIET: i32 = flags::CLIENTS | flags::KNOWN_SHAPE;
 
 pub fn run(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace> {
     let reg = Registry::get(mc_version)?;
-    let mut level = Level::new(reg);
+    let mut level = place(fixture, reg)?;
     let [ox, oy, oz] = fixture.origin;
     let origin = Pos::new(ox, oy, oz);
     let m = fixture.margin;
     let [sx, sy, sz] = fixture.size;
     let min = Pos::new(ox - m, oy - m, oz - m);
     let max = Pos::new(ox + sx - 1 + m, oy + sy - 1 + m, oz + sz - 1 + m);
-
-    let supported = |text: &str| -> Result<crate::registry::StateId> {
-        let state = reg.parse(text).with_context(|| format!("{}: block {text}", fixture.id))?;
-        if Kind::of(reg.name(state)) == Kind::Other {
-            bail!("{}: {} is not supported by the engine yet", fixture.id, reg.name(state));
-        }
-        Ok(state)
-    };
-    for s in fixture.stimuli.iter().filter_map(|s| s.state.as_deref()) {
-        supported(s)?;
-    }
-    for (x, y, z, s) in &fixture.blocks {
-        let state = supported(s)?;
-        level.set_block(Pos::new(ox + x, oy + y, oz + z), state, QUIET);
-    }
 
     let mut initial: Vec<(i32, i32, i32, String)> = level
         .non_air()
@@ -56,23 +41,7 @@ pub fn run(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace> {
     level.recorder = Some(Recorder::new(origin, min, max));
     for t in 1..=fixture.ticks {
         level.recorder.as_mut().unwrap().tick = t;
-        for s in fixture.stimuli.iter().filter(|s| s.tick == t) {
-            let [x, y, z] = s.pos;
-            let pos = Pos::new(ox + x, oy + y, oz + z);
-            match s.action {
-                Action::Use => {
-                    let state = level.get(pos);
-                    blocks::use_without_item(&mut level, pos, state);
-                }
-                Action::Set => {
-                    let text = s.state.as_deref().context("set stimulus without a state")?;
-                    level.set_block(pos, reg.parse(text)?, flags::ALL);
-                }
-                Action::Destroy => {
-                    level.destroy_block(pos, crate::level::MAX_RECURSION);
-                }
-            }
-        }
+        apply_stimuli(&mut level, fixture, t)?;
         level.tick();
     }
 
@@ -91,6 +60,60 @@ pub fn run(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace> {
         initial,
         entries,
     })
+}
+
+/// Run a fixture without recording anything, for benchmarks.
+pub fn run_unrecorded(fixture: &ResolvedFixture, mc_version: &str) -> Result<()> {
+    let mut level = place(fixture, Registry::get(mc_version)?)?;
+    for t in 1..=fixture.ticks {
+        apply_stimuli(&mut level, fixture, t)?;
+        level.tick();
+    }
+    Ok(())
+}
+
+/// A level with the fixture placed the way the harness places it.
+fn place(fixture: &ResolvedFixture, reg: &'static Registry) -> Result<Level> {
+    let mut level = Level::new(reg);
+    let [ox, oy, oz] = fixture.origin;
+    let supported = |text: &str| -> Result<crate::registry::StateId> {
+        let state = reg.parse(text).with_context(|| format!("{}: block {text}", fixture.id))?;
+        if Kind::of(reg.name(state)) == Kind::Other {
+            bail!("{}: {} is not supported by the engine yet", fixture.id, reg.name(state));
+        }
+        Ok(state)
+    };
+    for s in fixture.stimuli.iter().filter_map(|s| s.state.as_deref()) {
+        supported(s)?;
+    }
+    for (x, y, z, s) in &fixture.blocks {
+        let state = supported(s)?;
+        level.set_block(Pos::new(ox + x, oy + y, oz + z), state, QUIET);
+    }
+    Ok(level)
+}
+
+/// Apply the stimuli for game tick `t`, before the world tick runs.
+fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result<()> {
+    let [ox, oy, oz] = fixture.origin;
+    for s in fixture.stimuli.iter().filter(|s| s.tick == t) {
+        let [x, y, z] = s.pos;
+        let pos = Pos::new(ox + x, oy + y, oz + z);
+        match s.action {
+            Action::Use => {
+                let state = level.get(pos);
+                blocks::use_without_item(level, pos, state);
+            }
+            Action::Set => {
+                let text = s.state.as_deref().context("set stimulus without a state")?;
+                level.set_block(pos, level.reg.parse(text)?, flags::ALL);
+            }
+            Action::Destroy => {
+                level.destroy_block(pos, crate::level::MAX_RECURSION);
+            }
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

@@ -4,6 +4,7 @@
 //! in the real game and returns a trace that `tickwright_trace::compare` can
 //! check against the game's own.
 
+pub mod bench;
 pub mod blocks;
 pub mod level;
 pub mod pos;

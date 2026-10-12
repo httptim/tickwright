@@ -19,3 +19,31 @@ jobs:
       - run: cargo test --all
       - name: Fixtures resolve
         run: cargo run --quiet -p tickwright -- resolve fixtures --out target/resolved
+
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - run: cargo build --release -p tickwright-wasm --target wasm32-unknown-unknown
+      - run: cargo run --quiet -p tickwright -- resolve fixtures --out target/resolved
+      - name: Native traces and benchmark
+        shell: bash
+        run: |
+          cargo run --quiet --release -p tickwright -- run target/resolved --out target/native
+          cargo run --quiet --release -p tickwright -- bench --write target/bench.json | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Same traces in the browser
+        shell: bash
+        run: |
+          node tools/wasm-check.cjs target/wasm32-unknown-unknown/release/tickwright_wasm.wasm \
+            target/resolved target/native target/bench.json | tee -a "$GITHUB_STEP_SUMMARY"
