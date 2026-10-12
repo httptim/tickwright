@@ -112,6 +112,8 @@ open(sys.argv[1], "w").write(json.dumps(out, indent=2) + "\n")
 PY
     # Collision shapes and block friction, for entity physics.
     cp "$WORK/physics.json" "data/$MC_VERSION/physics.json"
+    # What blocks drop when they break, for item entities.
+    python3 -I tools/loot.py "$INNER" "data/$MC_VERSION"
     # Crafting recipes and item tags, for the crafter.
     python3 -I tools/recipes.py "$INNER" "data/$MC_VERSION"
     # The world clock's timelines (sky light and sun angle through the day),
