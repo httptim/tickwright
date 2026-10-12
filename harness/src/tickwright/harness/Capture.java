@@ -567,7 +567,8 @@ public final class Capture {
         BlockPos p = origin.offset(pos(s.getAsJsonArray("pos")));
         switch (s.get("action").getAsString()) {
             case "use" -> useBlock(p);
-            case "set" -> level.setBlock(p, parse(blocks, s.get("state").getAsString()), NORMAL);
+            case "set" -> level.setBlock(p, parse(blocks, s.get("state").getAsString()),
+                    s.has("quiet") && s.get("quiet").getAsBoolean() ? QUIET : NORMAL);
             case "destroy" -> level.destroyBlock(p, false);
             case "place" -> place(p, s);
             case "page" -> {

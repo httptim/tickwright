@@ -119,6 +119,10 @@ pub struct Stimulus {
     pub pos: [i32; 3],
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub state: Option<String>,
+    /// A `set` that writes the state as given without updating neighbors,
+    /// the way fixture blocks are placed (and the editor pastes).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub quiet: bool,
     /// The page a `page` stimulus turns to.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub page: Option<u32>,
@@ -360,6 +364,7 @@ impl FixtureSource {
                 (_, Some(_)) => bail!("{}: only set stimuli take a state", self.name),
                 _ => {}
             }
+            ensure!(!s.quiet || s.action == Action::Set, "{}: only set stimuli can be quiet", self.name);
         }
         for c in &self.containers {
             ensure!(
@@ -450,6 +455,7 @@ impl FixtureSource {
                     .map(|st| BlockState::parse(st).map(|b| t.state(&b).to_string()))
                     .transpose()
                     .unwrap(),
+                quiet: s.quiet,
                 place: s.place.as_ref().map(|p| p.transform(t)),
                 page: s.page,
                 time: s.time,
