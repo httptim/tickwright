@@ -1,0 +1,59 @@
+{
+  "name": "detector_rail_parked",
+  "description": "A minecart summoned onto a detector rail keeps it powered, checking every 20 ticks. A piston then pushes the cart off, and the rail turns off on its next check.",
+  "ticks": 70,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "minecart",
+    "rail",
+    "piston"
+  ],
+  "palette": {
+    "#": "stone",
+    "r": "rail[shape=east_west]",
+    "D": "detector_rail[powered=false,shape=east_west]",
+    "L": "redstone_lamp[lit=false]",
+    "w": "redstone_wire[east=none,north=none,power=0,south=none,west=none]",
+    "P": "piston[extended=false,facing=east]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".....",
+      "PDr..",
+      "..L.."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        1.5,
+        1.0625,
+        1.5
+      ]
+    },
+    {
+      "tick": 30,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "state": "redstone_block"
+    }
+  ],
+  "entities": true
+}

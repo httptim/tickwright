@@ -71,7 +71,7 @@ impl FluidState {
 /// Blocks that implement `SimpleWaterloggedBlock` (a `LiquidBlockContainer`).
 pub(super) fn is_container(level: &Level, state: StateId) -> bool {
     match level.kind(state) {
-        Kind::Trapdoor | Kind::Chest | Kind::PoweredRail | Kind::Rail => true,
+        Kind::Trapdoor | Kind::Chest | Kind::PoweredRail | Kind::DetectorRail | Kind::Rail => true,
         Kind::Slab => level.prop(state, "type") != "double",
         _ => false,
     }
@@ -117,6 +117,7 @@ pub fn is_solid(level: &Level, state: StateId) -> bool {
             | Kind::Repeater
             | Kind::Comparator
             | Kind::PoweredRail
+            | Kind::DetectorRail
             | Kind::Rail
             | Kind::TripwireHook
             | Kind::Tripwire
@@ -145,6 +146,7 @@ fn collision(level: &Level, state: StateId) -> Shape {
         | Kind::TripwireHook
         | Kind::Tripwire
         | Kind::PoweredRail
+        | Kind::DetectorRail
         | Kind::Rail => Shape::Empty,
         Kind::Solid
         | Kind::Glass

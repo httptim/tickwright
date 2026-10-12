@@ -1,0 +1,52 @@
+{
+  "name": "detector_rail_passing",
+  "description": "A minecart rolls east along a line of rails over a detector rail. The detector powers while the cart is over it, lights the lamp beside it and the wire behind it, and turns off on its next 20-tick check after the cart has left.",
+  "ticks": 60,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "minecart",
+    "rail"
+  ],
+  "palette": {
+    "#": "stone",
+    "r": "rail[shape=east_west]",
+    "D": "detector_rail[powered=false,shape=east_west]",
+    "L": "redstone_lamp[lit=false]",
+    "w": "redstone_wire[east=none,north=none,power=0,south=none,west=none]"
+  },
+  "layers": [
+    [
+      "#######",
+      "#######",
+      "#######"
+    ],
+    [
+      "...L...",
+      "rrrDrrr",
+      "...w..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        0.5,
+        1.0625,
+        1.5
+      ],
+      "motion": [
+        0.4,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "entities": true
+}
