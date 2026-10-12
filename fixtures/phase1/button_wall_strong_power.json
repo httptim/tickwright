@@ -1,0 +1,47 @@
+{
+  "name": "button_wall_strong_power",
+  "description": "A stone button on the side of a stone block strongly powers the block, which lights a lamp on the block's far side. Pressing again while it is still pressed does nothing.",
+  "ticks": 36,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "button",
+    "strong"
+  ],
+  "palette": {
+    "#": "stone",
+    "B": "stone_button[face=wall,facing=west,powered=false]",
+    "o": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "...."
+    ],
+    [
+      "B#o."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}

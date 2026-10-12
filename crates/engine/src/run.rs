@@ -10,7 +10,7 @@
 use anyhow::{Context, Result, bail};
 use tickwright_trace::{Action, Level as TraceLevel, ResolvedFixture, TRACE_FORMAT, Trace};
 
-use crate::blocks;
+use crate::blocks::{self, Kind};
 use crate::level::{Level, flags};
 use crate::pos::Pos;
 use crate::record::Recorder;
@@ -29,8 +29,18 @@ pub fn run(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace> {
     let min = Pos::new(ox - m, oy - m, oz - m);
     let max = Pos::new(ox + sx - 1 + m, oy + sy - 1 + m, oz + sz - 1 + m);
 
+    let supported = |text: &str| -> Result<crate::registry::StateId> {
+        let state = reg.parse(text).with_context(|| format!("{}: block {text}", fixture.id))?;
+        if Kind::of(reg.name(state)) == Kind::Other {
+            bail!("{}: {} is not supported by the engine yet", fixture.id, reg.name(state));
+        }
+        Ok(state)
+    };
+    for s in fixture.stimuli.iter().filter_map(|s| s.state.as_deref()) {
+        supported(s)?;
+    }
     for (x, y, z, s) in &fixture.blocks {
-        let state = reg.parse(s).with_context(|| format!("{}: block {s}", fixture.id))?;
+        let state = supported(s)?;
         level.set_block(Pos::new(ox + x, oy + y, oz + z), state, QUIET);
     }
 
@@ -81,4 +91,20 @@ pub fn run(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace> {
         initial,
         entries,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use tickwright_trace::{FixtureSource, Transform};
+
+    #[test]
+    fn unsupported_blocks_fail_by_name() {
+        let source = FixtureSource::from_json(
+            r##"{"name": "t", "ticks": 1, "palette": {"#": "stone", "h": "hopper"}, "layers": [["#h"]], "stimuli": []}"##,
+        )
+        .unwrap();
+        let fixture = source.resolve(Transform::IDENTITY).unwrap();
+        let err = super::run(&fixture, "26.3").unwrap_err().to_string();
+        assert!(err.contains("minecraft:hopper is not supported"), "{err}");
+    }
 }

@@ -1,0 +1,73 @@
+{
+  "name": "piston_door_2x2",
+  "description": "A 2x2 sticky piston door. A wall lever on each upper piston powers it directly and the piston below it by quasi-connectivity.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "piston",
+    "sticky",
+    "qc",
+    "door"
+  ],
+  "palette": {
+    "#": "stone",
+    "s": "stone",
+    "P": "sticky_piston[extended=false,facing=east]",
+    "Q": "sticky_piston[extended=false,facing=west]",
+    "L": "lever[face=wall,facing=west,powered=false]",
+    "R": "lever[face=wall,facing=east,powered=false]"
+  },
+  "layers": [
+    [
+      "########"
+    ],
+    [
+      ".Ps..sQ."
+    ],
+    [
+      "LPs..sQR"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        2,
+        0
+      ]
+    },
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        7,
+        2,
+        0
+      ]
+    },
+    {
+      "tick": 14,
+      "action": "use",
+      "pos": [
+        0,
+        2,
+        0
+      ]
+    },
+    {
+      "tick": 14,
+      "action": "use",
+      "pos": [
+        7,
+        2,
+        0
+      ]
+    }
+  ]
+}

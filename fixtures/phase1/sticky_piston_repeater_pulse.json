@@ -1,0 +1,51 @@
+{
+  "name": "sticky_piston_repeater_pulse",
+  "description": "A 2 game tick pulse from a repeater into a sticky piston: the retraction starts during a block tick, so the piston spits its block.",
+  "ticks": 20,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "piston",
+    "sticky",
+    "repeater",
+    "spit"
+  ],
+  "palette": {
+    "#": "stone",
+    "L": "lever[face=floor,facing=north,powered=false]",
+    "r": "repeater[delay=1,facing=west,locked=false,powered=false]",
+    "P": "sticky_piston[extended=false,facing=east]",
+    "s": "stone"
+  },
+  "layers": [
+    [
+      "####."
+    ],
+    [
+      "LrPs."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 3,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}
