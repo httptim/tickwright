@@ -87,3 +87,10 @@ with open(f"{out_dir}/loot.json", "w") as f:
     f.write("{\n" + ",\n".join(rows) + "\n}\n")
 complex_count = sum(r.endswith('"complex"') for r in rows)
 print(f"    {len(rows)} block loot tables, {complex_count} complex -> {out_dir}/loot.json")
+with open(f"{out_dir}/loot_debug.json", "w") as f:
+    for name in sorted(z.namelist()):
+        if name.startswith(PREFIX) and name.endswith(".json"):
+            t = json.loads(z.read(name))
+            if simple(t) == "complex":
+                t.pop("random_sequence", None)
+                f.write(json.dumps({name[len(PREFIX):-5]: t}, separators=(",", ":")) + "\n")
