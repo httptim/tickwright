@@ -398,6 +398,16 @@ impl Level {
         }
     }
 
+    /// The harness makes a new player for each click, which takes an entity
+    /// id and a seed for its random source. Only counts when entities are
+    /// simulated, as entity runs are the ones whose ids and seeds show.
+    pub fn new_clicking_player(&mut self) {
+        if self.simulate_entities {
+            self.entity_counter += 1;
+            self.next_unique_seed();
+        }
+    }
+
     /// `Level.gameEvent`.
     pub fn game_event(&mut self, event: GameEvent, pos: Pos) {
         blocks::post_game_event(self, event, pos);

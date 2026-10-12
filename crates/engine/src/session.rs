@@ -116,6 +116,7 @@ impl Session {
     /// the block's placement rules pick its state. Returns whether a block
     /// was placed.
     pub fn place(&mut self, item: &str, click: blocks::placement::Click) -> Result<bool> {
+        self.level.new_clicking_player();
         blocks::placement::place(&mut self.level, item, click)
     }
 
@@ -126,6 +127,7 @@ impl Session {
 
     /// Right-click the block at `pos` with an empty hand.
     pub fn use_block(&mut self, pos: Pos) {
+        self.level.new_clicking_player();
         let state = self.level.get(pos);
         blocks::use_without_item(&mut self.level, pos, state);
     }
@@ -400,6 +402,65 @@ mod tests {
         let s = Session::from_fixture(&fixture, "26.3").unwrap();
         let kinds: Vec<String> = s.entities().into_iter().map(|e| e.kind).collect();
         assert_eq!(kinds, ["minecraft:item", "minecraft:falling_block"]);
+    }
+
+    #[test]
+    fn clicks_number_entities_as_fixture_runs_do() {
+        use tickwright_trace::fixture::{Action, Stimulus, SummonInput};
+        let stimulus = |tick: u32, action: Action, summon: Option<SummonInput>| Stimulus {
+            tick,
+            action,
+            pos: [0, 1, 0],
+            state: None,
+            quiet: false,
+            page: None,
+            time: None,
+            place: None,
+            summon,
+        };
+        let item = SummonInput {
+            entity: "item".into(),
+            at: [2.5, 1.0, 0.5],
+            motion: None,
+            nbt: Some(r#"{Item:{id:"minecraft:stone",count:1}}"#.into()),
+        };
+        let fixture = ResolvedFixture {
+            format: 1,
+            id: "t@r0".into(),
+            name: "t".into(),
+            transform: "r0".into(),
+            ticks: 2,
+            levels: Vec::new(),
+            origin: [0, 0, 0],
+            size: [3, 2, 1],
+            margin: 0,
+            blocks: vec![
+                (0, 0, 0, "minecraft:stone".into()),
+                (1, 0, 0, "minecraft:stone".into()),
+                (2, 0, 0, "minecraft:stone".into()),
+                (0, 1, 0, "minecraft:lever[face=floor,facing=north,powered=false]".into()),
+            ],
+            stimuli: vec![stimulus(1, Action::Use, None), stimulus(2, Action::Summon, Some(item.clone()))],
+            containers: Vec::new(),
+            comparators: Vec::new(),
+            lecterns: Vec::new(),
+            experiments: Vec::new(),
+            day_time: None,
+            max_chained_updates: None,
+            entities: true,
+            start_entities: Vec::new(),
+        };
+        let trace = crate::run::run(&fixture, "26.3").unwrap();
+        let cloud = trace.entities.iter().rfind(|r| r.tick == 2).unwrap();
+
+        let mut s = Session::from_fixture(&fixture, "26.3").unwrap();
+        s.use_block(Pos::new(0, 1, 0));
+        s.step();
+        s.summon("item", item.at, None, item.nbt.as_deref()).unwrap();
+        s.step();
+        let local = &s.entities()[0];
+        assert_eq!((local.id, local.pos), (cloud.id, cloud.pos));
+        assert_eq!(s.level.random.internal(), trace.rng.last().unwrap().1);
     }
 
     #[test]

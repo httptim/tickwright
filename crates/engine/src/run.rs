@@ -236,11 +236,8 @@ fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result
     for s in fixture.stimuli.iter().filter(|s| s.tick == t) {
         let [x, y, z] = s.pos;
         let pos = Pos::new(ox + x, oy + y, oz + z);
-        if matches!(s.action, Action::Use | Action::Place) && level.simulate_entities {
-            // The harness makes a new player to click with, which takes an
-            // entity id and a seed for its random source.
-            level.entity_counter += 1;
-            level.next_unique_seed();
+        if matches!(s.action, Action::Use | Action::Place) {
+            level.new_clicking_player();
         }
         match s.action {
             Action::Use => {
