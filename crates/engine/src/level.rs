@@ -13,6 +13,8 @@ use crate::blocks::{self, Kind};
 use crate::pos::{Dir, Pos, UPDATE_ORDER, UPDATE_SHAPE_ORDER};
 use crate::record::{Event, Recorder};
 use crate::registry::{BlockId, Registry, StateId};
+use crate::rules::Rules;
+use crate::world::World;
 use tickwright_trace::Phase;
 
 /// `Block.UPDATE_*` flags.
@@ -70,7 +72,7 @@ pub struct Level {
     pub reg: &'static Registry,
     pub air: StateId,
     kinds: Vec<Kind>,
-    blocks: HashMap<Pos, StateId>,
+    blocks: World,
     pub game_time: i64,
 
     // LevelTicks
@@ -109,19 +111,15 @@ pub struct Level {
 }
 
 impl Level {
-    pub fn new(reg: &'static Registry) -> Level {
+    pub fn new(rules: Rules) -> Level {
+        let reg = rules.reg;
         let air = reg.block(reg.block_id("air").unwrap()).default;
-        let kinds = (0..)
-            .map_while(|i| {
-                let id = BlockId(i);
-                ((i as usize) < reg.len()).then(|| Kind::of(&reg.block(id).name))
-            })
-            .collect();
+        let kinds = rules.into_kinds();
         Level {
             reg,
             air,
             kinds,
-            blocks: HashMap::new(),
+            blocks: World::new(air),
             game_time: 0,
             pending_ticks: Vec::new(),
             pending_keys: HashSet::new(),
@@ -147,7 +145,7 @@ impl Level {
     // --- reading -----------------------------------------------------------
 
     pub fn get(&self, pos: Pos) -> StateId {
-        self.blocks.get(&pos).copied().unwrap_or(self.air)
+        self.blocks.get(pos)
     }
 
     pub fn block(&self, state: StateId) -> BlockId {
@@ -260,11 +258,7 @@ impl Level {
         if let Some(r) = self.recorder.as_mut() {
             r.record(self.phase, Event::Set(self.reg.format(state)), pos);
         }
-        if self.is_air(state) {
-            self.blocks.remove(&pos);
-        } else {
-            self.blocks.insert(pos, state);
-        }
+        self.blocks.set(pos, state);
         let block_changed = self.block(old) != self.block(state);
         let moved_by_piston = flags & flags::MOVE_BY_PISTON != 0;
         if block_changed && blocks::has_block_entity(self.kind(old)) {
@@ -631,7 +625,7 @@ impl Level {
     }
 
     pub fn non_air(&self) -> impl Iterator<Item = (Pos, StateId)> + '_ {
-        self.blocks.iter().map(|(p, s)| (*p, *s))
+        self.blocks.non_air()
     }
 }
 

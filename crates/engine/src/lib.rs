@@ -10,8 +10,11 @@ pub mod level;
 pub mod pos;
 pub mod record;
 pub mod registry;
+pub mod rules;
 pub mod run;
+pub mod world;
 
 pub use level::Level;
 pub use pos::{Dir, Pos};
 pub use registry::{BlockId, Registry, StateId};
+pub use rules::Rules;
