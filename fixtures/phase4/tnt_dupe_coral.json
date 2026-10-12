@@ -1,6 +1,6 @@
 {
   "name": "tnt_dupe_coral",
-  "description": "A sticky piston pushes two slime blocks carrying a TNT under a quietly placed redstone block. The piston head replaces the slime holding a dead coral fan, which pops and updates the powered TNT: it primes while the piston still places its cached copy.",
+  "description": "A TNT duper. A sticky piston pushes two slime blocks (and the stone they stick to), carrying a dead coral fan and a TNT. The TNT sits under a redstone block that was placed without updates. When the piston head replaces the slime under the fan's original spot, that fan pops and updates the powered TNT. The TNT primes, while the piston still places its cached copy.",
   "ticks": 30,
   "levels": [
     "state",

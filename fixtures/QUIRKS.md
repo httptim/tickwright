@@ -26,7 +26,7 @@ all eight orientations and must match at the order level
 | `update-suppression-so` | no | | not present in 26.3 |
 | `update-skipping` | yes | | needs a chain longer than the 1,000,000-update default cap; to do |
 | `update-suppression-other` | no | | not present in 26.3 |
-| `tnt-dupe` | yes | | needs TNT entities (phase 4) |
+| `tnt-dupe` | yes, captured | `phase4/tnt_dupe_coral` | covered: the primed TNT and the placed TNT block both appear in 26.3 |
 | `rail-carpet-dupe` | yes | | needs carpets and item entities |
 | `gravity-dupe` | unverified | | needs falling blocks and the End (phase 4) |
 | `string-dupe` | no | | not present in 26.3 |
