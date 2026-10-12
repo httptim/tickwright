@@ -116,11 +116,23 @@ fi
 
 # --- data reports -------------------------------------------------------------
 # The game's own dump of every block, its properties and default state, and
-# every registry. tools/registry.py condenses it into data/<version>/.
+# every registry. tools/registry.py condenses it into data/<version>/, and
+# tools/materials.py adds materials.json.
 if [[ -n "${REPORTS:-}" ]]; then
     echo "==> generating data reports"
     rm -rf "$WORK/reports"
     (cd "$WORK" && java -DbundlerMainClass=net.minecraft.data.Main -jar "server-$MC_VERSION.jar" \
         --reports --output reports >/dev/null)
     python3 -I tools/registry.py "$WORK/reports/reports" "data/$MC_VERSION"
+    # What each block takes to build, from the jar's loot tables and the
+    # report's stack sizes (crates/materials and the mod read it).
+    # Failures go out as an annotation too, since CI logs can't be read
+    # from everywhere.
+    if ! out="$(python3 -I tools/materials.py "$INNER" "$WORK/reports/reports" "data/$MC_VERSION" 2>&1)"; then
+        echo "$out"
+        reports="$(ls "$WORK/reports/reports" | tr '\n' ' ')"
+        echo "::error::tools/materials.py failed (reports: $reports)%0A$(tail -n 15 <<<"$out" | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')"
+        exit 1
+    fi
+    echo "$out"
 fi

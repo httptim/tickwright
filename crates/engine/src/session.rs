@@ -11,6 +11,7 @@
 //! timelines read. Positions are absolute.
 
 use anyhow::{Result, bail};
+use tickwright_trace::fixture::{Container, ItemSlot};
 use tickwright_trace::{Entry, ResolvedFixture};
 
 use crate::blocks::{self, Kind};
@@ -218,6 +219,27 @@ impl Session {
     /// The contents of the container at `pos`, as the trace writes them.
     pub fn items(&self, pos: Pos) -> Option<String> {
         blocks::container::items(&self.level, pos).map(|i| blocks::container::describe(i))
+    }
+
+    /// Every container that holds something, with its stacks by slot, in
+    /// y, z, x order.
+    pub fn containers(&self) -> Vec<Container> {
+        let mut out: Vec<Container> = self
+            .level
+            .block_entities
+            .keys()
+            .filter_map(|&pos| {
+                let items: Vec<ItemSlot> = blocks::container::items(&self.level, pos)?
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, s)| !s.is_empty())
+                    .map(|(slot, s)| ItemSlot { slot: slot as u32, id: s.id.clone(), count: s.count as u32 })
+                    .collect();
+                (!items.is_empty()).then_some(Container { pos: [pos.x, pos.y, pos.z], items })
+            })
+            .collect();
+        out.sort_by_key(|c| (c.pos[1], c.pos[2], c.pos[0]));
+        out
     }
 }
 

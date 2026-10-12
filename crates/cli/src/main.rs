@@ -6,6 +6,7 @@
 //! - `diff` compares two traces and reports the first divergence.
 //! - `import` turns a `.litematic`, `.schem` or structure `.nbt` into a
 //!   fixture; `export` writes a fixture's build as one.
+//! - `materials` lists the items a schematic or fixture takes to build.
 //! - `bench` times the engine on a large dust-and-repeater build.
 
 use std::fs;
@@ -66,6 +67,18 @@ enum Command {
         fixture: PathBuf,
         #[arg(long)]
         out: PathBuf,
+    },
+    /// List the items a build takes, with stack and shulker box counts.
+    Materials {
+        /// A `.litematic`, `.schem` or `.nbt`, or a fixture (hand-written or
+        /// resolved).
+        input: PathBuf,
+        /// Minecraft version whose items to list.
+        #[arg(long, default_value = "26.3")]
+        mc_version: String,
+        /// Print the list as JSON.
+        #[arg(long)]
+        json: bool,
     },
     /// Time the engine on a large dust-and-repeater build.
     Bench {
@@ -192,6 +205,60 @@ fn run(cli: Cli) -> Result<ExitCode> {
             let s = Schematic::from_fixture(&resolved)?;
             fs::write(&out, s.write(format))?;
             println!("{}: {} blocks -> {}", resolved.id, s.blocks.len(), out.display());
+            Ok(ExitCode::SUCCESS)
+        }
+        Command::Materials { input, mc_version, json } => {
+            let table = tickwright_materials::Table::for_version(&mc_version)?;
+            let resolved = if Format::from_name(&input.to_string_lossy()).is_ok() {
+                let bytes = fs::read(&input).with_context(|| format!("reading {}", input.display()))?;
+                let s = Schematic::read(&bytes).with_context(|| format!("in {}", input.display()))?;
+                s.to_fixture("materials", 1)?.resolve(Transform::IDENTITY)?
+            } else {
+                let text = fs::read_to_string(&input).with_context(|| format!("reading {}", input.display()))?;
+                match serde_json::from_str::<ResolvedFixture>(&text) {
+                    Ok(r) => r,
+                    Err(_) => FixtureSource::from_json(&text)
+                        .with_context(|| format!("in {}", input.display()))?
+                        .resolve(Transform::IDENTITY)?,
+                }
+            };
+            let list = table.list_fixture(&resolved)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&list)?);
+                return Ok(ExitCode::SUCCESS);
+            }
+            for m in &list.items {
+                let item = m.item.strip_prefix("minecraft:").unwrap_or(&m.item);
+                let mut parts = Vec::new();
+                if m.shulker_boxes > 0 {
+                    parts.push(format!(
+                        "{} shulker box{}",
+                        m.shulker_boxes,
+                        if m.shulker_boxes == 1 { "" } else { "es" }
+                    ));
+                }
+                if m.stacks > 0 && m.stack_size > 1 {
+                    parts.push(format!(
+                        "{} stack{} of {}",
+                        m.stacks,
+                        if m.stacks == 1 { "" } else { "s" },
+                        m.stack_size
+                    ));
+                }
+                if m.extra > 0 && m.stack_size > 1 {
+                    parts.push(m.extra.to_string());
+                }
+                let split = if parts.len() > 1 || m.shulker_boxes > 0 {
+                    format!("  ({})", parts.join(" + "))
+                } else {
+                    String::new()
+                };
+                println!("{:>8}  {item}{split}", m.count);
+            }
+            for u in &list.unknown_blocks {
+                println!("{:>8}  {} (not in the {mc_version} table, not counted)", u.count, u.block);
+            }
+            println!("{} slot(s), {} shulker box(es)", list.slots, list.shulker_boxes);
             Ok(ExitCode::SUCCESS)
         }
         Command::Bench { rings, length, ticks, write } => {

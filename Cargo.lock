@@ -268,6 +268,7 @@ dependencies = [
  "clap",
  "serde_json",
  "tickwright-engine",
+ "tickwright-materials",
  "tickwright-schematic",
  "tickwright-trace",
 ]
@@ -278,6 +279,16 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "flate2",
+ "serde_json",
+ "tickwright-trace",
+]
+
+[[package]]
+name = "tickwright-materials"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
  "serde_json",
  "tickwright-trace",
 ]
@@ -310,6 +321,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tickwright-engine",
+ "tickwright-materials",
  "tickwright-schematic",
  "tickwright-trace",
 ]
