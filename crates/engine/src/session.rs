@@ -177,6 +177,14 @@ impl Session {
         &self.events[t as usize]
     }
 
+    /// The first thing the run met that the engine can't simulate exactly,
+    /// as a sentence such as "minecarts pushing each other is not simulated
+    /// by the engine yet". From that tick on the session may differ from the
+    /// game. Rewinding to before it clears it.
+    pub fn unsupported(&self) -> Option<String> {
+        self.level.unsupported.as_ref().map(|what| format!("{what} is not simulated by the engine yet"))
+    }
+
     /// Go back to just after tick `t`, dropping everything after it. Edits
     /// made since the last step are dropped too.
     pub fn rewind(&mut self, t: u32) -> Result<()> {
@@ -392,6 +400,18 @@ mod tests {
         let s = Session::from_fixture(&fixture, "26.3").unwrap();
         let kinds: Vec<String> = s.entities().into_iter().map(|e| e.kind).collect();
         assert_eq!(kinds, ["minecraft:item", "minecraft:falling_block"]);
+    }
+
+    #[test]
+    fn a_step_reports_what_it_could_not_simulate() {
+        let mut s = Session::new("26.3").unwrap();
+        s.summon("minecart", [0.5, 0.0, 0.5], None, None).unwrap();
+        s.summon("minecart", [0.6, 0.0, 0.5], None, None).unwrap();
+        assert_eq!(s.unsupported(), None);
+        s.step();
+        assert_eq!(s.unsupported().as_deref(), Some("minecarts pushing each other is not simulated by the engine yet"));
+        s.rewind(0).unwrap();
+        assert_eq!(s.unsupported(), None);
     }
 
     #[test]
