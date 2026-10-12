@@ -1,0 +1,95 @@
+{
+  "name": "doors_power_and_hand",
+  "description": "An oak door and an iron door, each powered at its upper half by a redstone block that comes and goes, then clicked by hand. Only the oak door opens by hand.",
+  "ticks": 24,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "door"
+  ],
+  "palette": {
+    "#": "stone",
+    "B": "oak_door[facing=north,half=lower,hinge=left,open=false,powered=false]",
+    "C": "oak_door[facing=north,half=upper,hinge=left,open=false,powered=false]",
+    "D": "iron_door[facing=north,half=lower,hinge=left,open=false,powered=false]",
+    "E": "iron_door[facing=north,half=upper,hinge=left,open=false,powered=false]"
+  },
+  "layers": [
+    [
+      "##",
+      "..",
+      "##"
+    ],
+    [
+      ".B",
+      "..",
+      ".D"
+    ],
+    [
+      ".C",
+      "..",
+      ".E"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        0,
+        2,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        0,
+        2,
+        2
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 8,
+      "action": "destroy",
+      "pos": [
+        0,
+        2,
+        0
+      ]
+    },
+    {
+      "tick": 8,
+      "action": "destroy",
+      "pos": [
+        0,
+        2,
+        2
+      ]
+    },
+    {
+      "tick": 14,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 14,
+      "action": "use",
+      "pos": [
+        1,
+        2,
+        2
+      ]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "name": "door_loses_support",
+  "description": "The block under a door is broken, so the lower half pops and takes the upper half with it.",
+  "ticks": 8,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "door"
+  ],
+  "palette": {
+    "#": "stone",
+    "B": "oak_door[facing=east,half=lower,hinge=right,open=false,powered=false]",
+    "C": "oak_door[facing=east,half=upper,hinge=right,open=false,powered=false]"
+  },
+  "layers": [
+    [
+      "#"
+    ],
+    [
+      "B"
+    ],
+    [
+      "C"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "destroy",
+      "pos": [
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}
