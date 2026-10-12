@@ -23,7 +23,7 @@ use tickwright_engine::Pos;
 use tickwright_engine::session::{Placement, Session};
 use tickwright_schematic::{Format, Schematic};
 use tickwright_trace::fixture::PlaceInput;
-use tickwright_trace::{ResolvedFixture, Transform};
+use tickwright_trace::{BlockState, ResolvedFixture, Transform};
 
 /// Allocate `len` bytes for the host to write into.
 #[unsafe(no_mangle)]
@@ -180,6 +180,13 @@ enum Command {
         session: u32,
         pos: [i32; 3],
     },
+    /// Rotate or mirror block states the way fixtures are transformed
+    /// (`r90`, `mr0`, ...), for the editor's rotate and mirror. Needs no
+    /// session. Answers `{"states": [...]}` in the same order.
+    Transform {
+        states: Vec<String>,
+        transform: String,
+    },
 }
 
 fn one() -> u32 {
@@ -218,6 +225,12 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                 *next += 1;
                 sessions.insert(*next, s);
                 json!({ "session": *next })
+            }
+            Command::Transform { states, transform } => {
+                let t: Transform = transform.parse()?;
+                let states: anyhow::Result<Vec<String>> =
+                    states.iter().map(|s| Ok(t.state(&BlockState::parse(s)?).to_string())).collect();
+                json!({ "states": states? })
             }
             Command::Close { session } => {
                 sessions.remove(&session);
@@ -341,5 +354,10 @@ mod tests {
         assert!(repeater["state"].as_str().unwrap().contains("facing=west"), "{repeater}");
         assert_eq!(lamp["state"], "minecraft:redstone_lamp[lit=true]");
         assert!(command(br#"{"op":"step","session":999}"#).is_err());
+        let turned = ok(
+            r#"{"op":"transform","transform":"r90","states":["repeater[delay=1,facing=north,locked=false,powered=false]","stone"]}"#,
+        );
+        assert_eq!(turned["states"][0], "minecraft:repeater[delay=1,facing=east,locked=false,powered=false]");
+        assert_eq!(turned["states"][1], "minecraft:stone");
     }
 }
