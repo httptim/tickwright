@@ -134,6 +134,8 @@ async function main() {
           else if (s.action === "set") window.cmd({ op: "set", session, pos, state: s.state, updates: true });
           else if (s.action === "place")
             window.cmd({ op: "place", session, pos, item: s.item, face: s.face, look: s.look, pitch: s.pitch, hit: s.hit, sneak: s.sneak });
+          else if (s.action === "page") window.cmd({ op: "page", session, pos, page: s.page });
+          else if (s.action === "time") window.cmd({ op: "time", session, time: s.time });
           else window.cmd({ op: "destroy", session, pos });
         }
         for (const ev of window.cmd({ op: "step", session }).events) {

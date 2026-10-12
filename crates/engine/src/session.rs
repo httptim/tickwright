@@ -117,6 +117,16 @@ impl Session {
         blocks::use_without_item(&mut self.level, pos, state);
     }
 
+    /// Turn the book on the lectern at `pos` to `page`, as its menu does.
+    pub fn turn_page(&mut self, pos: Pos, page: i32) {
+        blocks::lectern::set_page(&mut self.level, pos, page);
+    }
+
+    /// Set the world clock's day time, as `/time set` does.
+    pub fn set_day_time(&mut self, time: i64) {
+        self.level.day_time = time;
+    }
+
     /// Put `count` of item `id` in slot `slot` of the container at `pos`.
     pub fn set_item(&mut self, pos: Pos, slot: usize, id: &str, count: i32) -> Result<()> {
         let size = blocks::container::size(&self.level, pos);

@@ -144,6 +144,17 @@ enum Command {
         session: u32,
         pos: [i32; 3],
     },
+    /// Turn the book on a lectern to `page`, as its menu does.
+    Page {
+        session: u32,
+        pos: [i32; 3],
+        page: i32,
+    },
+    /// Set the world clock's day time, as `/time set` does.
+    Time {
+        session: u32,
+        time: i64,
+    },
     Item {
         session: u32,
         pos: [i32; 3],
@@ -274,6 +285,14 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
             }
             Command::Use { session, pos: p } => {
                 get(sessions, session)?.use_block(pos(p));
+                json!({})
+            }
+            Command::Page { session, pos: p, page } => {
+                get(sessions, session)?.turn_page(pos(p), page);
+                json!({})
+            }
+            Command::Time { session, time } => {
+                get(sessions, session)?.set_day_time(time);
                 json!({})
             }
             Command::Item { session, pos: p, slot, id, count } => {

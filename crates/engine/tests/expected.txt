@@ -148,3 +148,10 @@ exp_piston_destroys_wire order
 exp_repeater_lock_race order
 exp_torch_clock_burnout order
 exp_torch_inverter order
+crafter_cake_remainders order
+lectern_pages order
+crafter_fed_by_hopper order
+crafter_into_crafter order
+crafter_iron_block order
+daylight_detector_day order
+daylight_detector_dusk_dawn order

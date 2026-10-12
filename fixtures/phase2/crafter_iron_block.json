@@ -18,7 +18,7 @@
     "C": "crafter[crafting=false,orientation=east_up,triggered=false]",
     "D": "crafter[crafting=false,orientation=east_up,triggered=false]",
     "h": "chest[facing=north,type=single,waterlogged=false]",
-    "c": "comparator[facing=south,mode=compare,powered=false]",
+    "c": "comparator[facing=north,mode=compare,powered=false]",
     "L": "redstone_lamp[lit=false]"
   },
   "layers": [

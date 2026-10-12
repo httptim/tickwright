@@ -112,6 +112,19 @@ open(sys.argv[1], "w").write(json.dumps(out, indent=2) + "\n")
 PY
     # Crafting recipes and item tags, for the crafter.
     python3 -I tools/recipes.py "$INNER" "data/$MC_VERSION"
+    # The world clock's timelines (sky light and sun angle through the day),
+    # for the daylight detector.
+    python3 -I - "$INNER" "data/$MC_VERSION/timelines.json" <<'PY'
+import json, sys, zipfile
+z = zipfile.ZipFile(sys.argv[1])
+out = {}
+for name in sorted(z.namelist()):
+    if name.endswith(".json") and (name.startswith("data/minecraft/timeline/")
+                                   or name == "data/minecraft/dimension_type/overworld.json"):
+        out[name.removeprefix("data/minecraft/")[:-5]] = json.loads(z.read(name))
+open(sys.argv[2], "w").write(json.dumps(out, indent=1, sort_keys=True) + "\n")
+print(f"    timelines: {sorted(out)}")
+PY
 fi
 
 # --- data reports -------------------------------------------------------------

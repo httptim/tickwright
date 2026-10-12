@@ -88,10 +88,15 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
     }
     let blocks = fixture.blocks.iter().map(|(x, y, z, s)| Ok((Pos::new(ox + x, oy + y, oz + z), supported(s)?)));
     let blocks: Result<Vec<_>> = blocks.collect();
-    if !fixture.lecterns.is_empty() || fixture.day_time.is_some() {
-        bail!("{}: lecterns and the time of day are not supported by the engine yet", fixture.id);
+    // Without a frozen clock the day time is whatever the game's world had.
+    let uses_day_time = |s: &str| s.starts_with("daylight_detector") || s.starts_with("minecraft:daylight_detector");
+    if fixture.day_time.is_none() && fixture.blocks.iter().any(|b| uses_day_time(&b.3)) {
+        bail!("{}: a daylight detector needs the fixture's day_time", fixture.id);
     }
     let mut level = Level::new(rules);
+    if let Some(t) = fixture.day_time {
+        level.day_time = t;
+    }
     for e in &fixture.experiments {
         match e.as_str() {
             "redstone_experiments" => level.experimental_redstone = true,
@@ -107,7 +112,10 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
     // The harness fills containers with `Container.setItem`, slot by slot.
     for c in &fixture.containers {
         let pos = Pos::new(ox + c.pos[0], oy + c.pos[1], oz + c.pos[2]);
-        if !matches!(level.kind_at(pos), Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser) {
+        if !matches!(
+            level.kind_at(pos),
+            Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser | Kind::Crafter
+        ) {
             bail!("{}: no container at {:?}", fixture.id, c.pos);
         }
         for item in &c.items {
@@ -124,6 +132,15 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
             Some(blocks::BlockEntity::Comparator(output)) => *output = c.output,
             _ => bail!("{}: no comparator at {:?}", fixture.id, c.pos),
         }
+    }
+    // Books on lecterns: `setBook`, then `setPage`.
+    for l in &fixture.lecterns {
+        let pos = Pos::new(ox + l.pos[0], oy + l.pos[1], oz + l.pos[2]);
+        if level.kind_at(pos) != Kind::Lectern {
+            bail!("{}: no lectern at {:?}", fixture.id, l.pos);
+        }
+        blocks::lectern::set_book(&mut level, pos, l.pages as i32);
+        blocks::lectern::set_page(&mut level, pos, l.page as i32);
     }
     Ok(level)
 }
@@ -163,7 +180,10 @@ fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result
                 let p = s.place.as_ref().context("place stimulus without item, face and look")?;
                 blocks::placement::place(level, &p.item, click(pos, p)?).with_context(|| fixture.id.clone())?;
             }
-            Action::Page | Action::Time => bail!("{}: {:?} stimuli are not supported yet", fixture.id, s.action),
+            Action::Page => {
+                blocks::lectern::set_page(level, pos, s.page.context("page stimulus without a page")? as i32)
+            }
+            Action::Time => level.day_time = s.time.context("time stimulus without a time")?,
         }
     }
     Ok(())
