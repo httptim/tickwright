@@ -41,9 +41,11 @@ const MAX_LINES: usize = 12;
 /// Compare at `level` and every level below it. `Ok(())` means identical.
 pub fn compare(expected: &Trace, actual: &Trace, level: Level) -> Result<(), Divergence> {
     compare_world(expected, actual, 0)?;
+    compare_entities_at(expected, actual, 0)?;
     let ticks = expected.ticks.max(actual.ticks);
     for tick in 1..=ticks {
         compare_state(expected, actual, tick)?;
+        compare_entities_at(expected, actual, tick)?;
         if level >= Level::Phase {
             compare_phase(expected, actual, tick)?;
         }
@@ -52,6 +54,54 @@ pub fn compare(expected: &Trace, actual: &Trace, level: Level) -> Result<(), Div
         }
     }
     Ok(())
+}
+
+/// Compare the entities at the end of every tick, exactly: same entities,
+/// types, ids, positions, velocities and details.
+pub fn compare_entities(expected: &Trace, actual: &Trace) -> Result<(), Divergence> {
+    let ticks = expected.ticks.max(actual.ticks);
+    for tick in 1..=ticks {
+        compare_entities_at(expected, actual, tick)?;
+    }
+    Ok(())
+}
+
+/// The entities and the level random's seed at the end of `tick`. Traces
+/// without entity tracking have neither, so this passes for them.
+fn compare_entities_at(expected: &Trace, actual: &Trace, tick: u32) -> Result<(), Divergence> {
+    let a: Vec<_> = expected.entities.iter().filter(|e| e.tick == tick).collect();
+    let b: Vec<_> = actual.entities.iter().filter(|e| e.tick == tick).collect();
+    let mut lines = Vec::new();
+    if a != b {
+        let ns: std::collections::BTreeSet<u32> = a.iter().chain(&b).map(|e| e.n).collect();
+        for n in ns {
+            let x = a.iter().find(|e| e.n == n);
+            let y = b.iter().find(|e| e.n == n);
+            if x != y {
+                let show = |e: Option<&&crate::trace::EntityRow>| match e {
+                    None => "none".to_string(),
+                    Some(e) => format!(
+                        "{} #{} at {:?} moving {:?}{}",
+                        e.kind,
+                        e.id,
+                        e.pos,
+                        e.motion,
+                        e.detail.as_deref().map(|d| format!(" ({d})")).unwrap_or_default()
+                    ),
+                };
+                lines.push(format!("entity {n}: expected {}", show(x)));
+                lines.push(format!("entity {n}:      got {}", show(y)));
+            }
+            if lines.len() >= MAX_LINES {
+                break;
+            }
+        }
+    }
+    let seed = |t: &Trace| t.rng.iter().find(|r| r.0 == tick).map(|r| r.1);
+    if !expected.rng.is_empty() && seed(expected) != seed(actual) {
+        lines.push(format!("random seed: expected {:?}, got {:?}", seed(expected), seed(actual)));
+    }
+    finish(Level::State, tick, lines)
 }
 
 const AIR: &str = "minecraft:air";
@@ -198,6 +248,8 @@ mod tests {
             levels: vec![Level::State, Level::Phase, Level::Order],
             initial: vec![],
             entries,
+            entities: Vec::new(),
+            rng: Vec::new(),
         }
     }
 

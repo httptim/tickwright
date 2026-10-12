@@ -1,0 +1,161 @@
+{
+  "name": "plate_heavy_weighted_items",
+  "description": "Twelve items on a heavy weighted plate: power rises in steps of ten entities, so it reads 2.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "pressure_plate"
+  ],
+  "palette": {
+    "#": "stone",
+    "p": "heavy_weighted_pressure_plate[power=0]"
+  },
+  "layers": [
+    [
+      "###"
+    ],
+    [
+      ".p."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.1,
+        1.2,
+        0.2
+      ],
+      "nbt": "{Item:{id:\"stone\",count:1}}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.17,
+        1.2,
+        0.25
+      ],
+      "nbt": "{Item:{id:\"dirt\",count:1}}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.24,
+        1.2,
+        0.3
+      ],
+      "nbt": "{Item:{id:\"cobblestone\",count:1}}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.31,
+        1.2,
+        0.35
+      ],
+      "nbt": "{Item:{id:\"oak_planks\",count:1}}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.38,
+        1.2,
+        0.4
+      ],
+      "nbt": "{Item:{id:\"sand\",count:1}}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.45,
+        1.2,
+        0.45
+      ],
+      "nbt": "{Item:{id:\"gravel\",count:1}}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.52,
+        1.2,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"glass\",count:1}}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.59,
+        1.2,
+        0.55
+      ],
+      "nbt": "{Item:{id:\"oak_log\",count:1}}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.66,
+        1.2,
+        0.6
+      ],
+      "nbt": "{Item:{id:\"birch_planks\",count:1}}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.73,
+        1.2,
+        0.65
+      ],
+      "nbt": "{Item:{id:\"spruce_planks\",count:1}}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.8,
+        1.2,
+        0.7
+      ],
+      "nbt": "{Item:{id:\"granite\",count:1}}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.87,
+        1.2,
+        0.75
+      ],
+      "nbt": "{Item:{id:\"diorite\",count:1}}"
+    }
+  ],
+  "entities": true
+}

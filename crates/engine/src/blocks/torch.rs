@@ -14,7 +14,7 @@ const MAX_RECENT_TOGGLES: usize = 8;
 const RESTART_DELAY: i32 = 160;
 
 fn is_wall(level: &Level, state: StateId) -> bool {
-    level.kind(state) == Kind::RedstoneWallTorch
+    matches!(level.kind(state), Kind::RedstoneWallTorch | Kind::WallTorch)
 }
 
 /// `hasNeighborSignal`: power into the block the torch hangs on.

@@ -46,6 +46,43 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
     }
 }
 
+/// `TripWireBlock.entityInside`: an unpowered string checks at once.
+pub fn entity_inside(level: &mut Level, pos: Pos, state: StateId) {
+    if !level.flag(state, "powered") {
+        check_pressed(level, pos);
+    }
+}
+
+/// `TripWireBlock.tick`: a powered string checks again every ten ticks.
+pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
+    if level.flag(state, "powered") {
+        check_pressed(level, pos);
+    }
+}
+
+/// `TripWireBlock.checkPressed`: any entity in the string's shape holds it.
+fn check_pressed(level: &mut Level, pos: Pos) {
+    let state = level.get(pos);
+    let powered = level.flag(state, "powered");
+    let top = if level.flag(state, "attached") { 2.5 / 16.0 } else { 0.5 };
+    let bottom = if level.flag(state, "attached") { 1.0 / 16.0 } else { 0.0 };
+    let b = crate::physics::Aabb::new(0.0, bottom, 0.0, 1.0, top, 1.0).offset(pos.x as f64, pos.y as f64, pos.z as f64);
+    let now = level.entities.iter().any(|e| !e.removed && e.bounding_box().intersects(&b));
+    let mut state = state;
+    if now != powered {
+        state = level.with_bool(state, "powered", now);
+        level.set_block(pos, state, crate::level::flags::ALL);
+        update_source(level, pos, state);
+    }
+    if now {
+        level.schedule_tick(pos, level.block(state), 10, 0);
+    } else if powered {
+        // Fitted from 26.3 captures: a string that lets go checks once
+        // more on the next tick.
+        level.schedule_tick(pos, level.block(state), 1, 0);
+    }
+}
+
 /// `TripWireBlock.updateSource`: recalculate the hooks south and west of
 /// the string, which also reach the hooks across from them.
 fn update_source(level: &mut Level, pos: Pos, state: StateId) {
@@ -142,7 +179,8 @@ pub fn calculate_state(
     }
 }
 
-/// `TripWireHookBlock.emitState`: only its game event matters here.
+/// `TripWireHookBlock.emitState`: its game event, and the level random
+/// draw for the detach sound's pitch.
 fn emit_state(level: &mut Level, pos: Pos, attached: bool, powered: bool, was_attached: bool, was_powered: bool) {
     let event = if powered && !was_powered {
         GameEvent::BlockActivate
@@ -151,6 +189,7 @@ fn emit_state(level: &mut Level, pos: Pos, attached: bool, powered: bool, was_at
     } else if attached && !was_attached {
         GameEvent::BlockAttach
     } else if !attached && was_attached {
+        level.random.next_float();
         GameEvent::BlockDetach
     } else {
         return;

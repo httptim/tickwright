@@ -108,7 +108,7 @@ impl Session {
 
     /// Break the block at `pos` without drops, with normal updates.
     pub fn destroy(&mut self, pos: Pos) {
-        self.level.destroy_block(pos, MAX_RECURSION);
+        self.level.destroy_block(pos, false, MAX_RECURSION);
     }
 
     /// Right-click the block at `pos` with an empty hand.

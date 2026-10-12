@@ -11,7 +11,7 @@ fn block(name: &str) -> Option<Kind> {
     Some(match name {
         "air" | "cave_air" | "void_air" => Kind::Air,
         "stone" | "obsidian" | "cobblestone" | "dirt" | "smooth_stone" | "white_wool" | "iron_block" | "gold_block"
-        | "diamond_block" | "bedrock" => Kind::Solid,
+        | "diamond_block" | "bedrock" | "ice" | "packed_ice" | "blue_ice" => Kind::Solid,
         n if n.ends_with("_concrete")
             || n.ends_with("_wool")
             || (n.ends_with("_terracotta") && !n.contains("glazed")) =>
@@ -30,6 +30,13 @@ fn block(name: &str) -> Option<Kind> {
         "sculk_sensor" => Kind::SculkSensor,
         "calibrated_sculk_sensor" => Kind::CalibratedSculkSensor,
         "lever" => Kind::Lever,
+        "sand" | "red_sand" | "gravel" => Kind::FallingBlock,
+        "tnt" => Kind::Tnt,
+        "light_weighted_pressure_plate" | "heavy_weighted_pressure_plate" => Kind::WeightedPlate,
+        n if n.ends_with("_pressure_plate") => Kind::PressurePlate,
+        "torch" | "soul_torch" | "copper_torch" => Kind::Torch,
+        "wall_torch" | "soul_wall_torch" | "copper_wall_torch" => Kind::WallTorch,
+        n if n.ends_with("_planks") => Kind::Solid,
         n if n.ends_with("_button") => Kind::Button,
         n if n == "glass" || n == "tinted_glass" || n.ends_with("_stained_glass") => Kind::Glass,
         "stone_slab" | "smooth_stone_slab" | "cobblestone_slab" | "oak_slab" => Kind::Slab,

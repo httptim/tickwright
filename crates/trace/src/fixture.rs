@@ -69,6 +69,9 @@ pub enum Action {
     Page,
     /// Set the time of day to `time`, as `/time set` does. `pos` is unused.
     Time,
+    /// Create an entity, as `/summon` does: `entity`, `at` and optionally
+    /// `motion` and `nbt`. `pos` is unused.
+    Summon,
 }
 
 /// One stack in a container: `count` of item `id` in `slot`.
@@ -109,7 +112,7 @@ pub struct ComparatorOutput {
     pub output: i32,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Stimulus {
     /// Applied just before this game tick's world tick runs, which is where
     /// player input lands in the real game. Tick 1 is the first tick.
@@ -131,6 +134,38 @@ pub struct Stimulus {
     pub time: Option<i64>,
     #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
     pub place: Option<PlaceInput>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub summon: Option<SummonInput>,
+}
+
+/// What a `summon` stimulus creates, as `/summon` would.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SummonInput {
+    /// The entity type, such as `tnt` or `item`.
+    pub entity: String,
+    /// Where, in blocks from the fixture's least corner. Rotates and mirrors
+    /// with the fixture.
+    pub at: [f64; 3],
+    /// Starting velocity in blocks per tick. Rotates and mirrors with the
+    /// fixture.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub motion: Option<[f64; 3]>,
+    /// Extra entity data in SNBT, such as `{fuse:80}` or
+    /// `{Item:{id:"stone",count:1}}`. It must not depend on direction, since
+    /// it is passed through unchanged in every orientation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nbt: Option<String>,
+}
+
+impl SummonInput {
+    fn transform(&self, t: Transform, size: [i32; 3]) -> SummonInput {
+        SummonInput {
+            entity: self.entity.clone(),
+            at: t.point(self.at, size),
+            motion: self.motion.map(|m| t.vector(m)),
+            nbt: self.nbt.clone(),
+        }
+    }
 }
 
 /// How a `place` stimulus is made: what is held, which face of the block at
@@ -233,6 +268,11 @@ pub struct FixtureSource {
     /// `max-chained-neighbor-updates`, for fixtures about update skipping.
     #[serde(default)]
     pub max_chained_updates: Option<i32>,
+    /// Whether entities are part of what must match: every entity's type,
+    /// position, velocity and details at the end of each tick. The harness
+    /// also seeds the level's random source for these fixtures.
+    #[serde(default)]
+    pub entities: bool,
 }
 
 fn default_levels() -> Vec<Level> {
@@ -272,6 +312,8 @@ pub struct ResolvedFixture {
     pub day_time: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_chained_updates: Option<i32>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub entities: bool,
 }
 
 /// Feature flags a fixture may ask for.
@@ -342,6 +384,16 @@ impl FixtureSource {
                 (Action::Place, None) => bail!("{}: a place stimulus needs item, face and look", self.name),
                 (Action::Place, Some(p)) => p.validate().with_context(|| format!("{}: place stimulus", self.name))?,
                 (_, Some(_)) => bail!("{}: only place stimuli take item, face and look", self.name),
+                _ => {}
+            }
+            match (&s.action, &s.summon) {
+                (Action::Summon, None) => bail!("{}: a summon stimulus needs an entity and where", self.name),
+                (Action::Summon, Some(m)) => ensure!(
+                    (0..3).all(|i| m.at[i].is_finite()) && m.motion.is_none_or(|v| v.iter().all(|c| c.is_finite())),
+                    "{}: a summon stimulus needs finite coordinates",
+                    self.name
+                ),
+                (_, Some(_)) => bail!("{}: only summon stimuli take an entity", self.name),
                 _ => {}
             }
             match (&s.action, s.page, s.time) {
@@ -457,6 +509,7 @@ impl FixtureSource {
                     .unwrap(),
                 quiet: s.quiet,
                 place: s.place.as_ref().map(|p| p.transform(t)),
+                summon: s.summon.as_ref().map(|m| m.transform(t, size)),
                 page: s.page,
                 time: s.time,
             })
@@ -497,6 +550,7 @@ impl FixtureSource {
             experiments: self.experiments.clone(),
             day_time: self.day_time,
             max_chained_updates: self.max_chained_updates,
+            entities: self.entities,
         })
     }
 

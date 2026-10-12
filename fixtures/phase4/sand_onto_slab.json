@@ -1,0 +1,51 @@
+{
+  "name": "sand_onto_slab",
+  "description": "Sand falling onto a bottom slab can't take its place, so it breaks into an item.",
+  "ticks": 50,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "falling_block"
+  ],
+  "palette": {
+    "#": "stone",
+    "s": "sand",
+    "b": "stone_slab[type=bottom,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "###"
+    ],
+    [
+      ".b."
+    ],
+    [
+      "..."
+    ],
+    [
+      "..."
+    ],
+    [
+      ".#."
+    ],
+    [
+      ".s."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "destroy",
+      "pos": [
+        1,
+        4,
+        0
+      ]
+    }
+  ],
+  "entities": true
+}

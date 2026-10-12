@@ -1,0 +1,44 @@
+{
+  "name": "tnt_chain",
+  "description": "Lit TNT explodes next to another TNT block, which is primed with a random short fuse and thrown by the blast.",
+  "ticks": 120,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "tnt",
+    "explosion"
+  ],
+  "palette": {
+    "#": "obsidian",
+    "T": "tnt[unstable=false]",
+    "l": "lever[face=floor,facing=north,powered=false]"
+  },
+  "layers": [
+    [
+      "#######",
+      "#######",
+      "#######"
+    ],
+    [
+      "..T.T..",
+      ".......",
+      "..l...."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        2,
+        1,
+        2
+      ]
+    }
+  ],
+  "entities": true
+}

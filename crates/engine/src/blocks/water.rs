@@ -398,6 +398,10 @@ fn spread_to(level: &mut Level, pos: Pos, state: StateId, fs: FluidState) {
     if is_container(level, state) {
         place_liquid(level, pos, state, fs);
     } else {
+        // `WaterFluid.beforeDestroyingBlock`.
+        if !level.is_air(state) && level.kind(state) != Kind::Water && level.simulate_entities {
+            level.drop_resources(pos, state);
+        }
         level.set_block(pos, legacy_block(level, fs), flags::ALL);
     }
 }

@@ -1,0 +1,43 @@
+{
+  "name": "item_on_ice",
+  "description": "An item thrown across ice keeps sliding much longer than on stone.",
+  "ticks": 80,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "friction"
+  ],
+  "palette": {
+    "#": "stone",
+    "i": "ice"
+  },
+  "layers": [
+    [
+      "iiiiiiiiiiii",
+      "############"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        0.5,
+        1.0,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"stone\",count:1}}",
+      "motion": [
+        0.5,
+        0.1,
+        0.0
+      ]
+    }
+  ],
+  "entities": true
+}

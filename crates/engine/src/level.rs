@@ -11,9 +11,11 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::blocks::water::Fluid;
 use crate::blocks::{self, Kind};
+use crate::entity::Entity;
 use crate::game_event::GameEvent;
 use crate::orientation::{Orientation, SideBias};
 use crate::pos::{Dir, Pos, UPDATE_ORDER, UPDATE_SHAPE_ORDER};
+use crate::random::JavaRandom;
 use crate::record::{Event, Recorder};
 use crate::registry::{BlockId, Registry, StateId};
 use crate::rules::Rules;
@@ -143,6 +145,23 @@ pub struct Level {
 
     pub phase: Phase,
     pub recorder: Option<Recorder>,
+
+    /// The level's random source (`ServerLevel.random`), which entities
+    /// spawning and explosions draw from.
+    pub random: JavaRandom,
+    /// Entities in the order they were added, which is the order they tick.
+    pub entities: Vec<Entity>,
+    /// `ServerLevel.ENTITY_COUNTER`: the last entity id handed out.
+    pub entity_counter: i32,
+    /// `RandomSupport.generateUniqueSeed`, which captures turn into a count
+    /// from 0: the seed the next entity's own random source gets.
+    pub unique_seeds: i64,
+    /// Whether blocks drop items when they break. Only fixtures that track
+    /// entities turn this on, so older fixtures run as they always have.
+    pub simulate_entities: bool,
+    /// Set when something happened that the engine can't simulate exactly;
+    /// a run fails with it rather than giving a wrong answer.
+    pub unsupported: Option<String>,
 }
 
 impl Level {
@@ -180,10 +199,30 @@ impl Level {
             rng: 0x9E37_79B9_7F4A_7C15,
             phase: Phase::Input,
             recorder: None,
+            random: JavaRandom::new(0),
+            entities: Vec::new(),
+            entity_counter: 0,
+            unique_seeds: 0,
+            simulate_entities: false,
+            unsupported: None,
         }
     }
 
     // --- reading -----------------------------------------------------------
+
+    pub fn next_unique_seed(&mut self) -> i64 {
+        self.unique_seeds += 1;
+        self.unique_seeds - 1
+    }
+
+    /// The overworld's build limits.
+    pub fn min_y(&self) -> i32 {
+        -64
+    }
+
+    pub fn max_y(&self) -> i32 {
+        319
+    }
 
     pub fn get(&self, pos: Pos) -> StateId {
         self.blocks.get(pos)
@@ -328,17 +367,31 @@ impl Level {
         Some(old)
     }
 
-    /// `Level.destroyBlock(pos, drop)`. Drops are not simulated.
-    pub fn destroy_block(&mut self, pos: Pos, recursion: i32) -> bool {
+    /// `Level.destroyBlock(pos, drop)`. Drops only happen in levels that
+    /// simulate entities.
+    pub fn destroy_block(&mut self, pos: Pos, drop: bool, recursion: i32) -> bool {
         let state = self.get(pos);
         if self.is_air(state) {
             return false;
+        }
+        if drop && self.simulate_entities {
+            self.drop_resources(pos, state);
         }
         let ok = self.set_block_rec(pos, self.air, flags::ALL, recursion);
         if ok {
             self.game_event(GameEvent::BlockDestroy, pos);
         }
         ok
+    }
+
+    /// `Block.dropResources`: the block's loot, popped out around it.
+    pub fn drop_resources(&mut self, pos: Pos, state: StateId) {
+        if blocks::has_block_entity(self.kind(state)) {
+            self.unsupported(format!("dropping {} with its block entity", self.reg.name(state)));
+        }
+        for stack in crate::loot::block_drops(self, state) {
+            crate::entity::item::pop_resource(self, pos, stack);
+        }
     }
 
     /// `Level.gameEvent`.
@@ -585,7 +638,7 @@ impl Level {
     pub fn update_or_destroy(&mut self, old: StateId, new: StateId, pos: Pos, f: i32, recursion: i32) {
         if new != old {
             if self.is_air(new) {
-                self.destroy_block(pos, recursion);
+                self.destroy_block(pos, f & flags::SUPPRESS_DROPS == 0, recursion);
             } else {
                 self.set_block_rec(pos, new, f & !flags::SUPPRESS_DROPS, recursion);
             }
@@ -744,8 +797,13 @@ impl Level {
         self.run_block_ticks();
         self.phase = Phase::FluidTicks;
         self.run_fluid_ticks();
+        // Random block ticks (`Phase::Chunks`) are off: entity captures turn
+        // them off, since they draw from the level's random source anywhere
+        // in the loaded world.
         self.phase = Phase::BlockEvents;
         self.run_block_events();
+        self.phase = Phase::Entities;
+        self.tick_entities();
         self.phase = Phase::BlockEntities;
         self.tick_block_entities();
         self.phase = Phase::Input;

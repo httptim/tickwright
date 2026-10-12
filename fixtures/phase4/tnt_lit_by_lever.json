@@ -1,0 +1,49 @@
+{
+  "name": "tnt_lit_by_lever",
+  "description": "A lever powers a TNT block, which becomes primed TNT nudged in a random direction, falls into a pit and explodes on obsidian.",
+  "ticks": 100,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "tnt",
+    "explosion"
+  ],
+  "palette": {
+    "#": "obsidian",
+    "T": "tnt[unstable=false]",
+    "l": "lever[face=floor,facing=north,powered=false]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      "#...#",
+      "#...#",
+      "#####"
+    ],
+    [
+      "..T..",
+      "..l..",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        2,
+        2,
+        1
+      ]
+    }
+  ],
+  "entities": true
+}

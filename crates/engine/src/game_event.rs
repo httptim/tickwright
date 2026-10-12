@@ -15,7 +15,9 @@ pub enum GameEvent {
     BlockDetach,
     BlockOpen,
     BlockPlace,
+    Explode,
     NoteBlockPlay,
+    PrimeFuse,
     SculkSensorTendrilsClicking,
 }
 
@@ -26,10 +28,11 @@ impl GameEvent {
         use GameEvent::*;
         Some(match self {
             BlockClose | BlockDeactivate | BlockDetach => 9,
-            BlockOpen | BlockActivate | BlockAttach | NoteBlockPlay => 10,
+            BlockOpen | BlockActivate | BlockAttach | NoteBlockPlay | PrimeFuse => 10,
             BlockChange => 11,
             BlockDestroy => 12,
             BlockPlace => 13,
+            Explode => 15,
             SculkSensorTendrilsClicking => return None,
         })
     }

@@ -1,0 +1,50 @@
+{
+  "name": "tnt_knockback",
+  "description": "Two summoned TNT side by side: the first explodes and throws the second, which flies and explodes later.",
+  "ticks": 90,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "tnt",
+    "explosion"
+  ],
+  "palette": {
+    "#": "obsidian"
+  },
+  "layers": [
+    [
+      "#########",
+      "#########",
+      "#########"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        3.5,
+        1.0,
+        1.5
+      ],
+      "nbt": "{fuse:10}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        4.7,
+        1.0,
+        1.4
+      ],
+      "nbt": "{fuse:60}"
+    }
+  ],
+  "entities": true
+}

@@ -30,6 +30,25 @@ public final class Hooks {
         void event(String kind, Object self, Object arg);
     }
 
+    /** Returned by {@link #uniqueSeed} to let the game pick its own seed. */
+    public static final long NO_SEED = Long.MIN_VALUE;
+
+    /** While set, {@code RandomSupport.generateUniqueSeed} on this thread counts up from {@link #nextSeed}. */
+    public static volatile Thread seedThread;
+    public static long nextSeed;
+
+    /**
+     * Called at the start of {@code RandomSupport.generateUniqueSeed}: every
+     * entity's own random source is created from one, so captures replace
+     * the time-based seed with a count to make entities repeatable.
+     */
+    public static long uniqueSeed() {
+        if (Thread.currentThread() == seedThread) {
+            return nextSeed++;
+        }
+        return NO_SEED;
+    }
+
     public static void set(Object chunk, Object pos, Object state) {
         SetListener l = setListener;
         if (l != null) {

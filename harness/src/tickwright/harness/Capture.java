@@ -102,6 +102,7 @@ public final class Capture {
         Path out = Path.of(arg(args, "--out", "work/traces"));
         Path universe = Path.of(arg(args, "--universe", "work/universe"));
         String only = arg(args, "--only", null);
+        String physics = arg(args, "--physics", null);
 
         // LevelChunk is loaded lazily; load it (without initializing) so the
         // agent has patched it before the check below.
@@ -118,8 +119,9 @@ public final class Capture {
             Class.forName(c, false, Capture.class.getClassLoader());
         }
         System.out.printf("agent patched: %s%n", new TreeMap<>(Hooks.patched));
+        Class.forName("net.minecraft.world.level.levelgen.RandomSupport", false, Capture.class.getClassLoader());
         for (String kind : List.of("set", "neighbor", "shape", "schedule", "tick", "block_event_queued",
-                "block_event", "items")) {
+                "block_event", "items", "unique_seed")) {
             if (!Hooks.patched.containsKey(kind)) {
                 throw new IllegalStateException("the agent patched no method for " + kind
                         + "; run with -javaagent:agent.jar, or the game's method changed");
@@ -146,6 +148,9 @@ public final class Capture {
         level = server.overworld();
         String mcVersion = SharedConstants.getCurrentVersion().name();
         System.out.printf("Minecraft %s%n", mcVersion);
+        if (physics != null) {
+            exportPhysics(Path.of(physics));
+        }
 
         List<Path> files;
         try (Stream<Path> s = Files.list(fixtures)) {
@@ -224,6 +229,11 @@ public final class Capture {
         final BlockPos min;
         final BlockPos max;
         final JsonArray entries = new JsonArray();
+        final JsonArray entities = new JsonArray();
+        final JsonArray rng = new JsonArray();
+        /** Entity ids in the order they first appeared, numbered from 0. */
+        final Map<Integer, Integer> entityNumbers = new java.util.HashMap<>();
+        final java.util.Set<Integer> loggedIds = new java.util.HashSet<>();
         int tick;
         String lastKey;
 
@@ -265,6 +275,27 @@ public final class Capture {
             // Experimental redstone picks random orientations where nothing
             // gives one; a fixed seed keeps the capture repeatable.
             level.getRandom().setSeed(id.hashCode());
+        }
+        boolean trackEntities = fixture.has("entities") && fixture.get("entities").getAsBoolean();
+        if (trackEntities) {
+            // Entities draw from the level's random source when they spawn
+            // and when explosions sample rays; a fixed seed keeps the
+            // capture repeatable.
+            level.getRandom().setSeed(id.hashCode());
+            // Entity ids decide when resting items move ((tickCount + id) % 4);
+            // number them from 1 in every capture.
+            resetEntityIds();
+            // Each entity's own random source gets the next seed in a count
+            // from 0, in place of one from the clock.
+            Hooks.nextSeed = 0;
+            Hooks.seedThread = Thread.currentThread();
+            // Random block ticks land anywhere in the loaded world, and a
+            // block left there that ticks randomly (copper, grass) draws from
+            // the level's random source at times no fixture controls.
+            randomTicks(0);
+            // The phantom and patrol spawners count down and then draw from
+            // the level's random source, whether or not anything spawns.
+            spawners(false);
         }
         setMaxChainedUpdates(fixture.has("max_chained_updates")
                 ? fixture.get("max_chained_updates").getAsInt() : -1);
@@ -350,6 +381,9 @@ public final class Capture {
 
         Recording rec = new Recording(origin, min, max);
         recording = rec;
+        if (trackEntities) {
+            noteRng(rec, 0);
+        }
         try {
             for (int t = 1; t <= ticks; t++) {
                 rec.tick = t;
@@ -363,9 +397,22 @@ public final class Capture {
                     inInput = false;
                 }
                 tick();
+                if (trackEntities) {
+                    snapshotEntities(rec, t);
+                    noteRng(rec, t);
+                }
             }
         } finally {
             recording = null;
+            Hooks.seedThread = null;
+            // Leave nothing behind: the next fixture clears only its own
+            // box, and a build left standing above it is in reach of an
+            // explosion there (tnt_knockback@mr270 broke one).
+            clear(min, max);
+            if (trackEntities) {
+                randomTicks(3);
+                spawners(true);
+            }
         }
 
         // Every kind of event phase 1 needs is recorded, so the trace is
@@ -385,6 +432,10 @@ public final class Capture {
         trace.add("levels", levels);
         trace.add("initial", initial);
         trace.add("entries", rec.entries);
+        if (trackEntities) {
+            trace.add("entities", rec.entities);
+            trace.add("rng", rec.rng);
+        }
         return trace;
     }
 
@@ -578,7 +629,229 @@ public final class Capture {
                 setPage(lectern, s.get("page").getAsInt());
             }
             case "time" -> command("time set " + s.get("time").getAsLong());
+            case "summon" -> summon(s, origin);
             default -> throw new IllegalArgumentException("unknown action " + s.get("action"));
+        }
+    }
+
+    /** An exact decimal for a double, which the command parser reads back to the same double. */
+    private static String exact(double v) {
+        return new java.math.BigDecimal(v).toPlainString();
+    }
+
+    /** {@code /summon} at an exact point, with an exact starting velocity. */
+    private static void summon(JsonObject s, BlockPos origin) {
+        JsonArray at = s.getAsJsonArray("at");
+        String x = exact(origin.getX() + at.get(0).getAsDouble());
+        String y = exact(origin.getY() + at.get(1).getAsDouble());
+        String z = exact(origin.getZ() + at.get(2).getAsDouble());
+        List<String> parts = new ArrayList<>();
+        if (s.has("nbt")) {
+            String nbt = s.get("nbt").getAsString().strip();
+            String inner = nbt.substring(1, nbt.length() - 1).strip();
+            if (!inner.isEmpty()) {
+                parts.add(inner);
+            }
+        }
+        if (s.has("motion")) {
+            JsonArray m = s.getAsJsonArray("motion");
+            parts.add("Motion:[" + exact(m.get(0).getAsDouble()) + "d," + exact(m.get(1).getAsDouble()) + "d,"
+                    + exact(m.get(2).getAsDouble()) + "d]");
+        }
+        String cmd = "summon " + s.get("entity").getAsString() + " " + x + " " + y + " " + z
+                + (parts.isEmpty() ? "" : " {" + String.join(",", parts) + "}");
+        int before = entityCount();
+        command(cmd);
+        int after = entityCount();
+        if (after <= before) {
+            throw new IllegalStateException("summon made no entity: " + cmd);
+        }
+    }
+
+    private static int entityCount() {
+        int n = 0;
+        for (Entity ignored : level.getAllEntities()) {
+            n++;
+        }
+        return n;
+    }
+
+    /** Every entity in the box at the end of tick {@code t}, in order of first appearance. */
+    private static void snapshotEntities(Recording rec, int t) {
+        // Say where every new entity in the level came from, in or out of the box.
+        for (Entity e : level.getAllEntities()) {
+            if (!(e instanceof Player) && rec.loggedIds.add(e.getId())) {
+                System.out.printf("    %s tick %d: entity %d %s at %s, seeds used %d%n", rec.origin, t, e.getId(),
+                        BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()), e.position(), Hooks.nextSeed);
+            }
+        }
+        AABB box = new AABB(rec.min.getX(), rec.min.getY(), rec.min.getZ(),
+                rec.max.getX() + 1, rec.max.getY() + 1, rec.max.getZ() + 1);
+        List<Entity> found = new ArrayList<>(level.getEntitiesOfClass(Entity.class, box));
+        found.sort(Comparator.comparingInt(Entity::getId));
+        for (Entity e : found) {
+            if (e instanceof Player) {
+                continue;
+            }
+            int n = rec.entityNumbers.computeIfAbsent(e.getId(), k -> rec.entityNumbers.size());
+            JsonObject o = new JsonObject();
+            o.addProperty("tick", t);
+            o.addProperty("n", n);
+            o.addProperty("id", e.getId());
+            o.addProperty("type", BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).toString());
+            JsonArray pos = new JsonArray();
+            pos.add(e.getX() - rec.origin.getX());
+            pos.add(e.getY() - rec.origin.getY());
+            pos.add(e.getZ() - rec.origin.getZ());
+            o.add("pos", pos);
+            Vec3 v = e.getDeltaMovement();
+            JsonArray motion = new JsonArray();
+            motion.add(v.x);
+            motion.add(v.y);
+            motion.add(v.z);
+            o.add("motion", motion);
+            String detail = entityDetail(e);
+            if (detail != null) {
+                o.addProperty("detail", detail);
+            }
+            rec.entities.add(o);
+        }
+    }
+
+    private static String entityDetail(Entity e) {
+        if (e instanceof net.minecraft.world.entity.item.ItemEntity item) {
+            ItemStack stack = item.getItem();
+            return BuiltInRegistries.ITEM.getKey(stack.getItem()) + "*" + stack.getCount();
+        }
+        if (e instanceof net.minecraft.world.entity.item.PrimedTnt tnt) {
+            return "fuse=" + tnt.getFuse();
+        }
+        if (e instanceof net.minecraft.world.entity.item.FallingBlockEntity falling) {
+            return BlockStateParser.serialize(falling.getBlockState());
+        }
+        return null;
+    }
+
+    private static java.lang.reflect.Field entityCounter;
+
+    /** Sets {@code ServerLevel.ENTITY_COUNTER} to 0, so the next entity made gets id 1. */
+    private static void resetEntityIds() {
+        try {
+            if (entityCounter == null) {
+                // 26.3 keeps it on ServerLevel; older versions on Entity.
+                for (Class<?> c : List.of(ServerLevel.class, Entity.class)) {
+                    for (java.lang.reflect.Field f : c.getDeclaredFields()) {
+                        if (entityCounter == null && java.lang.reflect.Modifier.isStatic(f.getModifiers())
+                                && f.getType() == java.util.concurrent.atomic.AtomicInteger.class
+                                && f.getName().equals("ENTITY_COUNTER")) {
+                            f.setAccessible(true);
+                            entityCounter = f;
+                        }
+                    }
+                }
+                if (entityCounter == null) {
+                    throw new IllegalStateException("no ENTITY_COUNTER on ServerLevel or Entity");
+                }
+            }
+            ((java.util.concurrent.atomic.AtomicInteger) entityCounter.get(null)).set(0);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("cannot reset entity ids", e);
+        }
+    }
+
+    /**
+     * What entity physics needs from every block: each state's collision
+     * boxes (with no world around it, so context-dependent shapes like
+     * scaffolding are their defaults), and each block's friction, speed and
+     * jump factors and explosion resistance.
+     */
+    private static void exportPhysics(Path file) throws IOException {
+        List<String> shapes = new ArrayList<>();
+        Map<String, Integer> shapeIndex = new java.util.HashMap<>();
+        JsonArray runs = new JsonArray();
+        int lastShape = -1;
+        int runStart = 0;
+        int id = 0;
+        for (;; id++) {
+            BlockState state = Block.BLOCK_STATE_REGISTRY.byId(id);
+            if (state == null) {
+                break;
+            }
+            JsonArray boxes = new JsonArray();
+            for (AABB b : state.getCollisionShape(net.minecraft.world.level.EmptyBlockGetter.INSTANCE, BlockPos.ZERO)
+                    .toAabbs()) {
+                JsonArray a = new JsonArray();
+                a.add(b.minX);
+                a.add(b.minY);
+                a.add(b.minZ);
+                a.add(b.maxX);
+                a.add(b.maxY);
+                a.add(b.maxZ);
+                boxes.add(a);
+            }
+            String key = GSON.toJson(boxes);
+            int index = shapeIndex.computeIfAbsent(key, k -> {
+                shapes.add(k);
+                return shapes.size() - 1;
+            });
+            if (index != lastShape) {
+                if (lastShape >= 0) {
+                    JsonArray r = new JsonArray();
+                    r.add(runStart);
+                    r.add(lastShape);
+                    runs.add(r);
+                }
+                lastShape = index;
+                runStart = id;
+            }
+        }
+        JsonArray last = new JsonArray();
+        last.add(runStart);
+        last.add(lastShape);
+        runs.add(last);
+
+        StringBuilder out = new StringBuilder("{\n");
+        out.append("  \"states\": ").append(id).append(",\n");
+        out.append("  \"shapes\": [\n    ").append(String.join(",\n    ", shapes)).append("\n  ],\n");
+        out.append("  \"shape_runs\": ").append(GSON.toJson(runs)).append(",\n");
+        out.append("  \"blocks\": {\n");
+        List<String> rows = new ArrayList<>();
+        for (Block b : BuiltInRegistries.BLOCK) {
+            rows.add("    \"" + BuiltInRegistries.BLOCK.getKey(b) + "\": {\"friction\": " + b.getFriction()
+                    + ", \"speed\": " + b.getSpeedFactor() + ", \"jump\": " + b.getJumpFactor()
+                    + ", \"resistance\": " + b.getExplosionResistance() + "}");
+        }
+        out.append(String.join(",\n", rows)).append("\n  }\n}\n");
+        Files.writeString(file, out.toString());
+        System.out.printf("block physics: %d states, %d distinct shapes -> %s%n", id, shapes.size(), file);
+    }
+
+    private static java.lang.reflect.Field rngSeed;
+
+    /** The level random source's internal seed, after tick {@code t}. */
+    private static void noteRng(Recording rec, int t) {
+        Object random = level.getRandom();
+        try {
+            if (rngSeed == null) {
+                for (Class<?> c = random.getClass(); c != null && rngSeed == null; c = c.getSuperclass()) {
+                    for (java.lang.reflect.Field f : c.getDeclaredFields()) {
+                        if (f.getType() == java.util.concurrent.atomic.AtomicLong.class) {
+                            f.setAccessible(true);
+                            rngSeed = f;
+                            break;
+                        }
+                    }
+                }
+                if (rngSeed == null) {
+                    throw new IllegalStateException("no seed field in " + random.getClass());
+                }
+            }
+            JsonArray a = new JsonArray();
+            a.add(t);
+            a.add(((java.util.concurrent.atomic.AtomicLong) rngSeed.get(random)).get());
+            rec.rng.add(a);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("cannot read the level's random source", e);
         }
     }
 
@@ -601,6 +874,20 @@ public final class Capture {
     private static boolean clockFrozen;
 
     /** Stop the day-night cycle and the weather, once, for fixtures that read the time of day. */
+    private static void randomTicks(int speed) {
+        // The game rule's name changed in 1.21.11; the other one is rejected quietly.
+        command("gamerule random_tick_speed " + speed);
+        command("gamerule randomTickSpeed " + speed);
+    }
+
+    private static void spawners(boolean on) {
+        // The game rules' names changed in 1.21.11; the old ones are rejected quietly.
+        for (String rule : new String[] {"spawn_phantoms", "doInsomnia", "spawn_patrols", "doPatrolSpawning",
+                "spawn_wandering_traders", "doTraderSpawning", "spawn_mobs", "doMobSpawning"}) {
+            command("gamerule " + rule + " " + on);
+        }
+    }
+
     private static void freezeClock() {
         if (clockFrozen) {
             return;
@@ -834,10 +1121,14 @@ public final class Capture {
             level.setBlock(p, Blocks.AIR.defaultBlockState(), QUIET);
         }
         clearing = false;
-        AABB box = new AABB(min.getX() - 1, min.getY() - 1, min.getZ() - 1,
-                max.getX() + 2, max.getY() + 2, max.getZ() + 2);
-        for (Entity e : level.getEntitiesOfClass(Entity.class, box)) {
-            e.discard();
+        // Every entity, not just those in the box: items thrown out of an
+        // earlier build keep falling, and would take ids and land anywhere.
+        List<Entity> all = new ArrayList<>();
+        level.getAllEntities().forEach(all::add);
+        for (Entity e : all) {
+            if (!(e instanceof Player)) {
+                e.discard();
+            }
         }
     }
 
