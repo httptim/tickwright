@@ -21,9 +21,10 @@ use tickwright_trace::{BlockState, FixtureSource, Level, ResolvedFixture};
 
 use nbt::Tag;
 
-/// `SharedConstants.getCurrentVersion().dataVersion()` for 26.3, written
-/// into exported files.
-pub const DATA_VERSION_26_3: i32 = 4671;
+/// The data version 26.3 saves files with (`world_version` in the server
+/// jar's `version.json`, recorded in `data/26.3/version.json`), written into
+/// exported files.
+pub const DATA_VERSION_26_3: i32 = 5023;
 
 /// The largest box a schematic may span, in blocks. Editor builds are far
 /// smaller; this stops a stress-test file from exhausting memory.
@@ -329,6 +330,14 @@ mod tests {
             data_version: Some(DATA_VERSION_26_3),
         }
         .finish()
+    }
+
+    #[test]
+    fn data_version_is_the_games() {
+        let text = include_str!("../../../data/26.3/version.json");
+        let line = text.lines().find(|l| l.contains("\"data_version\"")).unwrap();
+        let n: i32 = line.split(':').nth(1).unwrap().trim().trim_end_matches(',').parse().unwrap();
+        assert_eq!(n, DATA_VERSION_26_3);
     }
 
     #[test]

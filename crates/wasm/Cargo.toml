@@ -15,4 +15,5 @@ anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tickwright-engine = { path = "../engine" }
+tickwright-schematic = { path = "../schematic" }
 tickwright-trace = { path = "../trace" }
