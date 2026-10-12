@@ -1091,10 +1091,14 @@ public final class Capture {
             level.setBlock(p, Blocks.AIR.defaultBlockState(), QUIET);
         }
         clearing = false;
-        AABB box = new AABB(min.getX() - 1, min.getY() - 1, min.getZ() - 1,
-                max.getX() + 2, max.getY() + 2, max.getZ() + 2);
-        for (Entity e : level.getEntitiesOfClass(Entity.class, box)) {
-            e.discard();
+        // Every entity, not just those in the box: items thrown out of an
+        // earlier build keep falling, and would take ids and land anywhere.
+        List<Entity> all = new ArrayList<>();
+        level.getAllEntities().forEach(all::add);
+        for (Entity e : all) {
+            if (!(e instanceof Player)) {
+                e.discard();
+            }
         }
     }
 
