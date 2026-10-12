@@ -7,6 +7,7 @@
 pub mod bench;
 pub mod blocks;
 pub mod level;
+pub mod orientation;
 pub mod pos;
 pub mod record;
 pub mod registry;

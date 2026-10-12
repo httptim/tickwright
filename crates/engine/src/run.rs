@@ -88,13 +88,16 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
     }
     let blocks = fixture.blocks.iter().map(|(x, y, z, s)| Ok((Pos::new(ox + x, oy + y, oz + z), supported(s)?)));
     let blocks: Result<Vec<_>> = blocks.collect();
-    if let Some(e) = fixture.experiments.first() {
-        bail!("{}: the {e} experiment is not supported by the engine yet", fixture.id);
-    }
     if !fixture.lecterns.is_empty() || fixture.day_time.is_some() {
         bail!("{}: lecterns and the time of day are not supported by the engine yet", fixture.id);
     }
     let mut level = Level::new(rules);
+    for e in &fixture.experiments {
+        match e.as_str() {
+            "redstone_experiments" => level.experimental_redstone = true,
+            other => bail!("{}: the {other} experiment is not supported by the engine yet", fixture.id),
+        }
+    }
     if let Some(n) = fixture.max_chained_updates {
         level.max_chained_updates = n as usize;
     }

@@ -40,8 +40,9 @@ fn update_neighbors_in_front(level: &mut Level, pos: Pos, state: StateId) {
     let facing = level.dir(state, "facing");
     let behind = pos.offset(facing.opposite());
     let block = level.block(state);
-    level.neighbor_changed(behind, block);
-    level.update_neighbors_except(behind, block, facing);
+    let orientation = level.initial_orientation(Some(facing.opposite()), Some(Dir::Up));
+    level.neighbor_changed_oriented(behind, block, orientation);
+    level.update_neighbors_except_oriented(behind, block, facing, orientation);
 }
 
 /// `getSignal` and `getDirectSignal`: 15 out of the back while powered.
