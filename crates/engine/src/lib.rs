@@ -11,6 +11,7 @@ pub mod items;
 pub mod level;
 pub mod orientation;
 pub mod pos;
+pub mod random;
 pub mod record;
 pub mod registry;
 pub mod rules;
