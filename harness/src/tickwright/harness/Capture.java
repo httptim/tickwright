@@ -609,16 +609,6 @@ public final class Capture {
         command("gamerule advance_time false");
         command("gamerule doDaylightCycle false");
         command("weather clear");
-        System.out.printf("clock frozen: day time %d after 5 ticks of %d%n", dayTimeAfter(5), level.getDayTime());
-    }
-
-    private static long dayTimeAfter(int ticks) {
-        try {
-            idle(ticks);
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
-        }
-        return level.getDayTime();
     }
 
     /** The features the world was created with, which the captures without experiments use. */
