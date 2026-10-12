@@ -20,6 +20,9 @@ pub mod dispenser;
 mod door;
 mod lamp;
 pub mod lectern;
+mod sculk;
+mod shelf;
+pub use sculk::post as post_game_event;
 mod lever;
 mod note;
 mod observer;
@@ -29,6 +32,7 @@ mod plain;
 mod rail;
 mod repeater;
 mod torch;
+mod tripwire;
 pub mod water;
 mod wire;
 
@@ -93,6 +97,10 @@ pub enum Kind {
     Crafter,
     Lectern,
     DaylightDetector,
+    Tripwire,
+    SculkSensor,
+    CalibratedSculkSensor,
+    Shelf,
     Other,
 }
 
@@ -117,6 +125,9 @@ pub enum BlockEntity {
     Crafter(crafter::Crafter),
     Lectern(lectern::Lectern),
     DaylightDetector,
+    Sculk(sculk::Sensor),
+    /// A shelf's 3 slots.
+    Shelf(Vec<container::Stack>),
 }
 
 impl BlockEntity {
@@ -126,13 +137,15 @@ impl BlockEntity {
             | BlockEntity::Dropper(_)
             | BlockEntity::Comparator(_)
             | BlockEntity::Jukebox
-            | BlockEntity::Lectern(_) => false,
+            | BlockEntity::Lectern(_)
+            | BlockEntity::Shelf(_) => false,
             BlockEntity::Piston(_)
             | BlockEntity::Hopper(_)
             | BlockEntity::Bell
             | BlockEntity::ShulkerBox(_)
             | BlockEntity::Crafter(_)
-            | BlockEntity::DaylightDetector => true,
+            | BlockEntity::DaylightDetector
+            | BlockEntity::Sculk(_) => true,
         }
     }
 }
@@ -153,6 +166,9 @@ pub fn has_block_entity(kind: Kind) -> bool {
             | Kind::Crafter
             | Kind::Lectern
             | Kind::DaylightDetector
+            | Kind::SculkSensor
+            | Kind::CalibratedSculkSensor
+            | Kind::Shelf
     )
 }
 
@@ -168,6 +184,8 @@ pub fn new_block_entity(_level: &Level, _pos: Pos, state: StateId) -> Option<Blo
         Kind::Crafter => Some(BlockEntity::Crafter(crafter::Crafter::new())),
         Kind::Lectern => Some(BlockEntity::Lectern(lectern::Lectern::default())),
         Kind::DaylightDetector => Some(BlockEntity::DaylightDetector),
+        Kind::Shelf => Some(BlockEntity::Shelf(vec![container::Stack::default(); 3])),
+        Kind::SculkSensor | Kind::CalibratedSculkSensor => Some(BlockEntity::Sculk(sculk::Sensor::default())),
         _ => None,
     }
 }
@@ -178,6 +196,7 @@ pub fn tick_block_entity(level: &mut Level, pos: Pos) {
         Some(BlockEntity::Hopper(_)) => container::push_items_tick(level, pos),
         Some(BlockEntity::Crafter(_)) => crafter::tick_entity(level, pos),
         Some(BlockEntity::DaylightDetector) => daylight::tick_entity(level, pos),
+        Some(BlockEntity::Sculk(_)) => sculk::tick_entity(level, pos),
         _ => {}
     }
 }
@@ -198,6 +217,9 @@ pub fn has_analog_output(level: &Level, state: StateId) -> bool {
             | Kind::CopperBulb
             | Kind::Crafter
             | Kind::Lectern
+            | Kind::SculkSensor
+            | Kind::CalibratedSculkSensor
+            | Kind::Shelf
     )
 }
 
@@ -210,6 +232,8 @@ pub fn analog_output(level: &Level, pos: Pos, state: StateId) -> i32 {
         Kind::CopperBulb => bulb::bulb_analog_output(level, state),
         Kind::Crafter => crafter::analog_output(level, pos),
         Kind::Lectern => lectern::analog_output(level, pos, state),
+        Kind::Shelf => shelf::analog_output(level, pos),
+        Kind::SculkSensor | Kind::CalibratedSculkSensor => sculk::analog_output(level, pos, state),
         Kind::Composter => level.int(state, "level"),
         Kind::Cake => (7 - level.int(state, "bites")) * 2,
         _ => 0,
@@ -258,6 +282,8 @@ pub fn is_signal_source(level: &Level, state: StateId) -> bool {
                 | Kind::TripwireHook
                 | Kind::Lectern
                 | Kind::DaylightDetector
+                | Kind::SculkSensor
+                | Kind::CalibratedSculkSensor
         ),
     }
 }
@@ -309,6 +335,7 @@ pub fn get_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i32 {
         Kind::TripwireHook => plain::hook_signal(level, state),
         Kind::Lectern => lectern::get_signal(level, state),
         Kind::DaylightDetector => daylight::get_signal(level, state),
+        Kind::SculkSensor | Kind::CalibratedSculkSensor => sculk::get_signal(level, state, dir),
         Kind::Observer => observer::get_signal(level, state, dir),
         Kind::Comparator => comparator::get_signal(level, pos, state, dir),
         Kind::Repeater => repeater::get_signal(level, pos, state, dir),
@@ -328,6 +355,7 @@ pub fn get_direct_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i
         Kind::Comparator => comparator::get_signal(level, pos, state, dir),
         Kind::TripwireHook => plain::hook_direct_signal(level, state, dir),
         Kind::Lectern => lectern::get_direct_signal(level, state, dir),
+        Kind::SculkSensor | Kind::CalibratedSculkSensor => sculk::get_direct_signal(level, state, dir),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::get_direct_signal(level, pos, state, dir),
         _ => 0,
     }
@@ -347,6 +375,8 @@ pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId, moved
         Kind::Water => water::on_place(level, pos, state),
         Kind::Hopper => container::hopper_on_place(level, pos, state, old),
         Kind::CopperBulb => bulb::bulb_on_place(level, pos, state, old),
+        Kind::Tripwire => tripwire::on_place(level, pos, state, old),
+        Kind::Shelf => shelf::on_place(level, pos, state, old),
         _ => {}
     }
 }
@@ -366,6 +396,9 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
             torch::affect_neighbors_after_removal(level, pos, state, moved_by_piston)
         }
         Kind::Lectern => lectern::affect_neighbors_after_removal(level, pos, state),
+        Kind::Tripwire => tripwire::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
+        Kind::SculkSensor | Kind::CalibratedSculkSensor => sculk::affect_neighbors_after_removal(level, pos, state),
+        Kind::TripwireHook => tripwire::hook_affect_neighbors_after_removal(level, pos, state, moved_by_piston),
         // `Containers.updateNeighboursAfterDestroy`.
         Kind::Chest
         | Kind::Barrel
@@ -405,6 +438,7 @@ pub fn neighbor_changed(
         Kind::CopperBulb => bulb::bulb_neighbor_changed(level, pos, state),
         Kind::Bell => bulb::bell_neighbor_changed(level, pos, state),
         Kind::Crafter => crafter::neighbor_changed(level, pos, state),
+        Kind::Shelf => shelf::neighbor_changed(level, pos, state),
         _ => {}
     }
 }
@@ -431,6 +465,7 @@ pub fn update_shape(
         Kind::Bell => bulb::bell_update_shape(level, pos, state, dir),
         Kind::Leaves => plain::leaves_update_shape(level, pos, state, neighbor_state),
         Kind::TripwireHook => plain::hook_update_shape(level, pos, state, dir),
+        Kind::Tripwire => tripwire::update_shape(level, state, dir, neighbor_state),
         Kind::Chest => chest_update_shape(level, state, dir, neighbor_state),
         _ => state,
     }
@@ -480,6 +515,8 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
         Kind::Dispenser => dispenser::tick(level, pos, state),
         Kind::Crafter => crafter::tick(level, pos, state),
         Kind::Lectern => lectern::tick(level, pos, state),
+        Kind::TripwireHook => tripwire::hook_tick(level, pos, state),
+        Kind::SculkSensor | Kind::CalibratedSculkSensor => sculk::tick(level, pos, state),
         Kind::Leaves => plain::leaves_tick(level, pos, state),
         _ => {}
     }

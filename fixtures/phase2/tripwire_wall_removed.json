@@ -1,6 +1,6 @@
 {
   "name": "tripwire_wall_removed",
-  "description": "The block a hook hangs on is removed, so the hook pops off and the hook across the string comes loose.",
+  "description": "The block a hook hangs on is removed, so the hook pops off and the hook across the string comes loose. The line hangs two blocks up so the popped hook's item falls clear of the string.",
   "ticks": 30,
   "levels": [
     "state",
@@ -12,14 +12,16 @@
   ],
   "palette": {
     "#": "stone",
-    "L": "redstone_lamp[lit=false]",
     "h": "tripwire_hook[attached=true,facing=east,powered=false]",
     "H": "tripwire_hook[attached=true,facing=west,powered=false]",
     "s": "tripwire[attached=true,disarmed=false,east=true,north=false,powered=false,south=false,west=true]"
   },
   "layers": [
     [
-      "#L###L#"
+      "#.....#"
+    ],
+    [
+      "#.....#"
     ],
     [
       "#hsssH#"
@@ -31,7 +33,7 @@
       "action": "destroy",
       "pos": [
         0,
-        1,
+        2,
         0
       ]
     }

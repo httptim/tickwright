@@ -23,6 +23,12 @@ impl Pos {
         Pos::new(self.x + dx, self.y + dy, self.z + dz)
     }
 
+    /// `relative(dir, n)`.
+    pub fn offset_by(self, dir: Dir, n: i32) -> Pos {
+        let [dx, dy, dz] = dir.step();
+        Pos::new(self.x + dx * n, self.y + dy * n, self.z + dz * n)
+    }
+
     pub fn above(self) -> Pos {
         self.offset(Dir::Up)
     }

@@ -447,6 +447,7 @@ fn bell_state(level: &Level, ctx: &Context, base: StateId) -> Option<StateId> {
 /// `setPlacedBy`, run after the block is set.
 fn placed_by(level: &mut Level, pos: Pos, state: StateId) {
     match level.kind(state) {
+        Kind::TripwireHook => super::tripwire::hook_placed_by(level, pos, state),
         Kind::Door => {
             let upper = level.with(state, "half", "upper");
             level.set_block(pos.above(), upper, flags::ALL);

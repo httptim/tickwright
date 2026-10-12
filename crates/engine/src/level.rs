@@ -11,6 +11,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::blocks::water::Fluid;
 use crate::blocks::{self, Kind};
+use crate::game_event::GameEvent;
 use crate::orientation::{Orientation, SideBias};
 use crate::pos::{Dir, Pos, UPDATE_ORDER, UPDATE_SHAPE_ORDER};
 use crate::record::{Event, Recorder};
@@ -333,7 +334,16 @@ impl Level {
         if self.is_air(state) {
             return false;
         }
-        self.set_block_rec(pos, self.air, flags::ALL, recursion)
+        let ok = self.set_block_rec(pos, self.air, flags::ALL, recursion);
+        if ok {
+            self.game_event(GameEvent::BlockDestroy, pos);
+        }
+        ok
+    }
+
+    /// `Level.gameEvent`.
+    pub fn game_event(&mut self, event: GameEvent, pos: Pos) {
+        blocks::post_game_event(self, event, pos);
     }
 
     pub fn remove_block(&mut self, pos: Pos) -> bool {

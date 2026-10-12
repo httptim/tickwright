@@ -6,6 +6,7 @@
 
 pub mod bench;
 pub mod blocks;
+pub mod game_event;
 pub mod items;
 pub mod level;
 pub mod orientation;

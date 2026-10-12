@@ -114,7 +114,7 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
         let pos = Pos::new(ox + c.pos[0], oy + c.pos[1], oz + c.pos[2]);
         if !matches!(
             level.kind_at(pos),
-            Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser | Kind::Crafter
+            Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser | Kind::Crafter | Kind::Shelf
         ) {
             bail!("{}: no container at {:?}", fixture.id, c.pos);
         }

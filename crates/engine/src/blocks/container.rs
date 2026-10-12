@@ -93,6 +93,7 @@ pub fn items(level: &Level, pos: Pos) -> Option<&Vec<Stack>> {
         BlockEntity::Chest(items) | BlockEntity::Dropper(items) | BlockEntity::ShulkerBox(items) => Some(items),
         BlockEntity::Hopper(h) => Some(&h.items),
         BlockEntity::Crafter(c) => Some(&c.items),
+        BlockEntity::Shelf(items) => Some(items),
         _ => None,
     }
 }
@@ -102,6 +103,7 @@ fn items_mut(level: &mut Level, pos: Pos) -> &mut Vec<Stack> {
         Some(BlockEntity::Chest(items) | BlockEntity::Dropper(items) | BlockEntity::ShulkerBox(items)) => items,
         Some(BlockEntity::Hopper(h)) => &mut h.items,
         Some(BlockEntity::Crafter(c)) => &mut c.items,
+        Some(BlockEntity::Shelf(items)) => items,
         _ => panic!("no container at {pos:?}"),
     }
 }
