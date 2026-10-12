@@ -119,8 +119,9 @@ public final class Capture {
             Class.forName(c, false, Capture.class.getClassLoader());
         }
         System.out.printf("agent patched: %s%n", new TreeMap<>(Hooks.patched));
+        Class.forName("net.minecraft.util.RandomSupport", false, Capture.class.getClassLoader());
         for (String kind : List.of("set", "neighbor", "shape", "schedule", "tick", "block_event_queued",
-                "block_event", "items")) {
+                "block_event", "items", "unique_seed")) {
             if (!Hooks.patched.containsKey(kind)) {
                 throw new IllegalStateException("the agent patched no method for " + kind
                         + "; run with -javaagent:agent.jar, or the game's method changed");
@@ -283,6 +284,10 @@ public final class Capture {
             // Entity ids decide when resting items move ((tickCount + id) % 4);
             // number them from 1 in every capture.
             resetEntityIds();
+            // Each entity's own random source gets the next seed in a count
+            // from 0, in place of one from the clock.
+            Hooks.nextSeed = 0;
+            Hooks.seedThread = Thread.currentThread();
         }
         setMaxChainedUpdates(fixture.has("max_chained_updates")
                 ? fixture.get("max_chained_updates").getAsInt() : -1);
@@ -391,6 +396,10 @@ public final class Capture {
             }
         } finally {
             recording = null;
+            Hooks.seedThread = null;
+            if (idCounter != null) {
+                idCounter.log = false;
+            }
         }
 
         // Every kind of event phase 1 needs is recorded, so the trace is
@@ -703,62 +712,52 @@ public final class Capture {
     }
 
     private static java.lang.reflect.Field entityCounter;
+    private static IdCounter idCounter;
 
-    /** Sets {@code ServerLevel.ENTITY_COUNTER} to 0, so the next entity made gets id 1. */
-    private static void resetEntityIds() {
+    @SuppressWarnings("removal")
+    private static final sun.misc.Unsafe UNSAFE;
+
+    static {
         try {
-            if (entityCounter == null) {
-                // 26.3 keeps it on ServerLevel; older versions on Entity.
-                for (Class<?> c : List.of(ServerLevel.class, Entity.class)) {
-                    for (java.lang.reflect.Field f : c.getDeclaredFields()) {
-                        if (entityCounter == null && java.lang.reflect.Modifier.isStatic(f.getModifiers())
-                                && f.getType() == java.util.concurrent.atomic.AtomicInteger.class
-                                && f.getName().equals("ENTITY_COUNTER")) {
-                            f.setAccessible(true);
-                            entityCounter = f;
-                        }
-                    }
-                }
-                if (entityCounter == null) {
-                    throw new IllegalStateException("no ENTITY_COUNTER on ServerLevel or Entity; AtomicInteger fields: "
-                            + atomicIntegerFields());
-                }
-            }
-            ((java.util.concurrent.atomic.AtomicInteger) entityCounter.get(null)).set(0);
+            java.lang.reflect.Field f = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+            f.setAccessible(true);
+            UNSAFE = (sun.misc.Unsafe) f.get(null);
         } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("cannot reset entity ids", e);
+            throw new ExceptionInInitializerError(e);
         }
     }
 
-    /** Every AtomicInteger field in the game's classes, to find where entity ids come from. */
-    private static List<String> atomicIntegerFields() {
-        List<String> out = new ArrayList<>();
-        try {
-            String jar = Entity.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-            try (java.util.jar.JarFile jf = new java.util.jar.JarFile(jar)) {
-                for (var it = jf.entries(); it.hasMoreElements(); ) {
-                    String n = it.nextElement().getName();
-                    if (!n.startsWith("net/minecraft/") || !n.endsWith(".class")) {
-                        continue;
-                    }
-                    try {
-                        Class<?> c = Class.forName(n.substring(0, n.length() - 6).replace('/', '.'), false,
-                                Capture.class.getClassLoader());
-                        for (java.lang.reflect.Field f : c.getDeclaredFields()) {
-                            if (f.getType() == java.util.concurrent.atomic.AtomicInteger.class) {
-                                out.add(c.getName() + "." + f.getName()
-                                        + (java.lang.reflect.Modifier.isStatic(f.getModifiers()) ? " (static)" : ""));
-                            }
-                        }
-                    } catch (Throwable ignored) {
-                        // Classes that can't load here are not where ids come from.
+    /** The entity id counter, logging where each id goes while a capture tracks entities. */
+    private static final class IdCounter extends java.util.concurrent.atomic.AtomicInteger {
+        volatile boolean log;
+
+        @Override
+        public int incrementAndGet() {
+            int id = super.incrementAndGet();
+            note(id);
+            return id;
+        }
+
+        @Override
+        public int getAndIncrement() {
+            int id = super.getAndIncrement();
+            note(id);
+            return id;
+        }
+
+        private void note(int id) {
+            if (log) {
+                List<String> frames = new ArrayList<>();
+                for (StackTraceElement f : Thread.currentThread().getStackTrace()) {
+                    String c = f.getClassName();
+                    if (c.startsWith("net.minecraft.") && !c.equals("net.minecraft.server.level.ServerLevel")
+                            && frames.size() < 6) {
+                        frames.add(c.substring(c.lastIndexOf('.') + 1) + "." + f.getMethodName());
                     }
                 }
+                System.out.printf("    entity id %d <- %s%n", id, String.join(" < ", frames));
             }
-        } catch (IOException e) {
-            out.add("cannot scan: " + e);
         }
-        return out;
     }
 
     /**

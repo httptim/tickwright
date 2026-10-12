@@ -71,6 +71,15 @@ public final class Agent {
             @Override
             public byte[] transform(ClassLoader loader, String name, Class<?> redefined,
                     ProtectionDomain domain, byte[] bytes) {
+                if (name.equals("net/minecraft/util/RandomSupport")) {
+                    try {
+                        return patchUniqueSeed(loader, bytes);
+                    } catch (Throwable t) {
+                        System.err.println("tickwright agent: failed to patch " + name);
+                        t.printStackTrace();
+                        return null;
+                    }
+                }
                 List<Rule> rules = RULES.stream().filter(r -> r.owner().equals(name)).toList();
                 if (rules.isEmpty()) {
                     return null;
@@ -129,6 +138,44 @@ public final class Agent {
                         } else {
                             b.ldc(rule.kind()).aload(0).aload(slot).invokestatic(hooks, "event", eventType);
                         }
+                    }
+
+                    @Override
+                    public void accept(CodeBuilder b, CodeElement e) {
+                        b.with(e);
+                    }
+                }));
+            } else {
+                cb.with(element);
+            }
+        };
+        return cf.transformClass(model, transform);
+    }
+
+    /**
+     * {@code RandomSupport.generateUniqueSeed()} returns {@code Hooks.uniqueSeed()}
+     * unless that is {@code Hooks.NO_SEED}.
+     */
+    private static byte[] patchUniqueSeed(ClassLoader loader, byte[] bytes) {
+        ClassFile cf = ClassFile.of();
+        ClassModel model = cf.parse(bytes);
+        ClassDesc hooks = ClassDesc.of("tickwright.harness.agent.Hooks");
+        ClassTransform transform = (cb, element) -> {
+            if (element instanceof MethodModel m && m.methodName().equalsString("generateUniqueSeed")
+                    && m.methodTypeSymbol().descriptorString().equals("()J")) {
+                Hooks.patched.merge("unique_seed", 1, Integer::sum);
+                cb.transformMethod(m, java.lang.classfile.MethodTransform.transformingCode(new CodeTransform() {
+                    @Override
+                    public void atStart(CodeBuilder b) {
+                        var own = b.newLabel();
+                        b.invokestatic(hooks, "uniqueSeed", MethodTypeDesc.ofDescriptor("()J"))
+                                .dup2()
+                                .ldc(Long.MIN_VALUE)
+                                .lcmp()
+                                .ifeq(own)
+                                .lreturn()
+                                .labelBinding(own)
+                                .pop2();
                     }
 
                     @Override
