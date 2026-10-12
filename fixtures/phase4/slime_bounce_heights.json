@@ -1,0 +1,118 @@
+{
+  "name": "slime_bounce_heights",
+  "description": "Eight items dropped from different heights onto their own slime blocks bounce until they settle; the bounce after a fall is stronger than the plain rule, by an amount that grows with the fall.",
+  "ticks": 80,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "item",
+    "slime"
+  ],
+  "palette": {
+    "#": "stone",
+    "S": "slime_block"
+  },
+  "layers": [
+    [
+      "#################"
+    ],
+    [
+      ".S.S.S.S.S.S.S.S."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        2.3,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:200}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        3.5,
+        2.75,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:200}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        5.5,
+        3.2,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:200}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        7.5,
+        3.9,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:200}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        9.5,
+        4.6,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:200}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        11.5,
+        5.5,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:200}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        13.5,
+        6.8,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:200}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        15.5,
+        8.5,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:200}"
+    }
+  ],
+  "entities": true
+}
