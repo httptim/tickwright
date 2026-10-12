@@ -10,6 +10,7 @@
 // Dispatch tables grow one arm per block kind as blocks are added.
 #![allow(clippy::single_match, clippy::match_single_binding)]
 
+mod bubble;
 mod bulb;
 mod button;
 mod comparator;
@@ -114,6 +115,11 @@ pub enum Kind {
     /// Light and heavy weighted pressure plates: power from how many
     /// entities are on them.
     WeightedPlate,
+    /// Soul sand and magma: bubble column sources.
+    SoulSand,
+    Magma,
+    BubbleColumn,
+    Cobweb,
     Other,
 }
 
@@ -272,7 +278,9 @@ pub fn is_conductor(level: &Level, _pos: Pos, state: StateId) -> bool {
         | Kind::ShulkerBox
         | Kind::Crafter
         | Kind::FallingBlock
-        | Kind::Tnt => true,
+        | Kind::Tnt
+        | Kind::SoulSand
+        | Kind::Magma => true,
         Kind::Slab => level.prop(state, "type") == "double",
         _ => false,
     }
@@ -327,7 +335,9 @@ pub fn is_face_sturdy(level: &Level, pos: Pos, state: StateId, dir: Dir) -> bool
         | Kind::CopperBulb
         | Kind::Crafter
         | Kind::FallingBlock
-        | Kind::Tnt => true,
+        | Kind::Tnt
+        | Kind::SoulSand
+        | Kind::Magma => true,
         Kind::Trapdoor => door::trapdoor_face_sturdy(level, state, dir),
         Kind::Slab => match level.prop(state, "type") {
             "double" => true,
@@ -498,6 +508,8 @@ pub fn update_shape(
         Kind::TripwireHook => plain::hook_update_shape(level, pos, state, dir),
         Kind::Tripwire => tripwire::update_shape(level, state, dir, neighbor_state),
         Kind::Chest => chest_update_shape(level, state, dir, neighbor_state),
+        Kind::SoulSand | Kind::Magma => bubble::source_update_shape(level, pos, state, dir, neighbor_state),
+        Kind::BubbleColumn => bubble::column_update_shape(level, pos, state, dir, neighbor_state),
         _ => state,
     }
 }
@@ -552,6 +564,8 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
         Kind::FallingBlock => falling::tick(level, pos, state),
         Kind::PressurePlate | Kind::WeightedPlate => plate::tick(level, pos, state),
         Kind::Tripwire => tripwire::tick(level, pos, state),
+        Kind::SoulSand | Kind::Magma => bubble::source_tick(level, pos, state),
+        Kind::BubbleColumn => bubble::column_tick(level, pos, state),
         _ => {}
     }
 }
@@ -570,6 +584,9 @@ pub fn entity_inside(level: &mut Level, pos: Pos, state: StateId) {
     match level.kind(state) {
         Kind::PressurePlate | Kind::WeightedPlate => plate::entity_inside(level, pos, state),
         Kind::Tripwire => tripwire::entity_inside(level, pos, state),
+        Kind::Hopper => container::hopper_entity_inside(level, pos),
+        Kind::BubbleColumn => bubble::column_entity_inside(level, pos, state),
+        Kind::Cobweb => bubble::web_entity_inside(level),
         _ => {}
     }
 }

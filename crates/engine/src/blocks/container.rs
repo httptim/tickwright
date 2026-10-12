@@ -11,6 +11,7 @@
 //! why a hopper marks itself changed once per transfer.
 
 use crate::level::{Level, flags};
+use crate::physics::Aabb;
 use crate::pos::Pos;
 use crate::registry::StateId;
 
@@ -291,12 +292,21 @@ pub fn push_items_tick(level: &mut Level, pos: Pos) {
     h.ticked_game_time = now;
     if !h.on_cooldown() {
         h.cooldown = 0;
-        try_move_items(level, pos);
+        try_move_items(level, pos, Intake::Above);
     }
 }
 
+/// What a hopper takes in once it has tried to eject.
+enum Intake {
+    /// `suckInItems`: from the container or the items above.
+    Above,
+    /// `addItem(hopper, itemEntity)` for the item that just entered it: the
+    /// last entity in the level's list while blocks see it.
+    Entity,
+}
+
 /// `tryMoveItems`.
-fn try_move_items(level: &mut Level, pos: Pos) -> bool {
+fn try_move_items(level: &mut Level, pos: Pos, intake: Intake) -> bool {
     let state = level.get(pos);
     if hopper(level, pos).on_cooldown() || !level.flag(state, "enabled") {
         return false;
@@ -306,13 +316,51 @@ fn try_move_items(level: &mut Level, pos: Pos) -> bool {
         changed = eject_items(level, pos, state);
     }
     if !is_full_container(level, pos) {
-        changed |= suck_in_items(level, pos);
+        changed |= match intake {
+            Intake::Above => suck_in_items(level, pos),
+            Intake::Entity => {
+                let k = level.entities.len() - 1;
+                add_item_entity(level, pos, k)
+            }
+        };
     }
     if changed {
         hopper_mut(level, pos).cooldown = 8;
         set_changed_static(level, pos);
     }
     changed
+}
+
+/// `Hopper.SUCK_AABB` at the hopper: a full block from 11/16 up to two
+/// blocks above its base.
+fn suck_box(pos: Pos) -> Aabb {
+    Aabb::new(0.0, 11.0 / 16.0, 0.0, 1.0, 2.0, 1.0).offset(pos.x as f64, pos.y as f64, pos.z as f64)
+}
+
+/// `HopperBlockEntity.entityInside`: an item that touches the suck box
+/// goes in at once.
+pub fn hopper_entity_inside(level: &mut Level, pos: Pos) {
+    let Some(e) = level.entities.last() else { return };
+    let crate::entity::Data::Item(item) = &e.data else { return };
+    if item.stack.is_empty() || !e.bounding_box().intersects(&suck_box(pos)) {
+        return;
+    }
+    try_move_items(level, pos, Intake::Entity);
+}
+
+/// `addItem(container, itemEntity)`: as much of the stack as fits.
+fn add_item_entity(level: &mut Level, pos: Pos, k: usize) -> bool {
+    let crate::entity::Data::Item(item) = &level.entities[k].data else { return false };
+    // Entities keep bare item ids; containers keep namespaced ones.
+    let stack = Stack::new(&format!("minecraft:{}", item.stack.id), item.stack.count);
+    let rest = add_item(level, None, pos, stack);
+    let e = &mut level.entities[k];
+    let crate::entity::Data::Item(item) = &mut e.data else { unreachable!() };
+    item.stack.count = rest.count;
+    if rest.is_empty() {
+        e.discard();
+    }
+    rest.is_empty()
 }
 
 /// `ejectItems`: one item into the container the hopper faces.
@@ -352,10 +400,23 @@ fn restore(level: &mut Level, pos: Pos, slot: usize, mut stack: Stack, count: i3
     }
 }
 
-/// `suckInItems`: one item from the container above.
+/// `suckInItems`: one item from the container above, or else any item
+/// lying in the suck box, unless a full block sits on the hopper.
 fn suck_in_items(level: &mut Level, pos: Pos) -> bool {
     let Some(source) = container_at(level, pos.above()) else {
-        return false;
+        let above = level.get(pos.above());
+        if level.physics().is_full_block(above) {
+            return false;
+        }
+        let b = suck_box(pos);
+        let mut items: Vec<usize> = (0..level.entities.len())
+            .filter(|&k| {
+                let e = &level.entities[k];
+                !e.removed && matches!(e.data, crate::entity::Data::Item(_)) && e.bounding_box().intersects(&b)
+            })
+            .collect();
+        items.sort_by_key(|&k| level.entities[k].id);
+        return items.into_iter().any(|k| add_item_entity(level, pos, k));
     };
     for slot in 0..size(level, source) {
         let stack = get_item(level, source, slot);

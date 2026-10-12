@@ -57,6 +57,15 @@ impl FluidState {
     pub fn is_source(self) -> bool {
         self.fluid == Fluid::Water
     }
+
+    /// `FluidState.getOwnHeight`.
+    pub fn own_height(self) -> f32 {
+        self.amount as f32 / 9.0
+    }
+
+    pub fn is_falling(self) -> bool {
+        self.falling
+    }
 }
 
 /// Blocks that implement `SimpleWaterloggedBlock` (a `LiquidBlockContainer`).
@@ -76,6 +85,7 @@ pub fn fluid_state(level: &Level, state: StateId) -> FluidState {
             l if l < 8 => flowing(8 - l, false),
             _ => flowing(8, true),
         },
+        Kind::BubbleColumn => SOURCE,
         _ if is_container(level, state) && level.flag(state, "waterlogged") => SOURCE,
         _ => EMPTY,
     }
@@ -109,6 +119,7 @@ pub fn is_solid(level: &Level, state: StateId) -> bool {
             | Kind::PoweredRail
             | Kind::TripwireHook
             | Kind::Tripwire
+            | Kind::BubbleColumn
     )
 }
 
