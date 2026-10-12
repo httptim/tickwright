@@ -717,19 +717,45 @@ public final class Capture {
                     }
                 }
                 if (entityCounter == null) {
-                    List<String> statics = new ArrayList<>();
-                    for (java.lang.reflect.Field f : Entity.class.getDeclaredFields()) {
-                        if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
-                            statics.add(f.getType().getSimpleName() + " " + f.getName());
-                        }
-                    }
-                    throw new IllegalStateException("no entity id counter in Entity; its static fields: " + statics);
+                    throw new IllegalStateException("no entity id counter in Entity; AtomicInteger fields: "
+                            + atomicIntegerFields());
                 }
             }
             ((java.util.concurrent.atomic.AtomicInteger) entityCounter.get(null)).set(0);
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("cannot reset entity ids", e);
         }
+    }
+
+    /** Every AtomicInteger field in the game's classes, to find where entity ids come from. */
+    private static List<String> atomicIntegerFields() {
+        List<String> out = new ArrayList<>();
+        try {
+            String jar = Entity.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+            try (java.util.jar.JarFile jf = new java.util.jar.JarFile(jar)) {
+                for (var it = jf.entries(); it.hasMoreElements(); ) {
+                    String n = it.nextElement().getName();
+                    if (!n.startsWith("net/minecraft/") || !n.endsWith(".class")) {
+                        continue;
+                    }
+                    try {
+                        Class<?> c = Class.forName(n.substring(0, n.length() - 6).replace('/', '.'), false,
+                                Capture.class.getClassLoader());
+                        for (java.lang.reflect.Field f : c.getDeclaredFields()) {
+                            if (f.getType() == java.util.concurrent.atomic.AtomicInteger.class) {
+                                out.add(c.getName() + "." + f.getName()
+                                        + (java.lang.reflect.Modifier.isStatic(f.getModifiers()) ? " (static)" : ""));
+                            }
+                        }
+                    } catch (Throwable ignored) {
+                        // Classes that can't load here are not where ids come from.
+                    }
+                }
+            }
+        } catch (IOException e) {
+            out.add("cannot scan: " + e);
+        }
+        return out;
     }
 
     /**
