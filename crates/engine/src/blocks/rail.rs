@@ -137,33 +137,34 @@ pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId, moved_by_pi
     }
 }
 
-/// `BaseRailBlock.onPlace`: a fresh rail queues a neighbor update to itself,
-/// which checks its power.
+/// `BaseRailBlock.onPlace`, as the captures show it.
 ///
-/// When only `powered` changes, the game also updates the neighbors of the
-/// rail and of the block below it, before the write's own updates go out.
-/// This is read from captures (`nucleation_rails_chain`), not the code.
+/// A fresh rail checks its power at once, through a queued neighbor update,
+/// but is not removed for lack of support: a sloped rail placed before the
+/// block it leans on survives in the game (`powered_rail_slope`).
+///
+/// When only `powered` changes, the rail updates the neighbors above it (if
+/// sloped), its own and those below it, in that order, before the write's
+/// own updates go out: the same updates as removing it.
 pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId) {
     let block = level.block(state);
     if !level.is(old, block) {
-        level.neighbor_changed(pos, block);
+        update_state(level, pos, state);
     } else if level.flag(old, "powered") != level.flag(state, "powered") {
-        level.update_neighbors_at(pos, block);
-        level.update_neighbors_at(pos.below(), block);
-        if is_slope(level.prop(state, "shape")) {
-            level.update_neighbors_at(pos.above(), block);
-        }
+        removal_updates(level, pos, state, block);
     }
 }
 
-pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateId, moved_by_piston: bool) {
-    if moved_by_piston {
-        return;
-    }
-    let block = level.block(state);
+fn removal_updates(level: &mut Level, pos: Pos, state: StateId, block: crate::registry::BlockId) {
     if is_slope(level.prop(state, "shape")) {
         level.update_neighbors_at(pos.above(), block);
     }
     level.update_neighbors_at(pos, block);
     level.update_neighbors_at(pos.below(), block);
+}
+
+pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateId, moved_by_piston: bool) {
+    if !moved_by_piston {
+        removal_updates(level, pos, state, level.block(state));
+    }
 }
