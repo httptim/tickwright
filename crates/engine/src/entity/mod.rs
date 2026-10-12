@@ -628,9 +628,10 @@ pub fn block_collisions(level: &Level, b: Aabb) -> Vec<(Pos, Vec<Aabb>)> {
                 }
                 let p = Pos::new(x, y, z);
                 let state = level.get(p);
-                if edges == 1 && !physics.has_large_shape(state)
-                    || edges == 2 && level.kind(state) != Kind::MovingPiston
-                {
+                // A moving piston's shape is dynamic, which the game counts
+                // as a large shape.
+                let moving = level.kind(state) == Kind::MovingPiston;
+                if edges == 1 && !(moving || physics.has_large_shape(state)) || edges == 2 && !moving {
                     continue;
                 }
                 let shape = collision_shape(level, p, state);

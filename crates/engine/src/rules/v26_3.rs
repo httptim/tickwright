@@ -32,6 +32,8 @@ fn block(name: &str) -> Option<Kind> {
         "lever" => Kind::Lever,
         "sand" | "red_sand" | "gravel" => Kind::FallingBlock,
         "tnt" => Kind::Tnt,
+        n if n.starts_with("dead_") && n.ends_with("_coral_wall_fan") => Kind::DeadCoralWallFan,
+        n if n.starts_with("dead_") && (n.ends_with("_coral_fan") || n.ends_with("_coral")) => Kind::DeadCoral,
         "light_weighted_pressure_plate" | "heavy_weighted_pressure_plate" => Kind::WeightedPlate,
         n if n.ends_with("_pressure_plate") => Kind::PressurePlate,
         "torch" | "soul_torch" | "copper_torch" => Kind::Torch,

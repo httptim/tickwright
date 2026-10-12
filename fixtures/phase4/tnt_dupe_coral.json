@@ -1,0 +1,73 @@
+{
+  "name": "tnt_dupe_coral",
+  "description": "A TNT duper. A sticky piston pushes two slime blocks (and the stone they stick to), carrying a dead coral fan and a TNT. The TNT sits under a redstone block that was placed without updates. When the piston head replaces the slime under the fan's original spot, that fan pops and updates the powered TNT. The TNT primes, while the piston still places its cached copy.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "tnt",
+    "duplication"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "sticky_piston[extended=false,facing=east]",
+    "S": "slime_block",
+    "F": "dead_tube_coral_fan[waterlogged=false]",
+    "T": "tnt"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".....",
+      "PS...",
+      ".S...",
+      "....."
+    ],
+    [
+      ".....",
+      ".F...",
+      ".T...",
+      "....."
+    ],
+    [
+      ".....",
+      ".....",
+      ".....",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "set",
+      "pos": [
+        1,
+        3,
+        2
+      ],
+      "state": "redstone_block",
+      "quiet": true
+    },
+    {
+      "tick": 5,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "state": "redstone_block"
+    }
+  ],
+  "entities": true
+}
