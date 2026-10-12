@@ -30,6 +30,7 @@ pub mod water;
 mod wire;
 
 use crate::level::Level;
+use crate::orientation::Orientation;
 use crate::pos::{Dir, Pos};
 use crate::registry::{BlockId, StateId};
 
@@ -341,11 +342,17 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
     }
 }
 
-pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId, source: BlockId, moved_by_piston: bool) {
-    let _ = moved_by_piston;
+pub fn neighbor_changed(
+    level: &mut Level,
+    pos: Pos,
+    state: StateId,
+    source: BlockId,
+    moved_by_piston: bool,
+    orientation: Option<Orientation>,
+) {
     match level.kind(state) {
         Kind::RedstoneLamp => lamp::neighbor_changed(level, pos, state),
-        Kind::RedstoneWire => wire::neighbor_changed(level, pos, state),
+        Kind::RedstoneWire => wire::neighbor_changed(level, pos, state, source, orientation),
         Kind::Repeater => repeater::neighbor_changed(level, pos, state),
         Kind::Comparator => comparator::neighbor_changed(level, pos, state),
         Kind::NoteBlock => note::neighbor_changed(level, pos, state),

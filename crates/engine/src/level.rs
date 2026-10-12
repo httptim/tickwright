@@ -11,6 +11,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::blocks::water::Fluid;
 use crate::blocks::{self, Kind};
+use crate::orientation::{Orientation, SideBias};
 use crate::pos::{Dir, Pos, UPDATE_ORDER, UPDATE_SHAPE_ORDER};
 use crate::record::{Event, Recorder};
 use crate::registry::{BlockId, Registry, StateId};
@@ -65,12 +66,12 @@ struct FluidTick {
 enum Update {
     /// `MultiNeighborUpdate`: neighbor-changed to each side of `source` in
     /// `UPDATE_ORDER`, except `skip`.
-    Multi { source: Pos, block: BlockId, skip: Option<Dir>, idx: usize },
+    Multi { source: Pos, block: BlockId, skip: Option<Dir>, idx: usize, orientation: Option<Orientation> },
     /// `SimpleNeighborUpdate`: neighbor-changed to one position.
-    Simple { pos: Pos, block: BlockId, moved_by_piston: bool },
+    Simple { pos: Pos, block: BlockId, moved_by_piston: bool, orientation: Option<Orientation> },
     /// `FullNeighborUpdate`: like `Simple`, but with the state to notify
     /// given rather than read from the world.
-    Full { pos: Pos, state: StateId, block: BlockId, moved_by_piston: bool },
+    Full { pos: Pos, state: StateId, block: BlockId, moved_by_piston: bool, orientation: Option<Orientation> },
     /// `ShapeUpdate`.
     Shape { dir: Dir, pos: Pos, neighbor: Pos, neighbor_state: StateId, flags: i32, recursion: i32 },
 }
@@ -128,6 +129,14 @@ pub struct Level {
     /// `RedstoneTorchBlock.RECENT_TOGGLES`: forced turn-offs, oldest first.
     pub torch_toggles: Vec<(Pos, i64)>,
 
+    /// The `redstone_experiments` feature: dust uses the experimental
+    /// evaluator and updates carry an [`Orientation`].
+    pub experimental_redstone: bool,
+    /// Stands in for the level's random source where experimental redstone
+    /// picks a random orientation. The game's sequence can't be reproduced,
+    /// so only results that don't depend on it are comparable.
+    rng: u64,
+
     pub phase: Phase,
     pub recorder: Option<Recorder>,
 }
@@ -162,6 +171,8 @@ impl Level {
             ticking_block_entities: false,
             wire_signals: Cell::new(true),
             torch_toggles: Vec::new(),
+            experimental_redstone: false,
+            rng: 0x9E37_79B9_7F4A_7C15,
             phase: Phase::Input,
             recorder: None,
         }
@@ -364,26 +375,85 @@ impl Level {
 
     // --- neighbor and shape updates ------------------------------------------
 
-    /// `Level.updateNeighborsAt(pos, block)`.
-    pub fn update_neighbors_at(&mut self, pos: Pos, block: BlockId) {
-        self.add_and_run(Update::Multi { source: pos, block, skip: None, idx: 0 });
+    /// `Orientation.random(level.random)`.
+    pub fn random_orientation(&mut self) -> Orientation {
+        // xorshift64*
+        self.rng ^= self.rng >> 12;
+        self.rng ^= self.rng << 25;
+        self.rng ^= self.rng >> 27;
+        let r = self.rng.wrapping_mul(0x2545_F491_4F6C_DD1D) >> 33;
+        Orientation::all().nth((r % 48) as usize).unwrap()
     }
 
-    /// `Level.updateNeighborsAtExceptFromFacing(pos, block, skip)`.
+    /// `ExperimentalRedstoneUtils.initialOrientation(level, front, up)`:
+    /// `None` unless experimental redstone is on.
+    pub fn initial_orientation(&mut self, front: Option<Dir>, up: Option<Dir>) -> Option<Orientation> {
+        if !self.experimental_redstone {
+            return None;
+        }
+        let mut o = self.random_orientation().with_bias(SideBias::Left);
+        if let Some(up) = up {
+            o = o.with_up(up);
+        }
+        if let Some(front) = front {
+            o = o.with_front(front);
+        }
+        Some(o)
+    }
+
+    /// `Level.updateNeighborsAt(pos, block)`.
+    pub fn update_neighbors_at(&mut self, pos: Pos, block: BlockId) {
+        let orientation = self.initial_orientation(None, None);
+        self.update_neighbors_at_oriented(pos, block, orientation);
+    }
+
+    /// `Level.updateNeighborsAt(pos, block, orientation)`.
+    pub fn update_neighbors_at_oriented(&mut self, pos: Pos, block: BlockId, orientation: Option<Orientation>) {
+        self.add_and_run(Update::Multi { source: pos, block, skip: None, idx: 0, orientation });
+    }
+
+    /// `Level.updateNeighborsAtExceptFromFacing(pos, block, skip, orientation)`.
     pub fn update_neighbors_except(&mut self, pos: Pos, block: BlockId, skip: Dir) {
+        let orientation = self.initial_orientation(None, None);
+        self.update_neighbors_except_oriented(pos, block, skip, orientation);
+    }
+
+    pub fn update_neighbors_except_oriented(
+        &mut self,
+        pos: Pos,
+        block: BlockId,
+        skip: Dir,
+        orientation: Option<Orientation>,
+    ) {
         let idx = if UPDATE_ORDER[0] == skip { 1 } else { 0 };
-        self.add_and_run(Update::Multi { source: pos, block, skip: Some(skip), idx });
+        self.add_and_run(Update::Multi { source: pos, block, skip: Some(skip), idx, orientation });
     }
 
     /// `Level.neighborChanged(pos, block)`: one neighbor-changed update.
     pub fn neighbor_changed(&mut self, pos: Pos, block: BlockId) {
-        self.add_and_run(Update::Simple { pos, block, moved_by_piston: false });
+        self.neighbor_changed_oriented(pos, block, None);
+    }
+
+    /// `Level.neighborChanged(pos, block, orientation)`.
+    pub fn neighbor_changed_oriented(&mut self, pos: Pos, block: BlockId, orientation: Option<Orientation>) {
+        self.add_and_run(Update::Simple { pos, block, moved_by_piston: false, orientation });
     }
 
     /// `Level.neighborChanged(state, pos, block, orientation, movedByPiston)`:
     /// one neighbor-changed update to `state`, which need not be in the world.
     pub fn neighbor_changed_state(&mut self, pos: Pos, state: StateId, block: BlockId, moved_by_piston: bool) {
-        self.add_and_run(Update::Full { pos, state, block, moved_by_piston });
+        self.neighbor_changed_state_oriented(pos, state, block, moved_by_piston, None);
+    }
+
+    pub fn neighbor_changed_state_oriented(
+        &mut self,
+        pos: Pos,
+        state: StateId,
+        block: BlockId,
+        moved_by_piston: bool,
+        orientation: Option<Orientation>,
+    ) {
+        self.add_and_run(Update::Full { pos, state, block, moved_by_piston, orientation });
     }
 
     /// `BlockStateBase.updateNeighbourShapes`: tell each neighbor of `pos`,
@@ -468,10 +538,10 @@ impl Level {
 
     fn execute(&mut self, step: Step) {
         match step {
-            Step::Neighbor { pos, state, block, moved_by_piston } => {
+            Step::Neighbor { pos, state, block, moved_by_piston, orientation } => {
                 let state = state.unwrap_or_else(|| self.get(pos));
                 self.record(Event::Neighbor, pos);
-                blocks::neighbor_changed(self, pos, state, block, moved_by_piston);
+                blocks::neighbor_changed(self, pos, state, block, moved_by_piston, orientation);
             }
             Step::Shape { dir, pos, neighbor, neighbor_state, flags: f, recursion } => {
                 let state = self.get(pos);
@@ -726,26 +796,54 @@ impl Level {
 
 /// One notification taken off an update entry.
 enum Step {
-    Neighbor { pos: Pos, state: Option<StateId>, block: BlockId, moved_by_piston: bool },
-    Shape { dir: Dir, pos: Pos, neighbor: Pos, neighbor_state: StateId, flags: i32, recursion: i32 },
+    Neighbor {
+        pos: Pos,
+        state: Option<StateId>,
+        block: BlockId,
+        moved_by_piston: bool,
+        orientation: Option<Orientation>,
+    },
+    Shape {
+        dir: Dir,
+        pos: Pos,
+        neighbor: Pos,
+        neighbor_state: StateId,
+        flags: i32,
+        recursion: i32,
+    },
 }
 
 /// `NeighborUpdates.runNext`: the next notification and whether more remain.
 fn next_step(u: &mut Update) -> (Option<Step>, bool) {
     match u {
-        Update::Multi { source, block, skip, idx } => {
-            let pos = source.offset(UPDATE_ORDER[*idx]);
+        Update::Multi { source, block, skip, idx, orientation } => {
+            let dir = UPDATE_ORDER[*idx];
+            let pos = source.offset(dir);
             *idx += 1;
             if *idx < 6 && Some(UPDATE_ORDER[*idx]) == *skip {
                 *idx += 1;
             }
-            (Some(Step::Neighbor { pos, state: None, block: *block, moved_by_piston: false }), *idx < 6)
+            let orientation = orientation.map(|o| o.with_front(dir));
+            (Some(Step::Neighbor { pos, state: None, block: *block, moved_by_piston: false, orientation }), *idx < 6)
         }
-        Update::Simple { pos, block, moved_by_piston } => {
-            (Some(Step::Neighbor { pos: *pos, state: None, block: *block, moved_by_piston: *moved_by_piston }), false)
-        }
-        Update::Full { pos, state, block, moved_by_piston } => (
-            Some(Step::Neighbor { pos: *pos, state: Some(*state), block: *block, moved_by_piston: *moved_by_piston }),
+        Update::Simple { pos, block, moved_by_piston, orientation } => (
+            Some(Step::Neighbor {
+                pos: *pos,
+                state: None,
+                block: *block,
+                moved_by_piston: *moved_by_piston,
+                orientation: *orientation,
+            }),
+            false,
+        ),
+        Update::Full { pos, state, block, moved_by_piston, orientation } => (
+            Some(Step::Neighbor {
+                pos: *pos,
+                state: Some(*state),
+                block: *block,
+                moved_by_piston: *moved_by_piston,
+                orientation: *orientation,
+            }),
             false,
         ),
         Update::Shape { dir, pos, neighbor, neighbor_state, flags, recursion } => (

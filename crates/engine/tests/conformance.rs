@@ -83,12 +83,17 @@ fn engine_matches_the_game() {
             .collect();
 
     let show = std::env::var("TICKWRIGHT_SHOW").ok();
+    // `TICKWRIGHT_ONLY=<substring>` runs only the fixtures whose name contains it.
+    let only = std::env::var("TICKWRIGHT_ONLY").ok();
     // fixture name -> per orientation, the highest level matched (None = not even state).
     let mut results: BTreeMap<String, Vec<(String, Option<Level>)>> = BTreeMap::new();
     let mut unsupported: BTreeMap<String, String> = BTreeMap::new();
     for path in &traces {
         let game = load_trace(path);
         let (name, transform) = game.fixture.split_once('@').unwrap();
+        if only.as_deref().is_some_and(|o| !game.fixture.contains(o)) {
+            continue;
+        }
         let fixture = fixtures.get(name).unwrap_or_else(|| panic!("no fixture {name}"));
         let resolved = fixture.resolve(transform.parse().unwrap()).unwrap();
         // Builds with blocks the engine doesn't simulate yet are listed as
@@ -111,7 +116,7 @@ fn engine_matches_the_game() {
                 }
             }
         }
-        if show.as_deref() == Some(game.fixture.as_str()) {
+        if show.as_deref().is_some_and(|s| s == game.fixture || s == name) {
             match &first_failure {
                 Some(d) => println!("{}: {d}", game.fixture),
                 None => println!("{}: matches at every level", game.fixture),

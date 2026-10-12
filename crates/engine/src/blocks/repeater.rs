@@ -139,8 +139,9 @@ pub(super) fn update_neighbors_in_front(level: &mut Level, pos: Pos, state: Stat
     let facing = level.dir(state, "facing");
     let front = pos.offset(facing.opposite());
     let block = level.block(state);
-    level.neighbor_changed(front, block);
-    level.update_neighbors_except(front, block, facing);
+    let orientation = level.initial_orientation(Some(facing.opposite()), Some(Dir::Up));
+    level.neighbor_changed_oriented(front, block, orientation);
+    level.update_neighbors_except_oriented(front, block, facing, orientation);
 }
 
 pub fn on_place(level: &mut Level, pos: Pos, state: StateId) {

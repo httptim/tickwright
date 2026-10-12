@@ -134,3 +134,17 @@ place_pistons_and_observers order
 place_rails_and_more order
 update_skipping_dust order
 update_skipping_rails order
+exp_comparator_modes order
+exp_dust_dot_vs_cross order
+exp_dust_glass_down order
+exp_dust_glass_up order
+exp_dust_line_16 order
+exp_dust_lines_short order
+exp_dust_piston_race_a order
+exp_dust_slab_vs_stone order
+exp_dust_step_up_down order
+exp_observer_watches_dust order
+exp_piston_destroys_wire order
+exp_repeater_lock_race order
+exp_torch_clock_burnout order
+exp_torch_inverter order
