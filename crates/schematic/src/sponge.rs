@@ -8,7 +8,7 @@ use anyhow::{Context, Result, bail};
 use tickwright_trace::BlockState;
 
 use crate::nbt::{self, Tag};
-use crate::{BlockEntity, Schematic, palette, strip_keys};
+use crate::{BlockEntity, Entity, Schematic, doubles, palette, strip_keys};
 
 pub fn from_nbt(root: &Tag) -> Result<Schematic> {
     // Version 3 nests everything in `Schematic`; version 2's root is it.
@@ -68,6 +68,17 @@ pub fn from_nbt(root: &Tag) -> Result<Schematic> {
         }
         out.block_entities.push(BlockEntity { pos: [p[0], p[1], p[2]], data });
     }
+    // Entities: `Pos` and `Id`, with the data in `Data` (version 3) or
+    // inline (version 2).
+    for e in s.get("Entities").map(Tag::list).unwrap_or(&[]) {
+        let pos = doubles(e.req("Pos")?).context("an entity's `Pos` is not three doubles")?;
+        let data = e.get("Data").cloned().unwrap_or_else(|| strip_keys(e, &["Pos", "Id"]));
+        let id = match e.get("Id").or_else(|| data.get("id")).and_then(Tag::as_str) {
+            Some(id) => id.to_string(),
+            None => bail!("an entity has no `Id`"),
+        };
+        out.entities.push(Entity { id, pos, data: strip_keys(&data, &["id", "Pos"]) });
+    }
     Ok(out.finish())
 }
 
@@ -101,6 +112,17 @@ pub fn write(s: &Schematic) -> Vec<u8> {
             ])
         })
         .collect();
+    let saved_entities = s
+        .entities
+        .iter()
+        .map(|e| {
+            nbt::compound(vec![
+                ("Pos", Tag::List(6, e.pos.iter().map(|&v| Tag::Double(v)).collect())),
+                ("Id", Tag::String(e.id.clone())),
+                ("Data", e.saved()),
+            ])
+        })
+        .collect();
     let blocks = nbt::compound(vec![
         ("Palette", Tag::Compound(pal)),
         ("Data", Tag::ByteArray(data)),
@@ -114,6 +136,7 @@ pub fn write(s: &Schematic) -> Vec<u8> {
         ("Length", Tag::Short(l as i16)),
         ("Offset", Tag::IntArray(vec![0, 0, 0])),
         ("Blocks", blocks),
+        ("Entities", Tag::List(10, saved_entities)),
     ]);
     nbt::write_gz("", &nbt::compound(vec![("Schematic", schem)]))
 }

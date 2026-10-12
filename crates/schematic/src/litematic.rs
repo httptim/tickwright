@@ -4,7 +4,7 @@
 use anyhow::{Context, Result, bail};
 
 use crate::nbt::{self, Tag};
-use crate::{BlockEntity, Schematic, palette, state_from_nbt, state_to_nbt, strip_keys};
+use crate::{BlockEntity, Entity, Schematic, palette, state_from_nbt, state_to_nbt, strip_keys};
 
 /// `LitematicaBitArray` entry width for a palette of `len` states.
 fn bits_for(len: usize) -> u32 {
@@ -81,6 +81,11 @@ pub fn from_nbt(root: &Tag) -> Result<Schematic> {
                 data: strip_keys(te, &["x", "y", "z"]),
             });
         }
+        // Entity positions are relative to the region's own corner.
+        let offset = [(min[0] - lo[0]) as f64, (min[1] - lo[1]) as f64, (min[2] - lo[2]) as f64];
+        for e in r.get("Entities").map(Tag::list).unwrap_or(&[]) {
+            out.entities.push(Entity::from_saved(e, offset).with_context(|| format!("region {name}"))?);
+        }
     }
     Ok(out.finish())
 }
@@ -119,7 +124,7 @@ pub fn write(s: &Schematic) -> Vec<u8> {
         ("BlockStatePalette", nbt::list(states.iter().map(state_to_nbt).collect())),
         ("BlockStates", Tag::LongArray(longs.into_iter().map(|l| l as i64).collect())),
         ("TileEntities", Tag::List(10, tiles)),
-        ("Entities", Tag::List(10, vec![])),
+        ("Entities", Tag::List(10, s.entities.iter().map(Entity::saved).collect())),
         ("PendingBlockTicks", Tag::List(10, vec![])),
         ("PendingFluidTicks", Tag::List(10, vec![])),
     ]);

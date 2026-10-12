@@ -273,6 +273,12 @@ pub struct FixtureSource {
     /// also seeds the level's random source for these fixtures.
     #[serde(default)]
     pub entities: bool,
+    /// Entities that are part of the build, as a schematic carries them:
+    /// placed with the blocks, before the first tick. They rotate and
+    /// mirror like summons. The engine creates the types it simulates and
+    /// carries the rest through unchanged.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub start_entities: Vec<SummonInput>,
 }
 
 fn default_levels() -> Vec<Level> {
@@ -314,6 +320,9 @@ pub struct ResolvedFixture {
     pub max_chained_updates: Option<i32>,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub entities: bool,
+    /// Entities placed with the blocks, positions relative to `origin`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub start_entities: Vec<SummonInput>,
 }
 
 /// Feature flags a fixture may ask for.
@@ -417,6 +426,15 @@ impl FixtureSource {
                 _ => {}
             }
             ensure!(!s.quiet || s.action == Action::Set, "{}: only set stimuli can be quiet", self.name);
+        }
+        for e in &self.start_entities {
+            ensure!(
+                !e.entity.is_empty()
+                    && (0..3).all(|i| e.at[i].is_finite())
+                    && e.motion.is_none_or(|v| v.iter().all(|c| c.is_finite())),
+                "{}: a start entity needs a type and finite coordinates",
+                self.name
+            );
         }
         for c in &self.containers {
             ensure!(
@@ -551,6 +569,7 @@ impl FixtureSource {
             day_time: self.day_time,
             max_chained_updates: self.max_chained_updates,
             entities: self.entities,
+            start_entities: self.start_entities.iter().map(|e| e.transform(t, size)).collect(),
         })
     }
 
@@ -604,6 +623,18 @@ mod tests {
         assert!(FixtureSource::from_json(&bad).is_err());
         let ragged = INVERTER.replace("\"##.\"", "\"##\"");
         assert!(FixtureSource::from_json(&ragged).is_err());
+    }
+
+    #[test]
+    fn start_entities_turn_with_the_fixture() {
+        let with = INVERTER.replace(
+            "\"stimuli\"",
+            "\"start_entities\": [ { \"entity\": \"armor_stand\", \"at\": [0.5, 1.0, 0.25] } ],\n        \"stimuli\"",
+        );
+        let f = FixtureSource::from_json(&with).unwrap();
+        let r90 = f.resolve("r90".parse().unwrap()).unwrap();
+        assert_eq!(r90.start_entities[0].entity, "armor_stand");
+        assert_eq!(r90.start_entities[0].at, [0.75, 1.0, 0.5]);
     }
 
     #[test]

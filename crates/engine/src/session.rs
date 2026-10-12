@@ -356,6 +356,45 @@ mod tests {
     }
 
     #[test]
+    fn a_build_starts_with_its_simulated_entities() {
+        use tickwright_trace::fixture::SummonInput;
+        let summon = |entity: &str, nbt: Option<&str>| SummonInput {
+            entity: entity.into(),
+            at: [0.5, 1.0, 0.5],
+            motion: None,
+            nbt: nbt.map(str::to_string),
+        };
+        let fixture = ResolvedFixture {
+            format: 1,
+            id: "t@r0".into(),
+            name: "t".into(),
+            transform: "r0".into(),
+            ticks: 1,
+            levels: Vec::new(),
+            origin: [0, 0, 0],
+            size: [1, 2, 1],
+            margin: 0,
+            blocks: vec![(0, 0, 0, "minecraft:stone".into())],
+            stimuli: Vec::new(),
+            containers: Vec::new(),
+            comparators: Vec::new(),
+            lecterns: Vec::new(),
+            experiments: Vec::new(),
+            day_time: None,
+            max_chained_updates: None,
+            entities: false,
+            start_entities: vec![
+                summon("armor_stand", Some("{Rotation:[90.0f,0.0f]}")),
+                summon("item", Some(r#"{Item:{id:"minecraft:stone",count:1},UUID:[I;1,2,3,4],OnGround:1b}"#)),
+                summon("falling_block", Some(r#"{BlockState:{Name:"minecraft:gravel"},Time:1}"#)),
+            ],
+        };
+        let s = Session::from_fixture(&fixture, "26.3").unwrap();
+        let kinds: Vec<String> = s.entities().into_iter().map(|e| e.kind).collect();
+        assert_eq!(kinds, ["minecraft:item", "minecraft:falling_block"]);
+    }
+
+    #[test]
     fn unsupported_blocks_are_refused() {
         let mut s = Session::new("26.3").unwrap();
         let err = s.set_block(Pos::new(0, 0, 0), "furnace", Placement::Quiet).unwrap_err();

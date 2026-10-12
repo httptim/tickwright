@@ -4,7 +4,7 @@
 use anyhow::{Context, Result};
 
 use crate::nbt::{self, Tag};
-use crate::{BlockEntity, Schematic, palette, state_from_nbt, state_to_nbt};
+use crate::{BlockEntity, Entity, Schematic, doubles, palette, state_from_nbt, state_to_nbt};
 
 pub fn from_nbt(root: &Tag) -> Result<Schematic> {
     let size = root.req("size")?.ints().context("`size` is not three ints")?;
@@ -28,6 +28,14 @@ pub fn from_nbt(root: &Tag) -> Result<Schematic> {
         if let Some(data) = b.get("nbt") {
             out.block_entities.push(BlockEntity { pos: [p[0], p[1], p[2]], data: data.clone() });
         }
+    }
+    // Each entity's `pos` is where it is in the structure; its own `Pos`
+    // is where it was when saved, which placing ignores.
+    for e in root.get("entities").map(Tag::list).unwrap_or(&[]) {
+        let pos = doubles(e.req("pos")?).context("an entity's `pos` is not three doubles")?;
+        let mut entity = Entity::from_saved(e.req("nbt")?, [0.0; 3])?;
+        entity.pos = pos;
+        out.entities.push(entity);
     }
     Ok(out.finish())
 }
@@ -58,7 +66,23 @@ pub fn write(s: &Schematic) -> Vec<u8> {
         ("size", nbt::list(vec![Tag::Int(sx), Tag::Int(sy), Tag::Int(sz)])),
         ("palette", nbt::list(states.iter().map(state_to_nbt).collect())),
         ("blocks", Tag::List(10, blocks)),
-        ("entities", Tag::List(10, vec![])),
+        (
+            "entities",
+            Tag::List(
+                10,
+                s.entities
+                    .iter()
+                    .map(|e| {
+                        let block = e.pos.map(|v| Tag::Int(v.floor() as i32));
+                        nbt::compound(vec![
+                            ("pos", Tag::List(6, e.pos.iter().map(|&v| Tag::Double(v)).collect())),
+                            ("blockPos", nbt::list(block.to_vec())),
+                            ("nbt", e.saved()),
+                        ])
+                    })
+                    .collect(),
+            ),
+        ),
     ]);
     nbt::write_gz("", &root)
 }

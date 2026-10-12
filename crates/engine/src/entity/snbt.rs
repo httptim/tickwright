@@ -102,6 +102,10 @@ impl Parser<'_> {
             }
             Some(b'[') => {
                 self.i += 1;
+                // Typed arrays read as plain lists: `[I;1,2]`.
+                if let [b'B' | b'I' | b'L', b';', ..] = self.s[self.i..] {
+                    self.i += 2;
+                }
                 let mut v = Vec::new();
                 if self.peek() == Some(b']') {
                     self.i += 1;
@@ -179,5 +183,7 @@ mod tests {
         let t = parse("{fuse:20s, Motion:[0.1d,-2.5d,0d]}").unwrap();
         assert_eq!(t.get("fuse").unwrap().number(), Some(20.0));
         assert_eq!(t.get("Motion"), Some(&Tag::List(vec![Tag::Number(0.1), Tag::Number(-2.5), Tag::Number(0.0)])));
+        let t = parse("{UUID:[I;1,-2,3,4],Empty:[B;]}").unwrap();
+        assert_eq!(t.get("UUID").unwrap(), &Tag::List([1.0, -2.0, 3.0, 4.0].map(Tag::Number).to_vec()));
     }
 }
