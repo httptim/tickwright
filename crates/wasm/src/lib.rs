@@ -22,6 +22,7 @@ use serde_json::{Value, json};
 use tickwright_engine::Pos;
 use tickwright_engine::session::{Placement, Session};
 use tickwright_schematic::{Format, Schematic};
+use tickwright_trace::fixture::PlaceInput;
 use tickwright_trace::{ResolvedFixture, Transform};
 
 /// Allocate `len` bytes for the host to write into.
@@ -123,6 +124,16 @@ enum Command {
         session: u32,
         pos: [i32; 3],
     },
+    /// Right-click a face of the block at `pos` holding `item`, as a player
+    /// would; the block's placement rules pick its state. `hit` is the click
+    /// point in sixteenths (default: the middle of the face). Answers
+    /// `{"placed": bool}`.
+    Place {
+        session: u32,
+        pos: [i32; 3],
+        #[serde(flatten)]
+        input: PlaceInput,
+    },
     /// Right-click with an empty hand.
     Use {
         session: u32,
@@ -221,6 +232,10 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                 get(sessions, session)?.destroy(pos(p));
                 json!({})
             }
+            Command::Place { session, pos: p, input } => {
+                let click = tickwright_engine::run::click(pos(p), &input)?;
+                json!({ "placed": get(sessions, session)?.place(&input.item, click)? })
+            }
             Command::Use { session, pos: p } => {
                 get(sessions, session)?.use_block(pos(p));
                 json!({})
@@ -318,6 +333,12 @@ mod tests {
         let step = ok(&format!(r#"{{"op":"step","session":{id}}}"#));
         assert_eq!(step["tick"], 1);
         let lamp = ok(&format!(r#"{{"op":"block","session":{id},"pos":[1,1,0]}}"#));
+        let placed = ok(&format!(
+            r#"{{"op":"place","session":{id},"pos":[1,1,0],"item":"repeater","face":"up","look":"east","pitch":40}}"#
+        ));
+        assert_eq!(placed["placed"], true);
+        let repeater = ok(&format!(r#"{{"op":"block","session":{id},"pos":[1,2,0]}}"#));
+        assert!(repeater["state"].as_str().unwrap().contains("facing=west"), "{repeater}");
         assert_eq!(lamp["state"], "minecraft:redstone_lamp[lit=true]");
         assert!(command(br#"{"op":"step","session":999}"#).is_err());
     }

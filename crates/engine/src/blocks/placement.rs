@@ -156,7 +156,11 @@ fn can_be_replaced(level: &Level, state: StateId, click: &Click, pos: Pos, block
             if replacing {
                 let upper = click.hit_y_above(pos) > 0.5;
                 let d = click.face;
-                if ty == "bottom" { d == Dir::Up || upper && d.is_horizontal() } else { d == Dir::Down || !upper && d.is_horizontal() }
+                if ty == "bottom" {
+                    d == Dir::Up || upper && d.is_horizontal()
+                } else {
+                    d == Dir::Down || !upper && d.is_horizontal()
+                }
             } else {
                 true
             }
@@ -486,6 +490,10 @@ pub fn place(level: &mut Level, item: &str, click: Click) -> Result<bool> {
     }
     let placed = level.get(pos);
     if level.block(placed) == level.block(state) {
+        // `updateBlockEntityComponents`: the new block entity is marked changed.
+        if level.block_entities.contains_key(&pos) {
+            super::container::set_changed(level, pos);
+        }
         placed_by(level, pos, placed);
     }
     Ok(true)
