@@ -522,6 +522,15 @@ public final class Capture {
                 pos = e.pos();
                 detail = e.paramA() + "," + e.paramB();
             }
+            case "explode_blocks" -> {
+                StringBuilder sb = new StringBuilder();
+                for (Object o : (java.util.List<?>) arg) {
+                    BlockPos b = (BlockPos) o;
+                    sb.append(' ').append(b.getX()).append(',').append(b.getY()).append(',').append(b.getZ());
+                }
+                System.out.printf("DIAG explosion %d:%s%n", ((java.util.List<?>) arg).size(), sb);
+                return;
+            }
             default -> {
                 return;
             }

@@ -62,7 +62,8 @@ public final class Agent {
                     "block_event_queued", Arg.FIRST_BLOCK_POS),
             new Rule("net/minecraft/server/level/ServerLevel", "doBlockEvent", "(", "block_event", Arg.FIRST),
             // A block entity marked changed: how containers report new contents.
-            new Rule("net/minecraft/world/level/block/entity/BlockEntity", "setChanged", "()V", "items", Arg.SELF));
+            new Rule("net/minecraft/world/level/block/entity/BlockEntity", "setChanged", "()V", "items", Arg.SELF),
+            new Rule("net/minecraft/world/level/ServerExplosion", "interactWithBlocks", "(", "explode_blocks", Arg.FIRST));
 
     private Agent() {}
 
