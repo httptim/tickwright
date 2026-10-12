@@ -10,6 +10,7 @@
 
 mod lamp;
 mod lever;
+mod piston;
 mod repeater;
 mod torch;
 mod wire;
@@ -70,12 +71,15 @@ impl Kind {
 pub enum BlockEntity {
     /// A chest: present only because it makes the block immovable.
     Chest,
+    /// `PistonMovingBlockEntity`.
+    Piston(piston::Moving),
 }
 
 impl BlockEntity {
     pub fn ticks(&self) -> bool {
         match self {
             BlockEntity::Chest => false,
+            BlockEntity::Piston(_) => true,
         }
     }
 }
@@ -91,7 +95,11 @@ pub fn new_block_entity(_level: &Level, _pos: Pos, state: StateId) -> Option<Blo
     }
 }
 
-pub fn tick_block_entity(_level: &mut Level, _pos: Pos) {}
+pub fn tick_block_entity(level: &mut Level, pos: Pos) {
+    if let Some(BlockEntity::Piston(_)) = level.block_entities.get(&pos) {
+        piston::tick_moving(level, pos);
+    }
+}
 
 pub fn has_analog_output(_level: &Level, _state: StateId) -> bool {
     false
@@ -101,11 +109,8 @@ pub fn has_analog_output(_level: &Level, _state: StateId) -> bool {
 
 /// `isRedstoneConductor`.
 pub fn is_conductor(level: &Level, _pos: Pos, state: StateId) -> bool {
-    match level.kind(state) {
-        Kind::Solid | Kind::RedstoneLamp | Kind::Slime => true,
-        Kind::Piston | Kind::StickyPiston => !level.flag(state, "extended"),
-        _ => false,
-    }
+    // Pistons are never conductors, extended or not.
+    matches!(level.kind(state), Kind::Solid | Kind::RedstoneLamp | Kind::Slime)
 }
 
 /// `isSignalSource`.
@@ -161,6 +166,7 @@ pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId, moved
     match level.kind(state) {
         Kind::RedstoneWire => wire::on_place(level, pos, state, old),
         Kind::Repeater => repeater::on_place(level, pos, state),
+        Kind::Piston | Kind::StickyPiston => piston::on_place(level, pos, state, old),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::on_place(level, pos, state),
         _ => {}
     }
@@ -171,6 +177,7 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
         Kind::Lever => lever::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
         Kind::RedstoneWire => wire::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
         Kind::Repeater => repeater::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
+        Kind::PistonHead => piston::head_affect_neighbors_after_removal(level, pos, state),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => {
             torch::affect_neighbors_after_removal(level, pos, state, moved_by_piston)
         }
@@ -179,11 +186,13 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
 }
 
 pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId, source: BlockId, moved_by_piston: bool) {
-    let _ = (source, moved_by_piston);
+    let _ = moved_by_piston;
     match level.kind(state) {
         Kind::RedstoneLamp => lamp::neighbor_changed(level, pos, state),
         Kind::RedstoneWire => wire::neighbor_changed(level, pos, state),
         Kind::Repeater => repeater::neighbor_changed(level, pos, state),
+        Kind::Piston | Kind::StickyPiston => piston::neighbor_changed(level, pos, state),
+        Kind::PistonHead => piston::head_neighbor_changed(level, pos, state, source),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::neighbor_changed(level, pos, state),
         _ => {}
     }
@@ -200,6 +209,7 @@ pub fn update_shape(
     match level.kind(state) {
         Kind::RedstoneWire => wire::update_shape(level, pos, state, dir, neighbor, neighbor_state),
         Kind::Repeater => repeater::update_shape(level, pos, state, dir, neighbor, neighbor_state),
+        Kind::PistonHead => piston::head_update_shape(level, pos, state, dir),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::update_shape(level, pos, state, dir),
         _ => state,
     }
@@ -222,8 +232,10 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
 }
 
 pub fn trigger_event(level: &mut Level, pos: Pos, state: StateId, a: i32, b: i32) -> bool {
-    let _ = (level, pos, state, a, b);
-    false
+    match level.kind(state) {
+        Kind::Piston | Kind::StickyPiston => piston::trigger_event(level, pos, state, a, b),
+        _ => false,
+    }
 }
 
 /// Right-click with an empty hand (`useWithoutItem`).

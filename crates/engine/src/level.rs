@@ -89,8 +89,14 @@ pub struct Level {
 
     /// Block entities by position, and the order they tick in.
     pub block_entities: HashMap<Pos, blocks::BlockEntity>,
-    tickers: Vec<Pos>,
-    pending_tickers: Vec<Pos>,
+    /// `RebindableTickingBlockEntityWrapper`s: each is a position and
+    /// whether it is still bound. A block entity replaced at the same
+    /// position keeps its wrapper's place in the list.
+    ticker_slots: Vec<(Pos, bool)>,
+    ticker_at: HashMap<Pos, usize>,
+    tickers: Vec<usize>,
+    pending_tickers: Vec<usize>,
+    ticking_block_entities: bool,
 
     /// `RedStoneWireBlock.shouldSignal`: off while dust measures the power
     /// around it, so wires do not count each other.
@@ -126,8 +132,11 @@ impl Level {
             added_this_layer: Vec::new(),
             update_count: 0,
             block_entities: HashMap::new(),
+            ticker_slots: Vec::new(),
+            ticker_at: HashMap::new(),
             tickers: Vec::new(),
             pending_tickers: Vec::new(),
+            ticking_block_entities: false,
             wire_signals: Cell::new(true),
             torch_toggles: Vec::new(),
             phase: Phase::Input,
@@ -294,16 +303,39 @@ impl Level {
 
     // --- block entities ----------------------------------------------------
 
+    /// `Level.setBlockEntity`, with `LevelChunk.updateBlockEntityTicker`.
     pub fn add_block_entity(&mut self, pos: Pos, be: blocks::BlockEntity) {
         let ticks = be.ticks();
         self.block_entities.insert(pos, be);
-        if ticks {
-            self.pending_tickers.push(pos);
+        if !ticks {
+            self.unbind_ticker(pos);
+        } else if !self.ticker_at.contains_key(&pos) {
+            let id = self.ticker_slots.len();
+            self.ticker_slots.push((pos, true));
+            self.ticker_at.insert(pos, id);
+            if self.ticking_block_entities {
+                self.pending_tickers.push(id);
+            } else {
+                self.tickers.push(id);
+            }
         }
     }
 
     pub fn remove_block_entity(&mut self, pos: Pos) {
         self.block_entities.remove(&pos);
+        self.unbind_ticker(pos);
+    }
+
+    fn unbind_ticker(&mut self, pos: Pos) {
+        if let Some(id) = self.ticker_at.remove(&pos) {
+            self.ticker_slots[id].1 = false;
+        }
+    }
+
+    /// `ServerLevel.isHandlingTick`: true while block ticks and block
+    /// events run.
+    pub fn handling_tick(&self) -> bool {
+        matches!(self.phase, Phase::BlockTicks | Phase::BlockEvents)
     }
 
     // --- neighbor and shape updates ------------------------------------------
@@ -515,18 +547,20 @@ impl Level {
 
     /// `Level.tickBlockEntities`.
     fn tick_block_entities(&mut self) {
+        self.ticking_block_entities = true;
         let pending = std::mem::take(&mut self.pending_tickers);
         self.tickers.extend(pending);
         let mut i = 0;
         while i < self.tickers.len() {
-            let pos = self.tickers[i];
-            if self.block_entities.get(&pos).is_some_and(|be| be.ticks()) {
+            let (pos, bound) = self.ticker_slots[self.tickers[i]];
+            if bound {
                 blocks::tick_block_entity(self, pos);
                 i += 1;
             } else {
                 self.tickers.remove(i);
             }
         }
+        self.ticking_block_entities = false;
     }
 
     // --- the tick loop -----------------------------------------------------
