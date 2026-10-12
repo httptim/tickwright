@@ -101,3 +101,5 @@ dropper_into_hopper order
 hopper_chain_cooldown order
 hopper_chest_to_chest order
 hopper_locked_by_lever order
+bell_rings_on_power order
+copper_bulb_toggles order

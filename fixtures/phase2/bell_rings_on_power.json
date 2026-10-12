@@ -1,0 +1,64 @@
+{
+  "name": "bell_rings_on_power",
+  "description": "A floor bell beside a lever rings on each rising edge as the lever is flipped on, off and on again. Then the stone under it is broken and the bell drops.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "bell"
+  ],
+  "palette": {
+    "#": "stone",
+    "l": "lever[face=floor,facing=north,powered=false]",
+    "B": "bell[attachment=floor,facing=north,powered=false]"
+  },
+  "layers": [
+    [
+      "###"
+    ],
+    [
+      "lB."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 6,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 20,
+      "action": "destroy",
+      "pos": [
+        1,
+        0,
+        0
+      ]
+    }
+  ]
+}
