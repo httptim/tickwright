@@ -1,0 +1,42 @@
+{
+  "name": "lever_lamp",
+  "description": "A lever beside a lamp. The lamp lights as soon as it is updated and turns off 4 game ticks after power is removed.",
+  "ticks": 12,
+  "tags": [
+    "lamp",
+    "lever"
+  ],
+  "palette": {
+    "#": "stone",
+    "L": "lever[face=floor,facing=north,powered=false]",
+    "o": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "##"
+    ],
+    [
+      "Lo"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 6,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}

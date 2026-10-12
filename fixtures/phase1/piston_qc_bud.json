@@ -1,0 +1,56 @@
+{
+  "name": "piston_qc_bud",
+  "description": "Quasi-connectivity: a redstone block above the space above a piston powers it, but the piston only notices when something updates it. Placing a block beside it later makes it extend.",
+  "ticks": 16,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "piston",
+    "qc",
+    "bud"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "piston[extended=false,facing=east]",
+    "s": "stone"
+  },
+  "layers": [
+    [
+      "####"
+    ],
+    [
+      ".Ps."
+    ],
+    [
+      "...."
+    ],
+    [
+      "...."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        1,
+        3,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 8,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "state": "stone"
+    }
+  ]
+}
