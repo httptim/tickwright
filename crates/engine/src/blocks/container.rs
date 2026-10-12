@@ -104,7 +104,7 @@ pub fn new_dropper() -> BlockEntity {
 
 pub(super) fn items(level: &Level, pos: Pos) -> Option<&Vec<Stack>> {
     match level.block_entities.get(&pos)? {
-        BlockEntity::Chest(items) | BlockEntity::Dropper(items) => Some(items),
+        BlockEntity::Chest(items) | BlockEntity::Dropper(items) | BlockEntity::ShulkerBox(items) => Some(items),
         BlockEntity::Hopper(h) => Some(&h.items),
         _ => None,
     }
@@ -112,7 +112,7 @@ pub(super) fn items(level: &Level, pos: Pos) -> Option<&Vec<Stack>> {
 
 fn items_mut(level: &mut Level, pos: Pos) -> &mut Vec<Stack> {
     match level.block_entities.get_mut(&pos) {
-        Some(BlockEntity::Chest(items) | BlockEntity::Dropper(items)) => items,
+        Some(BlockEntity::Chest(items) | BlockEntity::Dropper(items) | BlockEntity::ShulkerBox(items)) => items,
         Some(BlockEntity::Hopper(h)) => &mut h.items,
         _ => panic!("no container at {pos:?}"),
     }
@@ -231,7 +231,8 @@ pub fn analog_output(level: &Level, pos: Pos, state: StateId) -> i32 {
 /// at `pos`, if the block there is a container.
 fn container_at(level: &Level, pos: Pos) -> Option<Pos> {
     let kind = level.kind_at(pos);
-    let ok = matches!(kind, Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser);
+    let ok =
+        matches!(kind, Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser | Kind::ShulkerBox);
     (ok && items(level, pos).is_some()).then_some(pos)
 }
 

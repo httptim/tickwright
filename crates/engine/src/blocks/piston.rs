@@ -29,6 +29,10 @@ fn push_reaction(level: &Level, state: StateId) -> PushReaction {
         | Kind::Comparator
         | Kind::Cake
         | Kind::Door
+        | Kind::Bell
+        | Kind::Leaves
+        | Kind::ShulkerBox
+        | Kind::TripwireHook
         | Kind::Water => PushReaction::Destroy,
         Kind::MovingPiston | Kind::PistonHead => PushReaction::Block,
         _ => PushReaction::Normal,

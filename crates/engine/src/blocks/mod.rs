@@ -21,6 +21,7 @@ mod lever;
 mod note;
 mod observer;
 mod piston;
+mod plain;
 mod rail;
 mod repeater;
 mod torch;
@@ -74,6 +75,13 @@ pub enum Kind {
     /// A barrel: a 27-slot container that is a full block.
     Barrel,
     PowderSnow,
+    /// Logs and wood: plain full blocks that leaves count distance from.
+    Log,
+    Leaves,
+    Target,
+    Jukebox,
+    ShulkerBox,
+    TripwireHook,
     /// Waxed copper bulbs (unwaxed ones oxidize on random ticks).
     CopperBulb,
     Bell,
@@ -92,6 +100,10 @@ pub enum BlockEntity {
     Dropper(Vec<container::Stack>),
     /// `BellBlockEntity`: only its ticker's place in the list matters here.
     Bell,
+    /// A shulker box's 27 slots. Its ticker only animates the lid.
+    ShulkerBox(Vec<container::Stack>),
+    /// An empty jukebox, which has no ticker.
+    Jukebox,
     /// `PistonMovingBlockEntity`.
     Piston(piston::Moving),
 }
@@ -99,8 +111,10 @@ pub enum BlockEntity {
 impl BlockEntity {
     pub fn ticks(&self) -> bool {
         match self {
-            BlockEntity::Chest(_) | BlockEntity::Dropper(_) | BlockEntity::Comparator(_) => false,
-            BlockEntity::Piston(_) | BlockEntity::Hopper(_) | BlockEntity::Bell => true,
+            BlockEntity::Chest(_) | BlockEntity::Dropper(_) | BlockEntity::Comparator(_) | BlockEntity::Jukebox => {
+                false
+            }
+            BlockEntity::Piston(_) | BlockEntity::Hopper(_) | BlockEntity::Bell | BlockEntity::ShulkerBox(_) => true,
         }
     }
 }
@@ -116,6 +130,8 @@ pub fn has_block_entity(kind: Kind) -> bool {
             | Kind::Dropper
             | Kind::Dispenser
             | Kind::Bell
+            | Kind::ShulkerBox
+            | Kind::Jukebox
     )
 }
 
@@ -125,6 +141,8 @@ pub fn new_block_entity(_level: &Level, _pos: Pos, state: StateId) -> Option<Blo
         Kind::Hopper => Some(BlockEntity::Hopper(container::Hopper::new())),
         Kind::Dropper | Kind::Dispenser => Some(container::new_dropper()),
         Kind::Bell => Some(BlockEntity::Bell),
+        Kind::ShulkerBox => Some(BlockEntity::ShulkerBox(vec![container::Stack::default(); 27])),
+        Kind::Jukebox => Some(BlockEntity::Jukebox),
         Kind::Comparator => Some(BlockEntity::Comparator(0)),
         _ => None,
     }
@@ -149,6 +167,8 @@ pub fn has_analog_output(level: &Level, state: StateId) -> bool {
             | Kind::Hopper
             | Kind::Dropper
             | Kind::Dispenser
+            | Kind::ShulkerBox
+            | Kind::Jukebox
             | Kind::CopperBulb
     )
 }
@@ -156,7 +176,7 @@ pub fn has_analog_output(level: &Level, state: StateId) -> bool {
 /// `getAnalogOutputSignal`.
 pub fn analog_output(level: &Level, pos: Pos, state: StateId) -> i32 {
     match level.kind(state) {
-        Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser => {
+        Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser | Kind::ShulkerBox => {
             container::analog_output(level, pos, state)
         }
         Kind::CopperBulb => bulb::bulb_analog_output(level, state),
@@ -178,7 +198,11 @@ pub fn is_conductor(level: &Level, _pos: Pos, state: StateId) -> bool {
         | Kind::NoteBlock
         | Kind::Dropper
         | Kind::Dispenser
-        | Kind::Barrel => true,
+        | Kind::Barrel
+        | Kind::Log
+        | Kind::Target
+        | Kind::Jukebox
+        | Kind::ShulkerBox => true,
         Kind::Slab => level.prop(state, "type") == "double",
         _ => false,
     }
@@ -198,6 +222,9 @@ pub fn is_signal_source(level: &Level, state: StateId) -> bool {
                 | Kind::Repeater
                 | Kind::Observer
                 | Kind::Comparator
+                | Kind::Target
+                | Kind::Jukebox
+                | Kind::TripwireHook
         ),
     }
 }
@@ -217,6 +244,10 @@ pub fn is_face_sturdy(level: &Level, pos: Pos, state: StateId, dir: Dir) -> bool
         | Kind::Dispenser
         | Kind::Barrel
         | Kind::PowderSnow
+        | Kind::Log
+        | Kind::Target
+        | Kind::Jukebox
+        | Kind::ShulkerBox
         | Kind::CopperBulb => true,
         Kind::Trapdoor => door::trapdoor_face_sturdy(level, state, dir),
         Kind::Slab => match level.prop(state, "type") {
@@ -240,6 +271,8 @@ pub fn get_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i32 {
     match level.kind(state) {
         Kind::Lever | Kind::Button => lever::get_signal(level, pos, state, dir),
         Kind::RedstoneBlock => 15,
+        Kind::Target => plain::target_signal(level, state),
+        Kind::TripwireHook => plain::hook_signal(level, state),
         Kind::Observer => observer::get_signal(level, state, dir),
         Kind::Comparator => comparator::get_signal(level, pos, state, dir),
         Kind::Repeater => repeater::get_signal(level, pos, state, dir),
@@ -257,6 +290,7 @@ pub fn get_direct_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i
         Kind::Repeater => repeater::get_signal(level, pos, state, dir),
         Kind::Observer => observer::get_signal(level, state, dir),
         Kind::Comparator => comparator::get_signal(level, pos, state, dir),
+        Kind::TripwireHook => plain::hook_direct_signal(level, state, dir),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::get_direct_signal(level, pos, state, dir),
         _ => 0,
     }
@@ -294,6 +328,14 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => {
             torch::affect_neighbors_after_removal(level, pos, state, moved_by_piston)
         }
+        // `Containers.updateNeighboursAfterDestroy`.
+        Kind::Chest
+        | Kind::Barrel
+        | Kind::Hopper
+        | Kind::Dropper
+        | Kind::Dispenser
+        | Kind::ShulkerBox
+        | Kind::Jukebox => level.update_neighbour_for_output_signal(pos, level.block(state)),
         _ => {}
     }
 }
@@ -341,6 +383,8 @@ pub fn update_shape(
         Kind::Comparator | Kind::Cake => survives_on_below(level, state, dir, neighbor, neighbor_state),
         Kind::Water => water::update_shape(level, pos, state, neighbor_state),
         Kind::Bell => bulb::bell_update_shape(level, pos, state, dir),
+        Kind::Leaves => plain::leaves_update_shape(level, pos, state, neighbor_state),
+        Kind::TripwireHook => plain::hook_update_shape(level, pos, state, dir),
         _ => state,
     }
 }
@@ -362,6 +406,7 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
         Kind::Comparator => comparator::tick(level, pos, state),
         Kind::Dropper => container::dropper_tick(level, pos, state),
         Kind::Dispenser => dispenser::tick(level, pos, state),
+        Kind::Leaves => plain::leaves_tick(level, pos, state),
         _ => {}
     }
 }

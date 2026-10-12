@@ -47,6 +47,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.ComparatorBlockEntity;
 import net.minecraft.world.level.BlockEventData;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.ticks.ScheduledTick;
@@ -267,6 +268,17 @@ public final class Capture {
                     container.setItem(i.get("slot").getAsInt(),
                             new ItemStack(item(i.get("id").getAsString()), i.get("count").getAsInt()));
                 }
+            }
+        }
+        // Stored comparator outputs, set after the containers.
+        if (fixture.has("comparators")) {
+            for (JsonElement ce : fixture.getAsJsonArray("comparators")) {
+                JsonObject c = ce.getAsJsonObject();
+                BlockPos p = origin.offset(pos(c.getAsJsonArray("pos")));
+                if (!(level.getBlockEntity(p) instanceof ComparatorBlockEntity comparator)) {
+                    throw new IllegalStateException(id + ": no comparator at " + c.get("pos"));
+                }
+                comparator.setOutputSignal(c.get("output").getAsInt());
             }
         }
 
