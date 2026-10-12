@@ -39,6 +39,11 @@ fn block(name: &str) -> Option<Kind> {
         "water" => Kind::Water,
         "hopper" => Kind::Hopper,
         "dropper" => Kind::Dropper,
+        "waxed_copper_bulb"
+        | "waxed_exposed_copper_bulb"
+        | "waxed_weathered_copper_bulb"
+        | "waxed_oxidized_copper_bulb" => Kind::CopperBulb,
+        "bell" => Kind::Bell,
         n if n.ends_with("_trapdoor") => Kind::Trapdoor,
         n if n.ends_with("_door") => Kind::Door,
         _ => return None,
