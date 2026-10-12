@@ -73,3 +73,17 @@ comparator_modes order
 comparator_reads_cake order
 comparator_reads_composter order
 comparator_through_block order
+door_loses_support order
+doors_power_and_hand order
+note_block_instruments order
+piston_breaks_button order
+trapdoors_power_and_hand order
+nucleation_button_wood order
+nucleation_door_push order
+nucleation_manual_engine_click order
+nucleation_manual_engine_quiet_click order
+nucleation_manual_engine_settle order
+nucleation_note_click order
+nucleation_note_powered order
+nucleation_trapdoor_push order
+nucleation_trapdoor_toggle order
