@@ -21,6 +21,7 @@ mod piston;
 mod rail;
 mod repeater;
 mod torch;
+pub mod water;
 mod wire;
 
 use crate::level::Level;
@@ -62,6 +63,8 @@ pub enum Kind {
     Trapdoor,
     /// Powered and activator rails.
     PoweredRail,
+    /// Water, source or flowing.
+    Water,
     Other,
 }
 
@@ -213,6 +216,7 @@ pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId, moved
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::on_place(level, pos, state),
         Kind::Observer => observer::on_place(level, pos, state, old),
         Kind::PoweredRail => rail::on_place(level, pos, state, old),
+        Kind::Water => water::on_place(level, pos, state),
         _ => {}
     }
 }
@@ -249,6 +253,7 @@ pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId, source: Blo
         Kind::Piston | Kind::StickyPiston => piston::neighbor_changed(level, pos, state),
         Kind::PistonHead => piston::head_neighbor_changed(level, pos, state, source),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::neighbor_changed(level, pos, state),
+        Kind::Water => water::neighbor_changed(level, pos, state),
         _ => {}
     }
 }
@@ -271,6 +276,7 @@ pub fn update_shape(
         Kind::NoteBlock => note::update_shape(level, pos, state, dir),
         Kind::Door => door::door_update_shape(level, pos, state, dir, neighbor, neighbor_state),
         Kind::Comparator | Kind::Cake => survives_on_below(level, state, dir, neighbor, neighbor_state),
+        Kind::Water => water::update_shape(level, pos, state, neighbor_state),
         _ => state,
     }
 }

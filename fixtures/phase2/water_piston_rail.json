@@ -1,0 +1,71 @@
+{
+  "name": "water_piston_rail",
+  "description": "Water flows down a channel and stops at a powered rail, which flowing water cannot enter. A piston beside the channel pushes into the water, destroying it, then retracts and the water flows back.",
+  "ticks": 50,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "water",
+    "piston",
+    "rail"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "water[level=0]",
+    "=": "powered_rail[powered=false,shape=east_west,waterlogged=false]",
+    "P": "piston[extended=false,facing=north]"
+  },
+  "layers": [
+    [
+      "#######",
+      "#######",
+      "#######",
+      "#######"
+    ],
+    [
+      "#######",
+      "#A#.=.#",
+      "###P###",
+      "......."
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      "......."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "destroy",
+      "pos": [
+        2,
+        1,
+        1
+      ]
+    },
+    {
+      "tick": 20,
+      "action": "set",
+      "pos": [
+        3,
+        1,
+        3
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 32,
+      "action": "destroy",
+      "pos": [
+        3,
+        1,
+        3
+      ]
+    }
+  ]
+}

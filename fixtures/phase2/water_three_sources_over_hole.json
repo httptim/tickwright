@@ -1,0 +1,48 @@
+{
+  "name": "water_three_sources_over_hole",
+  "description": "A source with three source neighbors sits over a hole. It flows down into the hole and, because three sources surround it, also spreads to its one open side.",
+  "ticks": 20,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "water"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "water[level=0]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      "#####",
+      "#####",
+      "##.##",
+      "#####",
+      "#####"
+    ],
+    [
+      "#####",
+      "##A##",
+      "#AAA#",
+      "##.##",
+      "#####"
+    ],
+    [
+      ".....",
+      ".....",
+      ".....",
+      ".....",
+      "....."
+    ]
+  ],
+  "stimuli": []
+}
