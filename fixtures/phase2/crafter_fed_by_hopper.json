@@ -18,7 +18,7 @@
     "H": "hopper[enabled=true,facing=down]",
     "C": "crafter[crafting=false,orientation=north_up,triggered=false]",
     "l": "lever[face=floor,facing=north,powered=false]",
-    "c": "comparator[facing=east,mode=compare,powered=false]",
+    "c": "comparator[facing=west,mode=compare,powered=false]",
     "L": "redstone_lamp[lit=false]"
   },
   "layers": [

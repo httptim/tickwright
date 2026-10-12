@@ -107,7 +107,10 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
     // The harness fills containers with `Container.setItem`, slot by slot.
     for c in &fixture.containers {
         let pos = Pos::new(ox + c.pos[0], oy + c.pos[1], oz + c.pos[2]);
-        if !matches!(level.kind_at(pos), Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser) {
+        if !matches!(
+            level.kind_at(pos),
+            Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser | Kind::Crafter
+        ) {
             bail!("{}: no container at {:?}", fixture.id, c.pos);
         }
         for item in &c.items {

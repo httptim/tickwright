@@ -44,23 +44,9 @@ impl Stack {
     }
 }
 
-/// `Item.getDefaultMaxStackSize` for the items fixtures are likely to use.
+/// `Item.getDefaultMaxStackSize`, from the game's item data.
 pub fn max_stack_size(id: &str) -> i32 {
-    let name = id.strip_prefix("minecraft:").unwrap_or(id);
-    let one = ["_sword", "_pickaxe", "_axe", "_shovel", "_hoe", "_helmet", "_chestplate", "_leggings", "_boots"];
-    if one.iter().any(|s| name.ends_with(s))
-        || name.ends_with("_bucket")
-        || matches!(name, "potion" | "splash_potion" | "lingering_potion" | "minecart" | "saddle" | "shears" | "bow")
-    {
-        1
-    } else if name.ends_with("_sign")
-        || name.ends_with("_banner")
-        || matches!(name, "ender_pearl" | "snowball" | "egg" | "bucket" | "honey_bottle" | "armor_stand")
-    {
-        16
-    } else {
-        64
-    }
+    crate::items::max_stack_size(id)
 }
 
 /// A hopper's block entity: its items and transfer cooldown.
@@ -106,6 +92,7 @@ pub fn items(level: &Level, pos: Pos) -> Option<&Vec<Stack>> {
     match level.block_entities.get(&pos)? {
         BlockEntity::Chest(items) | BlockEntity::Dropper(items) | BlockEntity::ShulkerBox(items) => Some(items),
         BlockEntity::Hopper(h) => Some(&h.items),
+        BlockEntity::Crafter(c) => Some(&c.items),
         _ => None,
     }
 }
@@ -114,6 +101,7 @@ fn items_mut(level: &mut Level, pos: Pos) -> &mut Vec<Stack> {
     match level.block_entities.get_mut(&pos) {
         Some(BlockEntity::Chest(items) | BlockEntity::Dropper(items) | BlockEntity::ShulkerBox(items)) => items,
         Some(BlockEntity::Hopper(h)) => &mut h.items,
+        Some(BlockEntity::Crafter(c)) => &mut c.items,
         _ => panic!("no container at {pos:?}"),
     }
 }
@@ -229,10 +217,12 @@ pub fn analog_output(level: &Level, pos: Pos, state: StateId) -> i32 {
 
 /// `HopperBlockEntity.getContainerAt` for blocks: a container block entity
 /// at `pos`, if the block there is a container.
-fn container_at(level: &Level, pos: Pos) -> Option<Pos> {
+pub(super) fn container_at(level: &Level, pos: Pos) -> Option<Pos> {
     let kind = level.kind_at(pos);
-    let ok =
-        matches!(kind, Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser | Kind::ShulkerBox);
+    let ok = matches!(
+        kind,
+        Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser | Kind::ShulkerBox | Kind::Crafter
+    );
     (ok && items(level, pos).is_some()).then_some(pos)
 }
 
@@ -244,7 +234,7 @@ fn is_full_container(level: &Level, pos: Pos) -> bool {
 // --- moving items ----------------------------------------------------------------
 
 /// `HopperBlockEntity.addItem(source, destination, stack, direction)`.
-fn add_item(level: &mut Level, source: Option<Pos>, dest: Pos, mut stack: Stack) -> Stack {
+pub(super) fn add_item(level: &mut Level, source: Option<Pos>, dest: Pos, mut stack: Stack) -> Stack {
     let n = size(level, dest);
     let mut slot = 0;
     while slot < n && !stack.is_empty() {
@@ -256,6 +246,10 @@ fn add_item(level: &mut Level, source: Option<Pos>, dest: Pos, mut stack: Stack)
 
 /// `HopperBlockEntity.tryMoveInItem`.
 fn try_move_in_item(level: &mut Level, source: Option<Pos>, dest: Pos, mut stack: Stack, slot: usize) -> Stack {
+    // `canPlaceItemInContainer`: only the crafter refuses items.
+    if level.kind_at(dest) == Kind::Crafter && !super::crafter::can_place_item(level, dest, slot, &stack) {
+        return stack;
+    }
     let current = get_item(level, dest, slot);
     let mut changed = false;
     let was_empty = is_empty(level, dest);

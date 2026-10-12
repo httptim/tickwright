@@ -1,0 +1,58 @@
+{
+  "name": "crafter_into_crafter",
+  "description": "A crafter holding one oak log faces another crafter. When its lever turns on it crafts four oak planks and hands them over one at a time, and the second crafter spreads them over its first four slots. A comparator reads the second crafter into a lamp.",
+  "ticks": 20,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "crafter",
+    "comparator",
+    "container"
+  ],
+  "palette": {
+    "#": "stone",
+    "l": "lever[face=floor,facing=north,powered=false]",
+    "A": "crafter[crafting=false,orientation=east_up,triggered=false]",
+    "B": "crafter[crafting=false,orientation=north_up,triggered=false]",
+    "c": "comparator[facing=west,mode=compare,powered=false]",
+    "L": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "#####"
+    ],
+    [
+      "lABcL"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        0
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        1,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "oak_log",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

@@ -14,6 +14,7 @@ mod bulb;
 mod button;
 mod comparator;
 pub mod container;
+pub mod crafter;
 pub mod dispenser;
 mod door;
 mod lamp;
@@ -87,6 +88,7 @@ pub enum Kind {
     /// Waxed copper bulbs (unwaxed ones oxidize on random ticks).
     CopperBulb,
     Bell,
+    Crafter,
     Other,
 }
 
@@ -108,6 +110,7 @@ pub enum BlockEntity {
     Jukebox,
     /// `PistonMovingBlockEntity`.
     Piston(piston::Moving),
+    Crafter(crafter::Crafter),
 }
 
 impl BlockEntity {
@@ -116,7 +119,11 @@ impl BlockEntity {
             BlockEntity::Chest(_) | BlockEntity::Dropper(_) | BlockEntity::Comparator(_) | BlockEntity::Jukebox => {
                 false
             }
-            BlockEntity::Piston(_) | BlockEntity::Hopper(_) | BlockEntity::Bell | BlockEntity::ShulkerBox(_) => true,
+            BlockEntity::Piston(_)
+            | BlockEntity::Hopper(_)
+            | BlockEntity::Bell
+            | BlockEntity::ShulkerBox(_)
+            | BlockEntity::Crafter(_) => true,
         }
     }
 }
@@ -134,6 +141,7 @@ pub fn has_block_entity(kind: Kind) -> bool {
             | Kind::Bell
             | Kind::ShulkerBox
             | Kind::Jukebox
+            | Kind::Crafter
     )
 }
 
@@ -146,6 +154,7 @@ pub fn new_block_entity(_level: &Level, _pos: Pos, state: StateId) -> Option<Blo
         Kind::ShulkerBox => Some(BlockEntity::ShulkerBox(vec![container::Stack::default(); 27])),
         Kind::Jukebox => Some(BlockEntity::Jukebox),
         Kind::Comparator => Some(BlockEntity::Comparator(0)),
+        Kind::Crafter => Some(BlockEntity::Crafter(crafter::Crafter::new())),
         _ => None,
     }
 }
@@ -154,6 +163,7 @@ pub fn tick_block_entity(level: &mut Level, pos: Pos) {
     match level.block_entities.get(&pos) {
         Some(BlockEntity::Piston(_)) => piston::tick_moving(level, pos),
         Some(BlockEntity::Hopper(_)) => container::push_items_tick(level, pos),
+        Some(BlockEntity::Crafter(_)) => crafter::tick_entity(level, pos),
         _ => {}
     }
 }
@@ -172,6 +182,7 @@ pub fn has_analog_output(level: &Level, state: StateId) -> bool {
             | Kind::ShulkerBox
             | Kind::Jukebox
             | Kind::CopperBulb
+            | Kind::Crafter
     )
 }
 
@@ -182,6 +193,7 @@ pub fn analog_output(level: &Level, pos: Pos, state: StateId) -> i32 {
             container::analog_output(level, pos, state)
         }
         Kind::CopperBulb => bulb::bulb_analog_output(level, state),
+        Kind::Crafter => crafter::analog_output(level, pos),
         Kind::Composter => level.int(state, "level"),
         Kind::Cake => (7 - level.int(state, "bites")) * 2,
         _ => 0,
@@ -204,7 +216,8 @@ pub fn is_conductor(level: &Level, _pos: Pos, state: StateId) -> bool {
         | Kind::Log
         | Kind::Target
         | Kind::Jukebox
-        | Kind::ShulkerBox => true,
+        | Kind::ShulkerBox
+        | Kind::Crafter => true,
         Kind::Slab => level.prop(state, "type") == "double",
         _ => false,
     }
@@ -250,7 +263,8 @@ pub fn is_face_sturdy(level: &Level, pos: Pos, state: StateId, dir: Dir) -> bool
         | Kind::Target
         | Kind::Jukebox
         | Kind::ShulkerBox
-        | Kind::CopperBulb => true,
+        | Kind::CopperBulb
+        | Kind::Crafter => true,
         Kind::Trapdoor => door::trapdoor_face_sturdy(level, state, dir),
         Kind::Slab => match level.prop(state, "type") {
             "double" => true,
@@ -337,7 +351,8 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
         | Kind::Dropper
         | Kind::Dispenser
         | Kind::ShulkerBox
-        | Kind::Jukebox => level.update_neighbour_for_output_signal(pos, level.block(state)),
+        | Kind::Jukebox
+        | Kind::Crafter => level.update_neighbour_for_output_signal(pos, level.block(state)),
         _ => {}
     }
 }
@@ -367,6 +382,7 @@ pub fn neighbor_changed(
         Kind::Dropper | Kind::Dispenser => container::dropper_neighbor_changed(level, pos, state),
         Kind::CopperBulb => bulb::bulb_neighbor_changed(level, pos, state),
         Kind::Bell => bulb::bell_neighbor_changed(level, pos, state),
+        Kind::Crafter => crafter::neighbor_changed(level, pos, state),
         _ => {}
     }
 }
@@ -440,6 +456,7 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
         Kind::Comparator => comparator::tick(level, pos, state),
         Kind::Dropper => container::dropper_tick(level, pos, state),
         Kind::Dispenser => dispenser::tick(level, pos, state),
+        Kind::Crafter => crafter::tick(level, pos, state),
         Kind::Leaves => plain::leaves_tick(level, pos, state),
         _ => {}
     }
