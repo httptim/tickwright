@@ -1,0 +1,61 @@
+{
+  "name": "carpet_dupe",
+  "description": "A carpet duper. A sticky piston pushes two stacked slime blocks. A dead coral wall fan hangs on the lower one with a carpet on top of it, beside the upper one. The piston head replaces the slime the fan hangs on, so the fan pops and the carpet over the gap pops too, while the piston still places its cached copy.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "duplication"
+  ],
+  "palette": {
+    "#": "obsidian",
+    "P": "sticky_piston[extended=false,facing=east]",
+    "S": "slime_block",
+    "F": "dead_tube_coral_wall_fan[facing=south,waterlogged=false]",
+    "C": "white_carpet"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".....",
+      "PS...",
+      ".F...",
+      "....."
+    ],
+    [
+      ".....",
+      ".S...",
+      ".C...",
+      "....."
+    ],
+    [
+      ".....",
+      ".....",
+      ".....",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 5,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "state": "redstone_block"
+    }
+  ],
+  "entities": true
+}

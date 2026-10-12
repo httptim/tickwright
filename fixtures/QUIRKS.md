@@ -27,7 +27,7 @@ all eight orientations and must match at the order level
 | `update-skipping` | yes | | needs a chain longer than the 1,000,000-update default cap; to do |
 | `update-suppression-other` | no | | not present in 26.3 |
 | `tnt-dupe` | yes, captured | `phase4/tnt_dupe_coral` | covered: the primed TNT and the placed TNT block both appear in 26.3 |
-| `rail-carpet-dupe` | yes | | needs carpets and item entities |
+| `rail-carpet-dupe` | yes, captured | `phase4/carpet_dupe`, `phase4/rail_dupe` | covered: in 26.3 the dropped carpet or rail and the placed copy both appear. The carpet pops when the coral fan under it does; the rail drops when the fan's pop updates it while a moving piston, not yet solid, stands under it |
 | `gravity-dupe` | unverified | | needs falling blocks and the End (phase 4) |
 | `string-dupe` | no | | not present in 26.3 |
 | `flying-machines` | yes | `nucleation/flying_kick`, `nucleation/slime_extender` | covered |

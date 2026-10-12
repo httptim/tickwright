@@ -1,0 +1,61 @@
+{
+  "name": "rail_dupe",
+  "description": "A rail duper. A sticky piston pushes four slime blocks, carrying a dead coral fan and a rail. A slime moves into the rail's support first; then the piston head replaces the slime under the fan, which pops and updates the rail. The rail has nothing solid under it and drops, while the piston still places its cached copy. It stops before the dropped rail lands on a slime block, whose first bounce after a fall the engine doesn't match yet (see slime_drop).",
+  "ticks": 13,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "duplication"
+  ],
+  "palette": {
+    "#": "obsidian",
+    "P": "sticky_piston[extended=false,facing=east]",
+    "S": "slime_block",
+    "F": "dead_tube_coral_fan[waterlogged=false]",
+    "R": "rail"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".....",
+      "PS...",
+      "SS...",
+      "....."
+    ],
+    [
+      ".....",
+      ".F...",
+      ".R...",
+      "....."
+    ],
+    [
+      ".....",
+      ".....",
+      ".....",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 5,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "state": "redstone_block"
+    }
+  ],
+  "entities": true
+}
