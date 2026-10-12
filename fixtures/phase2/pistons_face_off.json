@@ -1,0 +1,52 @@
+{
+  "name": "pistons_face_off",
+  "description": "Quirk directional-update-order: a redstone block above the gap between two pistons that face each other powers both only quasi-connectively. A stone placed in the gap then updates west before east, so the first piston updated pushes the stone and the other piston along, and which one that is depends on the rotation.",
+  "ticks": 15,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "quirk",
+    "piston"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "piston[extended=false,facing=east]",
+    "B": "piston[extended=false,facing=west]"
+  },
+  "layers": [
+    [
+      "#######"
+    ],
+    [
+      ".A.B..."
+    ],
+    [
+      "......."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        2,
+        2,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 4,
+      "action": "set",
+      "pos": [
+        2,
+        1,
+        0
+      ],
+      "state": "stone"
+    }
+  ]
+}

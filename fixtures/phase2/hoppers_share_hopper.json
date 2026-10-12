@@ -1,0 +1,48 @@
+{
+  "name": "hoppers_share_hopper",
+  "description": "Quirk be-tick-order: a loaded hopper pushes east into one hopper while the hopper under it pulls from it. Which one gets each item depends on the order the hoppers' block entities tick, which is the order they were placed.",
+  "ticks": 50,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "quirk",
+    "hopper"
+  ],
+  "palette": {
+    "#": "stone",
+    "h": "hopper[enabled=true,facing=east]",
+    "C": "chest[facing=north,type=single,waterlogged=false]",
+    "d": "hopper[enabled=true,facing=down]"
+  },
+  "layers": [
+    [
+      "###"
+    ],
+    [
+      ".hC"
+    ],
+    [
+      ".hd"
+    ]
+  ],
+  "stimuli": [],
+  "containers": [
+    {
+      "pos": [
+        1,
+        2,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "stone",
+          "count": 4
+        }
+      ]
+    }
+  ]
+}
