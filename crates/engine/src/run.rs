@@ -134,6 +134,7 @@ fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result
             Action::Destroy => {
                 level.destroy_block(pos, crate::level::MAX_RECURSION);
             }
+            Action::Place => bail!("{}: placing blocks as a player is not supported by the engine yet", fixture.id),
         }
     }
     Ok(())

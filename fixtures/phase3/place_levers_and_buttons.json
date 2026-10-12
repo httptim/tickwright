@@ -1,0 +1,152 @@
+{
+  "name": "place_levers_and_buttons",
+  "description": "Levers and buttons placed on floors, walls and a ceiling: the clicked face decides the attachment and the look direction the facing.",
+  "ticks": 12,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "placement",
+    "lever",
+    "button"
+  ],
+  "palette": {
+    "#": "stone"
+  },
+  "layers": [
+    [
+      "#######",
+      "#######",
+      "#######",
+      "#######",
+      "#######"
+    ],
+    [
+      ".......",
+      ".......",
+      "#.#.#..",
+      ".......",
+      "......."
+    ],
+    [
+      ".......",
+      ".......",
+      "#.#.#..",
+      ".......",
+      "......."
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "......#"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "place",
+      "pos": [
+        0,
+        1,
+        2
+      ],
+      "item": "lever",
+      "face": "east",
+      "look": "west"
+    },
+    {
+      "tick": 2,
+      "action": "place",
+      "pos": [
+        2,
+        2,
+        2
+      ],
+      "item": "stone_button",
+      "face": "south",
+      "look": "north",
+      "pitch": 10
+    },
+    {
+      "tick": 3,
+      "action": "place",
+      "pos": [
+        4,
+        0,
+        1
+      ],
+      "item": "lever",
+      "face": "up",
+      "look": "south",
+      "pitch": 60
+    },
+    {
+      "tick": 4,
+      "action": "place",
+      "pos": [
+        6,
+        3,
+        4
+      ],
+      "item": "lever",
+      "face": "down",
+      "look": "north",
+      "pitch": -60
+    },
+    {
+      "tick": 5,
+      "action": "place",
+      "pos": [
+        6,
+        3,
+        4
+      ],
+      "item": "oak_button",
+      "face": "north",
+      "look": "south",
+      "pitch": -20
+    },
+    {
+      "tick": 6,
+      "action": "place",
+      "pos": [
+        0,
+        1,
+        2
+      ],
+      "item": "lever",
+      "face": "north",
+      "look": "south"
+    },
+    {
+      "tick": 7,
+      "action": "place",
+      "pos": [
+        4,
+        0,
+        3
+      ],
+      "item": "stone_button",
+      "face": "up",
+      "look": "east",
+      "pitch": 80
+    },
+    {
+      "tick": 8,
+      "action": "place",
+      "pos": [
+        6,
+        0,
+        0
+      ],
+      "item": "lever",
+      "face": "up",
+      "look": "west",
+      "pitch": 0
+    }
+  ]
+}

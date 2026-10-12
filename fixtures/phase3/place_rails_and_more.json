@@ -1,0 +1,246 @@
+{
+  "name": "place_rails_and_more",
+  "description": "Rails that connect as they are placed, a powered rail, lamps and a copper bulb placed beside power, a note block, a log on its side, two chests that join, leaves, a tripwire hook and a bell.",
+  "ticks": 24,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "placement",
+    "rail",
+    "lamp",
+    "copper_bulb",
+    "note_block",
+    "chest",
+    "bell"
+  ],
+  "palette": {
+    "#": "stone"
+  },
+  "layers": [
+    [
+      "#######",
+      "#######",
+      "#######",
+      "#######",
+      "#######",
+      "#######",
+      "#######"
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "......."
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "......."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "place",
+      "pos": [
+        1,
+        0,
+        1
+      ],
+      "item": "rail",
+      "face": "up",
+      "look": "north",
+      "pitch": 50
+    },
+    {
+      "tick": 2,
+      "action": "place",
+      "pos": [
+        2,
+        0,
+        1
+      ],
+      "item": "rail",
+      "face": "up",
+      "look": "north",
+      "pitch": 50
+    },
+    {
+      "tick": 3,
+      "action": "place",
+      "pos": [
+        4,
+        0,
+        1
+      ],
+      "item": "powered_rail",
+      "face": "up",
+      "look": "east",
+      "pitch": 50
+    },
+    {
+      "tick": 4,
+      "action": "place",
+      "pos": [
+        4,
+        0,
+        3
+      ],
+      "item": "redstone_lamp",
+      "face": "up",
+      "look": "north",
+      "pitch": 50
+    },
+    {
+      "tick": 5,
+      "action": "place",
+      "pos": [
+        5,
+        0,
+        3
+      ],
+      "item": "redstone_block",
+      "face": "up",
+      "look": "north",
+      "pitch": 50
+    },
+    {
+      "tick": 6,
+      "action": "place",
+      "pos": [
+        6,
+        0,
+        3
+      ],
+      "item": "redstone_lamp",
+      "face": "up",
+      "look": "north",
+      "pitch": 50
+    },
+    {
+      "tick": 7,
+      "action": "place",
+      "pos": [
+        5,
+        0,
+        4
+      ],
+      "item": "copper_bulb",
+      "face": "up",
+      "look": "north",
+      "pitch": 50
+    },
+    {
+      "tick": 8,
+      "action": "place",
+      "pos": [
+        1,
+        0,
+        3
+      ],
+      "item": "note_block",
+      "face": "up",
+      "look": "north",
+      "pitch": 50
+    },
+    {
+      "tick": 9,
+      "action": "place",
+      "pos": [
+        1,
+        1,
+        3
+      ],
+      "item": "oak_log",
+      "face": "east",
+      "look": "west"
+    },
+    {
+      "tick": 10,
+      "action": "place",
+      "pos": [
+        1,
+        0,
+        5
+      ],
+      "item": "chest",
+      "face": "up",
+      "look": "north",
+      "pitch": 40
+    },
+    {
+      "tick": 11,
+      "action": "place",
+      "pos": [
+        2,
+        0,
+        5
+      ],
+      "item": "chest",
+      "face": "up",
+      "look": "north",
+      "pitch": 40
+    },
+    {
+      "tick": 12,
+      "action": "place",
+      "pos": [
+        3,
+        0,
+        5
+      ],
+      "item": "oak_leaves",
+      "face": "up",
+      "look": "north",
+      "pitch": 50
+    },
+    {
+      "tick": 13,
+      "action": "place",
+      "pos": [
+        4,
+        1,
+        3
+      ],
+      "item": "tripwire_hook",
+      "face": "south",
+      "look": "north"
+    },
+    {
+      "tick": 14,
+      "action": "place",
+      "pos": [
+        6,
+        0,
+        1
+      ],
+      "item": "bell",
+      "face": "up",
+      "look": "north",
+      "pitch": 40
+    },
+    {
+      "tick": 15,
+      "action": "place",
+      "pos": [
+        5,
+        0,
+        6
+      ],
+      "item": "target",
+      "face": "up",
+      "look": "north",
+      "pitch": 40
+    }
+  ]
+}

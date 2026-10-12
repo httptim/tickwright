@@ -60,6 +60,10 @@ pub enum Action {
     Set,
     /// Break the block without drops, with normal updates.
     Destroy,
+    /// Right-click a face of the block at `pos` holding `item`, as a player
+    /// looking `look` (and `pitch` degrees down) would, so the block's own
+    /// placement rules choose its state.
+    Place,
 }
 
 /// One stack in a container: `count` of item `id` in `slot`.
@@ -99,6 +103,68 @@ pub struct Stimulus {
     pub pos: [i32; 3],
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub state: Option<String>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub place: Option<PlaceInput>,
+}
+
+/// How a `place` stimulus is made: what is held, which face of the block at
+/// the stimulus position is clicked, and where the player is looking.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlaceInput {
+    /// The item held, such as `repeater` or `redstone`.
+    pub item: String,
+    /// The face clicked: `up`, `down`, `north` and so on.
+    pub face: String,
+    /// The horizontal direction the player faces.
+    pub look: String,
+    /// Degrees below the horizon the player looks; negative is up.
+    #[serde(default)]
+    pub pitch: i32,
+    /// Where on the clicked block the click lands, in sixteenths of a block
+    /// from its least corner. Defaults to the middle of the clicked face.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hit: Option<[i32; 3]>,
+    /// Whether the player is sneaking.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub sneak: bool,
+}
+
+const DIRECTIONS: [&str; 6] = ["down", "up", "north", "south", "west", "east"];
+
+impl PlaceInput {
+    /// The click point in sixteenths, the middle of the face if not given.
+    pub fn hit_or_default(&self) -> [i32; 3] {
+        self.hit.unwrap_or(match self.face.as_str() {
+            "down" => [8, 0, 8],
+            "up" => [8, 16, 8],
+            "north" => [8, 8, 0],
+            "south" => [8, 8, 16],
+            "west" => [0, 8, 8],
+            _ => [16, 8, 8],
+        })
+    }
+
+    fn validate(&self) -> Result<()> {
+        ensure!(DIRECTIONS.contains(&self.face.as_str()), "face {:?} is not a direction", self.face);
+        ensure!(DIRECTIONS[2..].contains(&self.look.as_str()), "look {:?} is not a horizontal direction", self.look);
+        ensure!((-90..=90).contains(&self.pitch), "pitch {} is outside -90..=90", self.pitch);
+        if let Some(h) = self.hit {
+            ensure!(h.iter().all(|v| (0..=16).contains(v)), "hit {h:?} is outside 0..=16");
+        }
+        Ok(())
+    }
+
+    fn transform(&self, t: Transform) -> PlaceInput {
+        PlaceInput {
+            item: self.item.clone(),
+            face: t.direction(&self.face),
+            look: t.direction(&self.look),
+            pitch: self.pitch,
+            // Resolved fixtures always carry the click point.
+            hit: Some(t.sixteenths(self.hit_or_default())),
+            sneak: self.sneak,
+        }
+    }
 }
 
 /// A fixture as written by hand.
@@ -220,6 +286,12 @@ impl FixtureSource {
                 self.name,
                 s.pos
             );
+            match (&s.action, &s.place) {
+                (Action::Place, None) => bail!("{}: a place stimulus needs item, face and look", self.name),
+                (Action::Place, Some(p)) => p.validate().with_context(|| format!("{}: place stimulus", self.name))?,
+                (_, Some(_)) => bail!("{}: only place stimuli take item, face and look", self.name),
+                _ => {}
+            }
             match (&s.action, &s.state) {
                 (Action::Set, None) => bail!("{}: a set stimulus needs a state", self.name),
                 (Action::Set, Some(st)) => {
@@ -304,6 +376,7 @@ impl FixtureSource {
                     .map(|st| BlockState::parse(st).map(|b| t.state(&b).to_string()))
                     .transpose()
                     .unwrap(),
+                place: s.place.as_ref().map(|p| p.transform(t)),
             })
             .collect();
         let containers = self

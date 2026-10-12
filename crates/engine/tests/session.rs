@@ -55,6 +55,7 @@ fn session_matches_fixture_runs() {
                     Action::Use => session.use_block(pos),
                     Action::Set => session.set_block(pos, s.state.as_deref().unwrap(), Placement::Updates).unwrap(),
                     Action::Destroy => session.destroy(pos),
+                    Action::Place => unreachable!("run refuses place stimuli"),
                 }
             }
             for e in session.step().iter().filter(|e| inside(e.pos)) {
