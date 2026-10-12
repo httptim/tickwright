@@ -91,6 +91,9 @@ pub struct Level {
     kinds: Vec<Kind>,
     blocks: World,
     pub game_time: i64,
+    /// The world clock's day time, which only commands change: fixtures
+    /// freeze it.
+    pub day_time: i64,
 
     // LevelTicks
     pending_ticks: Vec<ScheduledTick>,
@@ -152,6 +155,7 @@ impl Level {
             kinds,
             blocks: World::new(air),
             game_time: 0,
+            day_time: 6000,
             pending_ticks: Vec::new(),
             pending_keys: HashSet::new(),
             running_ticks: HashSet::new(),

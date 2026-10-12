@@ -15,6 +15,7 @@ mod button;
 mod comparator;
 pub mod container;
 pub mod crafter;
+pub mod daylight;
 pub mod dispenser;
 mod door;
 mod lamp;
@@ -91,6 +92,7 @@ pub enum Kind {
     Bell,
     Crafter,
     Lectern,
+    DaylightDetector,
     Other,
 }
 
@@ -114,6 +116,7 @@ pub enum BlockEntity {
     Piston(piston::Moving),
     Crafter(crafter::Crafter),
     Lectern(lectern::Lectern),
+    DaylightDetector,
 }
 
 impl BlockEntity {
@@ -128,7 +131,8 @@ impl BlockEntity {
             | BlockEntity::Hopper(_)
             | BlockEntity::Bell
             | BlockEntity::ShulkerBox(_)
-            | BlockEntity::Crafter(_) => true,
+            | BlockEntity::Crafter(_)
+            | BlockEntity::DaylightDetector => true,
         }
     }
 }
@@ -148,6 +152,7 @@ pub fn has_block_entity(kind: Kind) -> bool {
             | Kind::Jukebox
             | Kind::Crafter
             | Kind::Lectern
+            | Kind::DaylightDetector
     )
 }
 
@@ -162,6 +167,7 @@ pub fn new_block_entity(_level: &Level, _pos: Pos, state: StateId) -> Option<Blo
         Kind::Comparator => Some(BlockEntity::Comparator(0)),
         Kind::Crafter => Some(BlockEntity::Crafter(crafter::Crafter::new())),
         Kind::Lectern => Some(BlockEntity::Lectern(lectern::Lectern::default())),
+        Kind::DaylightDetector => Some(BlockEntity::DaylightDetector),
         _ => None,
     }
 }
@@ -171,6 +177,7 @@ pub fn tick_block_entity(level: &mut Level, pos: Pos) {
         Some(BlockEntity::Piston(_)) => piston::tick_moving(level, pos),
         Some(BlockEntity::Hopper(_)) => container::push_items_tick(level, pos),
         Some(BlockEntity::Crafter(_)) => crafter::tick_entity(level, pos),
+        Some(BlockEntity::DaylightDetector) => daylight::tick_entity(level, pos),
         _ => {}
     }
 }
@@ -250,6 +257,7 @@ pub fn is_signal_source(level: &Level, state: StateId) -> bool {
                 | Kind::Jukebox
                 | Kind::TripwireHook
                 | Kind::Lectern
+                | Kind::DaylightDetector
         ),
     }
 }
@@ -300,6 +308,7 @@ pub fn get_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i32 {
         Kind::Target => plain::target_signal(level, state),
         Kind::TripwireHook => plain::hook_signal(level, state),
         Kind::Lectern => lectern::get_signal(level, state),
+        Kind::DaylightDetector => daylight::get_signal(level, state),
         Kind::Observer => observer::get_signal(level, state, dir),
         Kind::Comparator => comparator::get_signal(level, pos, state, dir),
         Kind::Repeater => repeater::get_signal(level, pos, state, dir),
@@ -495,6 +504,7 @@ pub fn use_without_item(level: &mut Level, pos: Pos, state: StateId) {
         Kind::NoteBlock => note::use_without_item(level, pos, state),
         Kind::Trapdoor => door::trapdoor_use(level, pos, state),
         Kind::Door => door::door_use(level, pos, state),
+        Kind::DaylightDetector => daylight::use_without_item(level, pos, state),
         _ => {}
     }
 }

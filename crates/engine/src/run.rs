@@ -88,10 +88,15 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
     }
     let blocks = fixture.blocks.iter().map(|(x, y, z, s)| Ok((Pos::new(ox + x, oy + y, oz + z), supported(s)?)));
     let blocks: Result<Vec<_>> = blocks.collect();
-    if fixture.day_time.is_some() {
-        bail!("{}: the time of day is not supported by the engine yet", fixture.id);
+    // Without a frozen clock the day time is whatever the game's world had.
+    let uses_day_time = |s: &str| s.starts_with("daylight_detector") || s.starts_with("minecraft:daylight_detector");
+    if fixture.day_time.is_none() && fixture.blocks.iter().any(|b| uses_day_time(&b.3)) {
+        bail!("{}: a daylight detector needs the fixture's day_time", fixture.id);
     }
     let mut level = Level::new(rules);
+    if let Some(t) = fixture.day_time {
+        level.day_time = t;
+    }
     for e in &fixture.experiments {
         match e.as_str() {
             "redstone_experiments" => level.experimental_redstone = true,
@@ -178,7 +183,7 @@ fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result
             Action::Page => {
                 blocks::lectern::set_page(level, pos, s.page.context("page stimulus without a page")? as i32)
             }
-            Action::Time => bail!("{}: time stimuli are not supported yet", fixture.id),
+            Action::Time => level.day_time = s.time.context("time stimulus without a time")?,
         }
     }
     Ok(())

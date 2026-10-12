@@ -61,6 +61,7 @@ fn block(name: &str) -> Option<Kind> {
         "bell" => Kind::Bell,
         "crafter" => Kind::Crafter,
         "lectern" => Kind::Lectern,
+        "daylight_detector" => Kind::DaylightDetector,
         n if n.ends_with("_trapdoor") => Kind::Trapdoor,
         n if n.ends_with("_door") => Kind::Door,
         _ => return None,

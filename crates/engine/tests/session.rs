@@ -60,7 +60,7 @@ fn session_matches_fixture_runs() {
                         session.place(&p.item, tickwright_engine::run::click(pos, p).unwrap()).unwrap();
                     }
                     Action::Page => session.turn_page(pos, s.page.unwrap() as i32),
-                    Action::Time => unreachable!("the engine refuses these fixtures"),
+                    Action::Time => session.set_day_time(s.time.unwrap()),
                 }
             }
             for e in session.step().iter().filter(|e| inside(e.pos)) {

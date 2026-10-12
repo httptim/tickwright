@@ -153,3 +153,5 @@ lectern_pages order
 crafter_fed_by_hopper order
 crafter_into_crafter order
 crafter_iron_block order
+daylight_detector_day order
+daylight_detector_dusk_dawn order
