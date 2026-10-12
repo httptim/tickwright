@@ -1,6 +1,6 @@
 {
   "name": "place_rails_and_more",
-  "description": "Rails that connect as they are placed, a powered rail, lamps and a copper bulb placed beside power, a note block, a log on its side, two chests that join, leaves, a tripwire hook and a bell.",
+  "description": "A powered rail and an activator rail, a powered rail facing east, lamps and a copper bulb placed beside power, a note block, a log on its side, two chests that join, leaves, a tripwire hook and a bell.",
   "ticks": 24,
   "levels": [
     "state",
@@ -57,7 +57,7 @@
         0,
         1
       ],
-      "item": "rail",
+      "item": "powered_rail",
       "face": "up",
       "look": "north",
       "pitch": 50
@@ -70,7 +70,7 @@
         0,
         1
       ],
-      "item": "rail",
+      "item": "activator_rail",
       "face": "up",
       "look": "north",
       "pitch": 50

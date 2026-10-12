@@ -21,6 +21,7 @@ mod lever;
 mod note;
 mod observer;
 mod piston;
+pub mod placement;
 mod plain;
 mod rail;
 mod repeater;

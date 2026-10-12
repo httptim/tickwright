@@ -566,7 +566,10 @@ public final class Capture {
         };
         // Far above the build, so the player never obstructs a placement.
         player.setPos(clicked.getX() + 0.5, clicked.getY() + 64, clicked.getZ() + 0.5);
+        // Placement reads both: the body's yaw for the horizontal direction,
+        // the head's (getViewYRot) for the nearest looking direction.
         player.setYRot(yaw(s.get("look").getAsString()));
+        player.setYHeadRot(yaw(s.get("look").getAsString()));
         player.setXRot(s.has("pitch") ? s.get("pitch").getAsFloat() : 0f);
         player.setShiftKeyDown(s.has("sneak") && s.get("sneak").getAsBoolean());
         String id = s.get("item").getAsString();

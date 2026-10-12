@@ -11,7 +11,7 @@ use super::Kind;
 // --- LeavesBlock -----------------------------------------------------------------
 
 /// `getOptionalDistanceAt`, with no distance read as 7.
-fn distance_at(level: &Level, state: StateId) -> i32 {
+pub(super) fn distance_at(level: &Level, state: StateId) -> i32 {
     match level.kind(state) {
         Kind::Log => 0,
         Kind::Leaves => level.int(state, "distance"),

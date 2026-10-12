@@ -61,7 +61,7 @@ fn calculate_output(level: &Level, pos: Pos, state: StateId) -> i32 {
 }
 
 /// `shouldTurnOn`.
-fn should_turn_on(level: &Level, pos: Pos, state: StateId) -> bool {
+pub(super) fn should_turn_on(level: &Level, pos: Pos, state: StateId) -> bool {
     let input = input_signal(level, pos, state);
     if input == 0 {
         return false;

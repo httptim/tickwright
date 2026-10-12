@@ -35,7 +35,7 @@ pub(super) fn input_signal(level: &Level, pos: Pos, state: StateId) -> i32 {
     signal.max(if level.kind(s) == Kind::RedstoneWire { level.int(s, "power") } else { 0 })
 }
 
-fn should_turn_on(level: &Level, pos: Pos, state: StateId) -> bool {
+pub(super) fn should_turn_on(level: &Level, pos: Pos, state: StateId) -> bool {
     input_signal(level, pos, state) > 0
 }
 
