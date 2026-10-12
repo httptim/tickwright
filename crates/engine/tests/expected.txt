@@ -22,6 +22,7 @@ piston_push_limit_13 order
 piston_qc_bud order
 piston_qc_diagonal order
 piston_zero_tick order
+quiet_set order
 repeater_chain_pulse_1 order
 repeater_lock order
 repeater_lock_race order
