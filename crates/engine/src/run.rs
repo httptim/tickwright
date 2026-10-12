@@ -283,7 +283,11 @@ fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result
             Action::Time => level.day_time = s.time.context("time stimulus without a time")?,
             Action::Summon => {
                 let sm = s.summon.as_ref().context("summon stimulus without an entity")?;
-                let at = Vec3::new(ox as f64 + sm.at[0], oy as f64 + sm.at[1], oz as f64 + sm.at[2]);
+                // The harness runs `/summon` with each coordinate written
+                // out exactly, and the command centres a whole-number x or z
+                // on its block.
+                let centre = |v: f64| if v.fract() == 0.0 { v + 0.5 } else { v };
+                let at = Vec3::new(centre(ox as f64 + sm.at[0]), oy as f64 + sm.at[1], centre(oz as f64 + sm.at[2]));
                 let motion = sm.motion.map(|m| Vec3::new(m[0], m[1], m[2]));
                 entity::summon(level, &sm.entity, at, motion, sm.nbt.as_deref()).with_context(|| fixture.id.clone())?;
             }
