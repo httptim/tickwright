@@ -1,7 +1,7 @@
 {
   "name": "arrow_hits",
-  "description": "Arrows shot at things: one square into a target block and one low and off its centre (each lights a lamp for as long as the target stays powered), one into a wooden button on a wall (the button stays pressed while the arrow is in it), one in an arc onto a wooden pressure plate, and one straight down into the floor, where it sticks.",
-  "ticks": 60,
+  "description": "Arrows shot at things: one square into a target block and one low and off its centre (each lights a lamp for as long as the target stays powered), one into a wooden button on a wall (the arrow stays in it, so the button stays pressed), one in an arc onto a wooden pressure plate, and one straight down into the floor, where it sticks.",
+  "ticks": 80,
   "levels": [
     "state",
     "phase",
@@ -86,7 +86,7 @@
       "entity": "arrow",
       "at": [
         1.5,
-        1.25,
+        1.75,
         5.5
       ],
       "motion": [

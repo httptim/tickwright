@@ -1,0 +1,83 @@
+{
+  "name": "fireball_hits",
+  "description": "Small fireballs given a motion fly on, speeding up, until they hit: one into a target block, one into a stone wall and one into the floor. Each sets fire to the block in front of what it hit.",
+  "ticks": 60,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "fireball",
+    "target"
+  ],
+  "palette": {
+    "#": "stone",
+    "T": "target[power=0]"
+  },
+  "layers": [
+    [
+      "############",
+      "############",
+      "############",
+      "############",
+      "############"
+    ],
+    [
+      ".......T.#..",
+      "............",
+      ".......#....",
+      "............",
+      "..........#."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "small_fireball",
+      "at": [
+        1.5,
+        1.25,
+        0.5
+      ],
+      "motion": [
+        0.2,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "small_fireball",
+      "at": [
+        1.5,
+        1.25,
+        2.5
+      ],
+      "motion": [
+        0.5,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "small_fireball",
+      "at": [
+        2.5,
+        3.0,
+        4.5
+      ],
+      "motion": [
+        0.1,
+        -0.3,
+        0.0
+      ]
+    }
+  ],
+  "entities": true
+}
