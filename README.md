@@ -39,7 +39,7 @@ phase 1 has no comparators.
 | `crates/wasm` | The engine as a WebAssembly module with a plain C ABI |
 | `crates/cli` | The `tickwright` command: `resolve`, `run`, `diff` and `bench` |
 | `fixtures/phase1` | Phase 1 fixtures: dust, torches, repeaters, pistons, buttons |
-| `fixtures/phase2` | Phase 2 fixtures: observers, comparators, note blocks, doors, trapdoors, rails, water, hoppers, droppers |
+| `fixtures/phase2` | Phase 2 fixtures: observers, comparators, note blocks, doors, trapdoors, rails, water, hoppers, droppers, copper bulbs, bells |
 | `fixtures/nucleation` | Builds from [Nucleation](https://github.com/Schem-at/Nucleation)'s conformance tests (MIT, © 2025 Schem-at), converted by `tools/nucleation.py` and recaptured on 26.3 |
 | `harness/` | Java capture harness for the vanilla server |
 | `traces/<version>/` | Ground-truth traces from the real game, gzipped |
