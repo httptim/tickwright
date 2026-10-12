@@ -375,11 +375,12 @@ fn chest_state(level: &Level, ctx: &Context, base: StateId) -> StateId {
     let mut facing = ctx.horizontal().opposite();
     let mut ty = "single";
     let face = ctx.click.face;
-    if face.is_horizontal() && ctx.click.sneak {
-        if let Some(d) = partner(face.opposite()).filter(|d| d.axis() != face.axis()) {
-            facing = d;
-            ty = if d.counter_clockwise() == face.opposite() { "right" } else { "left" };
-        }
+    if face.is_horizontal()
+        && ctx.click.sneak
+        && let Some(d) = partner(face.opposite()).filter(|d| d.axis() != face.axis())
+    {
+        facing = d;
+        ty = if d.counter_clockwise() == face.opposite() { "right" } else { "left" };
     }
     if ty == "single" && !ctx.click.sneak {
         if partner(facing.clockwise()) == Some(facing) {
