@@ -155,3 +155,12 @@ crafter_into_crafter order
 crafter_iron_block order
 daylight_detector_day order
 daylight_detector_dusk_dawn order
+tripwire_cut_string order
+tripwire_string_completes order
+tripwire_wall_removed order
+shelf_chain_power order
+shelf_comparator order
+sculk_calibrated_frequency order
+sculk_destroy_distances order
+sculk_lever_on_off order
+sculk_wool_blocks order

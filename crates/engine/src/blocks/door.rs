@@ -2,6 +2,7 @@
 //! by hand. Their writes use flag 2, so opening tells no neighbors; only
 //! shape updates go out.
 
+use crate::game_event::GameEvent;
 use crate::level::{Level, flags};
 use crate::pos::{Dir, Pos};
 use crate::registry::StateId;
@@ -14,15 +15,24 @@ fn opens_by_hand(level: &Level, state: StateId) -> bool {
 pub fn trapdoor_neighbor_changed(level: &mut Level, pos: Pos, state: StateId) {
     let powered = level.has_neighbor_signal(pos);
     if powered != level.flag(state, "powered") {
+        if level.flag(state, "open") != powered {
+            level.game_event(open_event(powered), pos);
+        }
         let state = level.with_bool(state, "open", powered);
         level.set_block(pos, level.with_bool(state, "powered", powered), flags::CLIENTS);
     }
+}
+
+/// `BLOCK_OPEN` or `BLOCK_CLOSE`.
+fn open_event(open: bool) -> GameEvent {
+    if open { GameEvent::BlockOpen } else { GameEvent::BlockClose }
 }
 
 pub fn trapdoor_use(level: &mut Level, pos: Pos, state: StateId) {
     if opens_by_hand(level, state) {
         let open = !level.flag(state, "open");
         level.set_block(pos, level.with_bool(state, "open", open), flags::CLIENTS);
+        level.game_event(open_event(open), pos);
     }
 }
 
@@ -50,6 +60,9 @@ pub fn door_neighbor_changed(level: &mut Level, pos: Pos, state: StateId, source
     let other = pos.offset(if is_lower(level, state) { Dir::Up } else { Dir::Down });
     let powered = level.has_neighbor_signal(pos) || level.has_neighbor_signal(other);
     if powered != level.flag(state, "powered") {
+        if level.flag(state, "open") != powered {
+            level.game_event(open_event(powered), pos);
+        }
         let state = level.with_bool(state, "open", powered);
         level.set_block(pos, level.with_bool(state, "powered", powered), flags::CLIENTS);
     }
@@ -59,6 +72,7 @@ pub fn door_use(level: &mut Level, pos: Pos, state: StateId) {
     if opens_by_hand(level, state) {
         let open = !level.flag(state, "open");
         level.set_block(pos, level.with_bool(state, "open", open), flags::CLIENTS | flags::IMMEDIATE);
+        level.game_event(open_event(open), pos);
     }
 }
 

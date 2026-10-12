@@ -3,6 +3,7 @@
 //! arrows, but there are no entities yet, so nothing keeps them pressed.
 
 use super::connected_direction;
+use crate::game_event::GameEvent;
 use crate::level::{Level, flags};
 use crate::pos::Pos;
 use crate::registry::StateId;
@@ -23,6 +24,7 @@ pub fn press(level: &mut Level, pos: Pos, state: StateId) {
     level.set_block(pos, level.with_bool(state, "powered", true), flags::ALL);
     update_neighbours(level, pos, state);
     level.schedule_tick(pos, level.block(state), ticks_to_stay_pressed(level, state), 0);
+    level.game_event(GameEvent::BlockActivate, pos);
 }
 
 /// `tick` and `checkPressed`: with no arrows, nothing keeps a button pressed.
@@ -30,6 +32,7 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
     if level.flag(state, "powered") {
         level.set_block(pos, level.with_bool(state, "powered", false), flags::ALL);
         update_neighbours(level, pos, state);
+        level.game_event(GameEvent::BlockDeactivate, pos);
     }
 }
 

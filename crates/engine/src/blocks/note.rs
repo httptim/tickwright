@@ -1,6 +1,7 @@
 //! `NoteBlock`: plays (a block event) on a rising signal or a click, and
 //! takes its instrument from the block beneath it.
 
+use crate::game_event::GameEvent;
 use crate::level::{Level, flags};
 use crate::pos::{Dir, Pos};
 use crate::registry::StateId;
@@ -38,6 +39,7 @@ pub fn update_shape(level: &Level, pos: Pos, state: StateId, dir: Dir) -> StateI
 fn play_note(level: &mut Level, pos: Pos, state: StateId) {
     if level.is_air(level.get(pos.above())) {
         level.block_event(pos, level.block(state), 0, 0);
+        level.game_event(GameEvent::NoteBlockPlay, pos);
     }
 }
 

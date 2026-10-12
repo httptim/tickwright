@@ -183,24 +183,41 @@ fn hits_occluder(level: &Level, from: [f64; 3], to: [f64; 3]) -> bool {
     false
 }
 
-/// `VibrationSystem.Ticker.tick`, the block entity's ticker.
+/// `VibrationSystem.Ticker.tick`, the block entity's ticker. Each change
+/// to the vibration data marks the block entity changed, which comparators
+/// hear.
 pub fn tick_entity(level: &mut Level, pos: Pos) {
     let now = level.game_time;
     let Some(s) = sensor(level, pos) else { return };
-    if let Some((v, tick)) = s.candidate
+    let mut changes = 0;
+    if s.current.is_none()
+        && let Some((v, tick)) = s.candidate
         && tick < now
     {
         s.current = Some(v);
         s.travel_time = v.distance.floor() as i32;
         s.candidate = None;
+        changes += 1;
     }
-    let Some(v) = s.current else { return };
-    s.travel_time = (s.travel_time - 1).max(0);
-    if s.travel_time > 0 {
-        return;
+    if let Some(v) = s.current {
+        let mut changed = s.travel_time > 0;
+        s.travel_time = (s.travel_time - 1).max(0);
+        if s.travel_time <= 0 {
+            s.current = None;
+            receive(level, pos, v);
+            changed = true;
+        }
+        if changed {
+            changes += 1;
+        }
     }
-    s.current = None;
-    // `VibrationSystem.receiveVibration`, with the distance between blocks.
+    for _ in 0..changes {
+        super::container::set_changed(level, pos);
+    }
+}
+
+/// `VibrationSystem.receiveVibration`, with the distance between blocks.
+fn receive(level: &mut Level, pos: Pos, v: Vibration) {
     let d = {
         let (dx, dy, dz) = ((v.pos.x - pos.x) as f64, (v.pos.y - pos.y) as f64, (v.pos.z - pos.z) as f64);
         (dx * dx + dy * dy + dz * dz).sqrt() as f32

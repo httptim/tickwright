@@ -1,6 +1,7 @@
 //! Pistons: `PistonBaseBlock`, `PistonStructureResolver`, `PistonHeadBlock`,
 //! `MovingPistonBlock` and `PistonMovingBlockEntity`.
 
+use crate::game_event::GameEvent;
 use crate::level::{Level, flags};
 use crate::pos::{Dir, Pos, java_hash_set_order};
 use crate::registry::StateId;
@@ -293,6 +294,7 @@ pub fn trigger_event(level: &mut Level, pos: Pos, state: StateId, a: i32, b: i32
             return false;
         }
         level.set_block(pos, extended, flags::MOVE_BY_PISTON | flags::ALL);
+        level.game_event(GameEvent::BlockActivate, pos);
     } else if a == 1 || a == 2 {
         let front = pos.offset(dir);
         if matches!(level.block_entities.get(&front), Some(BlockEntity::Piston(_))) {
@@ -331,6 +333,7 @@ pub fn trigger_event(level: &mut Level, pos: Pos, state: StateId, a: i32, b: i32
         } else {
             level.remove_block(pos.offset(dir));
         }
+        level.game_event(GameEvent::BlockDeactivate, pos);
     }
     true
 }
