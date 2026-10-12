@@ -704,20 +704,23 @@ public final class Capture {
 
     private static java.lang.reflect.Field entityCounter;
 
-    /** Sets {@code Entity.ENTITY_COUNTER} to 0, so the next entity made gets id 1. */
+    /** Sets {@code ServerLevel.ENTITY_COUNTER} to 0, so the next entity made gets id 1. */
     private static void resetEntityIds() {
         try {
             if (entityCounter == null) {
-                for (java.lang.reflect.Field f : Entity.class.getDeclaredFields()) {
-                    if (java.lang.reflect.Modifier.isStatic(f.getModifiers())
-                            && f.getType() == java.util.concurrent.atomic.AtomicInteger.class) {
-                        f.setAccessible(true);
-                        entityCounter = f;
-                        break;
+                // 26.3 keeps it on ServerLevel; older versions on Entity.
+                for (Class<?> c : List.of(ServerLevel.class, Entity.class)) {
+                    for (java.lang.reflect.Field f : c.getDeclaredFields()) {
+                        if (entityCounter == null && java.lang.reflect.Modifier.isStatic(f.getModifiers())
+                                && f.getType() == java.util.concurrent.atomic.AtomicInteger.class
+                                && f.getName().equals("ENTITY_COUNTER")) {
+                            f.setAccessible(true);
+                            entityCounter = f;
+                        }
                     }
                 }
                 if (entityCounter == null) {
-                    throw new IllegalStateException("no entity id counter in Entity; AtomicInteger fields: "
+                    throw new IllegalStateException("no ENTITY_COUNTER on ServerLevel or Entity; AtomicInteger fields: "
                             + atomicIntegerFields());
                 }
             }
