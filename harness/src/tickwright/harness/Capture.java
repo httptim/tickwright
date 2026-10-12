@@ -130,6 +130,10 @@ public final class Capture {
         String mcVersion = SharedConstants.getCurrentVersion().name();
         System.out.printf("Minecraft %s%n", mcVersion);
 
+        // Bring every chunk near the default origin to full ticking once, up
+        // front, so the first fixture in a new chunk does not wait on loading.
+        warmUp(new BlockPos(-32, 90, -32), new BlockPos(31, 130, 31));
+
         Hooks.setListener = Capture::beforeSet;
         Hooks.eventListener = Capture::onEvent;
 
@@ -487,10 +491,13 @@ public final class Capture {
                 }
             }
         }
-        int n = 0;
-        while (n < 600 && !chunks.stream().allMatch(c -> level.isPositionTickingWithEntitiesLoaded(c.pack()))) {
+        // Chunk loading happens on worker threads, so wait on the clock rather
+        // than a tick count: unthrottled ticks can outrun it.
+        long deadline = System.nanoTime() + 120_000_000_000L;
+        while (System.nanoTime() < deadline
+                && !chunks.stream().allMatch(c -> level.isPositionTickingWithEntitiesLoaded(c.pack()))) {
             tick();
-            n++;
+            Thread.sleep(5);
         }
         if (!chunks.stream().allMatch(c -> level.isPositionTickingWithEntitiesLoaded(c.pack()))) {
             throw new IllegalStateException("chunks around the fixture never became entity-ticking");
