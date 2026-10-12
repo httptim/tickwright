@@ -1,0 +1,70 @@
+{
+  "name": "activator_rail_chain",
+  "description": "Twelve activator rails with a lever at one end. Power reaches the nine nearest; the rest stay off.",
+  "ticks": 14,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "rail"
+  ],
+  "palette": {
+    "#": "stone",
+    "-": "activator_rail[powered=false,shape=north_south,waterlogged=false]",
+    "V": "lever[face=floor,facing=east,powered=false]"
+  },
+  "layers": [
+    [
+      "##",
+      "##",
+      "##",
+      "##",
+      "##",
+      "##",
+      "##",
+      "##",
+      "##",
+      "##",
+      "##",
+      "##",
+      "##"
+    ],
+    [
+      ".V",
+      ".-",
+      ".-",
+      ".-",
+      ".-",
+      ".-",
+      ".-",
+      ".-",
+      ".-",
+      ".-",
+      ".-",
+      ".-",
+      ".-"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 8,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        0
+      ]
+    }
+  ]
+}

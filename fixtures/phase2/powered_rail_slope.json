@@ -1,0 +1,56 @@
+{
+  "name": "powered_rail_slope",
+  "description": "Powered rails run up a slope. A redstone block beside the bottom rail powers the line through the sloped rail, then is removed.",
+  "ticks": 16,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "rail"
+  ],
+  "palette": {
+    "#": "stone",
+    "-": "powered_rail[powered=false,shape=east_west,waterlogged=false]",
+    "/": "powered_rail[powered=false,shape=ascending_east,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "#####",
+      ".....",
+      "....."
+    ],
+    [
+      "--/##",
+      ".....",
+      "....."
+    ],
+    [
+      "...--",
+      ".....",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 8,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        1
+      ]
+    }
+  ]
+}

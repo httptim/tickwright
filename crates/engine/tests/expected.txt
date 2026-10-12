@@ -87,3 +87,6 @@ nucleation_note_click order
 nucleation_note_powered order
 nucleation_trapdoor_push order
 nucleation_trapdoor_toggle order
+activator_rail_chain order
+powered_rail_slope order
+nucleation_rails_chain order
