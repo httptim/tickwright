@@ -8,16 +8,20 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 import net.minecraft.SharedConstants;
@@ -31,6 +35,7 @@ import net.minecraft.gametest.framework.GameTestServer;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ThreadedLevelLightEngine;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.server.packs.repository.PackRepository;
 import net.minecraft.server.packs.repository.ServerPacksSource;
@@ -387,6 +392,7 @@ public final class Capture {
             stimuli.computeIfAbsent(o.get("tick").getAsInt(), k -> new ArrayList<>()).add(o);
         }
 
+        waitForLight();
         Recording rec = new Recording(origin, min, max);
         recording = rec;
         if (trackEntities) {
@@ -1137,6 +1143,41 @@ public final class Capture {
                 e.discard();
             }
         }
+    }
+
+    // The game works out light on a thread of its own, and the harness ticks
+    // far faster than real time, so the sky light a daylight detector reads
+    // could still be dimmed by an earlier fixture's blocks when it first
+    // updates. Wait for the light engine to catch up before recording.
+    private static void waitForLight() throws Exception {
+        ThreadedLevelLightEngine light = level.getChunkSource().getLightEngine();
+        for (int i = 0; i < 10_000; i++) {
+            light.tryScheduleUpdate();
+            if (!light.hasLightWork() && !lightQueued(light)) {
+                return;
+            }
+            Thread.sleep(1);
+        }
+        throw new IllegalStateException("the light engine did not settle");
+    }
+
+    // Light changes wait in the engine's task list, and an update in
+    // progress keeps its scheduled flag set, before hasLightWork sees them.
+    private static boolean lightQueued(ThreadedLevelLightEngine light) throws Exception {
+        boolean queued = false;
+        for (Field f : ThreadedLevelLightEngine.class.getDeclaredFields()) {
+            if (Modifier.isStatic(f.getModifiers())) {
+                continue;
+            }
+            f.setAccessible(true);
+            Object v = f.get(light);
+            if (v instanceof Collection<?> c && !c.isEmpty()) {
+                queued = true;
+            } else if (v instanceof AtomicBoolean b && b.get()) {
+                queued = true;
+            }
+        }
+        return queued;
     }
 
     private static void idle(int n) throws Exception {

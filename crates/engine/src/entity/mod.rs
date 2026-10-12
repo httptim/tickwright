@@ -542,15 +542,7 @@ pub fn move_entity(level: &mut Level, e: &mut Entity, mut movement: Vec3) {
         }
     }
     if e.on_ground {
-        // `Block.stepOn`, for the block under the entity's feet.
-        let state = level.get(e.on_pos(level, 0.2));
-        if level.kind(state) == Kind::Slime {
-            let d = e.motion.y.abs();
-            if d < 0.1 {
-                let f = 0.4 + d * 0.2;
-                e.motion = e.motion.multiply(f, 1.0, f);
-            }
-        }
+        step_on(level, e);
     }
     let f = block_speed_factor(level, e);
     if f != 1.0 {
@@ -569,6 +561,18 @@ pub fn move_entity(level: &mut Level, e: &mut Entity, mut movement: Vec3) {
 fn slime_impact_speed(y: f64, t: f64) -> f64 {
     const G: f64 = 0.04;
     (y - G * t) * (1.0 - (1.0 - DRAG) * t)
+}
+
+/// `Block.stepOn`, for the block under the entity's feet.
+pub fn step_on(level: &Level, e: &mut Entity) {
+    let state = level.get(e.on_pos(level, 0.2));
+    if level.kind(state) == Kind::Slime {
+        let d = e.motion.y.abs();
+        if d < 0.1 {
+            let f = 0.4 + d * 0.2;
+            e.motion = e.motion.multiply(f, 1.0, f);
+        }
+    }
 }
 
 /// `getBlockSpeedFactor`.
