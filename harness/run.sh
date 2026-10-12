@@ -119,5 +119,13 @@ if [[ -n "${REPORTS:-}" ]]; then
     python3 -I tools/registry.py "$WORK/reports/reports" "data/$MC_VERSION"
     # What each block takes to build, from the jar's loot tables and the
     # report's stack sizes (crates/materials and the mod read it).
-    python3 -I tools/materials.py "$INNER" "$WORK/reports/reports" "data/$MC_VERSION"
+    # Failures go out as an annotation too, since CI logs can't be read
+    # from everywhere.
+    if ! out="$(python3 -I tools/materials.py "$INNER" "$WORK/reports/reports" "data/$MC_VERSION" 2>&1)"; then
+        echo "$out"
+        reports="$(ls "$WORK/reports/reports" | tr '\n' ' ')"
+        echo "::error::tools/materials.py failed (reports: $reports)%0A$(tail -n 15 <<<"$out" | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')"
+        exit 1
+    fi
+    echo "$out"
 fi
