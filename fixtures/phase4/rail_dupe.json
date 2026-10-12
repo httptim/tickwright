@@ -1,6 +1,6 @@
 {
   "name": "rail_dupe",
-  "description": "A rail duper attempt. A sticky piston pushes two slime blocks carrying a dead coral fan and a rail. The piston head replaces the slime under the fan, so the fan pops and updates the rail next to it.",
+  "description": "A rail duper. A sticky piston pushes four slime blocks, carrying a dead coral fan and a rail. A slime moves into the rail's support first; then the piston head replaces the slime under the fan, which pops and updates the rail. The rail has nothing solid under it and drops, while the piston still places its cached copy.",
   "ticks": 30,
   "levels": [
     "state",
@@ -13,7 +13,7 @@
     "duplication"
   ],
   "palette": {
-    "#": "stone",
+    "#": "obsidian",
     "P": "sticky_piston[extended=false,facing=east]",
     "S": "slime_block",
     "F": "dead_tube_coral_fan[waterlogged=false]",
@@ -29,7 +29,7 @@
     [
       ".....",
       "PS...",
-      ".S...",
+      "SS...",
       "....."
     ],
     [
