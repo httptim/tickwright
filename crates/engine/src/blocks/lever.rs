@@ -1,6 +1,7 @@
 //! `LeverBlock`.
 
 use super::connected_direction;
+use crate::game_event::GameEvent;
 use crate::level::{Level, flags};
 use crate::pos::{Dir, Pos};
 use crate::registry::StateId;
@@ -12,6 +13,8 @@ pub fn pull(level: &mut Level, pos: Pos, state: StateId) {
     let state = level.with_bool(state, "powered", on);
     level.set_block(pos, state, flags::ALL);
     update_neighbours(level, pos, state);
+    let event = if on { GameEvent::BlockActivate } else { GameEvent::BlockDeactivate };
+    level.game_event(event, pos);
 }
 
 fn update_neighbours(level: &mut Level, pos: Pos, state: StateId) {

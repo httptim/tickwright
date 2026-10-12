@@ -1,0 +1,49 @@
+{
+  "name": "tripwire_cut_string",
+  "description": "Breaking the middle of an armed tripwire without shears trips both hooks for 10 ticks, then they come loose; putting the string back reattaches them.",
+  "ticks": 50,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "tripwire"
+  ],
+  "palette": {
+    "#": "stone",
+    "L": "redstone_lamp[lit=false]",
+    "h": "tripwire_hook[attached=true,facing=east,powered=false]",
+    "H": "tripwire_hook[attached=true,facing=west,powered=false]",
+    "s": "tripwire[attached=true,disarmed=false,east=true,north=false,powered=false,south=false,west=true]"
+  },
+  "layers": [
+    [
+      "#L###L#"
+    ],
+    [
+      "#hsssH#"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "destroy",
+      "pos": [
+        3,
+        1,
+        0
+      ]
+    },
+    {
+      "tick": 25,
+      "action": "set",
+      "pos": [
+        3,
+        1,
+        0
+      ],
+      "state": "tripwire[attached=true,disarmed=false,east=true,north=false,powered=false,south=false,west=true]"
+    }
+  ]
+}

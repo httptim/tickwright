@@ -1,0 +1,49 @@
+{
+  "name": "tripwire_string_completes",
+  "description": "Placing the missing string between two loose hooks attaches them, then breaking one hook detaches the other and the string.",
+  "ticks": 50,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "tripwire"
+  ],
+  "palette": {
+    "#": "stone",
+    "L": "redstone_lamp[lit=false]",
+    "h": "tripwire_hook[attached=false,facing=east,powered=false]",
+    "H": "tripwire_hook[attached=false,facing=west,powered=false]",
+    "s": "tripwire[attached=false,disarmed=false,east=true,north=false,powered=false,south=false,west=true]"
+  },
+  "layers": [
+    [
+      "#L###L#"
+    ],
+    [
+      "#hs.sH#"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        3,
+        1,
+        0
+      ],
+      "state": "tripwire[attached=false,disarmed=false,east=true,north=false,powered=false,south=false,west=true]"
+    },
+    {
+      "tick": 25,
+      "action": "destroy",
+      "pos": [
+        5,
+        1,
+        0
+      ]
+    }
+  ]
+}
