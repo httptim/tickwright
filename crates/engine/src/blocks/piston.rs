@@ -296,6 +296,8 @@ pub fn trigger_event(level: &mut Level, pos: Pos, state: StateId, a: i32, b: i32
             return false;
         }
         level.set_block(pos, extended, flags::MOVE_BY_PISTON | flags::ALL);
+        // The extend sound's pitch.
+        level.random.next_float();
         level.game_event(GameEvent::BlockActivate, pos);
     } else if a == 1 || a == 2 {
         let front = pos.offset(dir);
@@ -335,6 +337,8 @@ pub fn trigger_event(level: &mut Level, pos: Pos, state: StateId, a: i32, b: i32
         } else {
             level.remove_block(pos.offset(dir));
         }
+        // The contract sound's pitch.
+        level.random.next_float();
         level.game_event(GameEvent::BlockDeactivate, pos);
     }
     true

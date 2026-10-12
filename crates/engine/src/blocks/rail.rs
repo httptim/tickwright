@@ -2,8 +2,9 @@
 //! `BaseRailBlock` they use.
 //!
 //! `RailState`, which turns a newly placed rail toward its neighbours and
-//! turns them toward it, is here for straight rails (every rail the engine
-//! simulates is straight; plain rails, which bend, are not supported yet).
+//! turns them toward it, is here for straight rails. Plain rails are
+//! simulated while they stay as placed; one that would bend is
+//! unsupported.
 
 use crate::level::{Level, flags};
 use crate::pos::{Dir, Pos};
@@ -173,7 +174,48 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
 
 /// `BaseRailBlock.isRail`.
 fn is_rail(level: &Level, pos: Pos) -> bool {
-    level.kind_at(pos) == Kind::PoweredRail
+    is_rail_state(level, level.get(pos))
+}
+
+/// `BaseRailBlock.isRail(state)`.
+pub fn is_rail_state(level: &Level, state: StateId) -> bool {
+    matches!(level.kind(state), Kind::PoweredRail | Kind::Rail)
+}
+
+/// `RailBlock.updateState` after `BaseRailBlock.neighborChanged`'s
+/// survival check: a signal source next to a rail with three rails to
+/// connect to turns it, which the engine can't do yet.
+pub fn plain_neighbor_changed(
+    level: &mut Level,
+    pos: Pos,
+    state: StateId,
+    source: crate::registry::BlockId,
+    moved_by_piston: bool,
+) {
+    if should_be_removed(level, pos, level.prop(state, "shape")) {
+        let f = if moved_by_piston { flags::ALL | flags::MOVE_BY_PISTON } else { flags::ALL };
+        level.set_block(pos, level.air, f);
+    } else if super::is_signal_source(level, level.default_state(source))
+        && RailState::new(level, pos, state).count_potential_connections(level) == 3
+    {
+        level.unsupported("a plain rail turned by a signal");
+    }
+}
+
+/// `BaseRailBlock.onPlace` for a plain rail: `updateDir`, and no neighbor
+/// update to itself, since it isn't straight.
+pub fn plain_on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId) {
+    if !level.is(old, level.block(state)) {
+        RailState::new(level, pos, state).place(level, level.has_neighbor_signal(pos), true);
+    }
+}
+
+/// `BaseRailBlock.affectNeighborsAfterRemoval`: a plain rail isn't
+/// straight, so only a slope updates (above it).
+pub fn plain_affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateId, moved_by_piston: bool) {
+    if !moved_by_piston && is_slope(level.prop(state, "shape")) {
+        level.update_neighbors_at(pos.above(), level.block(state));
+    }
 }
 
 /// `RailState`: a rail and the positions its shape connects to.
@@ -234,6 +276,15 @@ impl RailState {
         self.connections.retain(|&c| RailState::get_rail(level, c).is_some_and(|r| r.connects_to(&me)));
     }
 
+    /// `countPotentialConnections`.
+    fn count_potential_connections(&self, level: &Level) -> usize {
+        let p = self.pos;
+        [Dir::North, Dir::South, Dir::West, Dir::East]
+            .into_iter()
+            .filter(|&d| RailState::get_rail(level, p.offset(d)).is_some())
+            .count()
+    }
+
     fn has_neighbor_rail(&self, level: &Level, pos: Pos) -> bool {
         match RailState::get_rail(level, pos) {
             Some(mut r) => {
@@ -256,6 +307,13 @@ impl RailState {
         if self.has_connection(w) || self.has_connection(e) {
             shape = Some("east_west");
         }
+        if level.kind(self.state) == Kind::Rail
+            && (self.has_connection(n) || self.has_connection(s))
+            && (self.has_connection(w) || self.has_connection(e))
+        {
+            level.unsupported("a plain rail bending toward a new rail");
+            return;
+        }
         let shape = ascend(level, shape, n, s, w, e).unwrap_or("north_south");
         self.state = level.with(self.state, "shape", shape);
         level.set_block(self.pos, self.state, flags::ALL);
@@ -273,6 +331,10 @@ impl RailState {
             self.has_neighbor_rail(level, e),
         );
         let (ns, ew) = (bn || bs, bw || be);
+        if ns && ew && level.kind(self.state) == Kind::Rail {
+            level.unsupported("a plain rail bending");
+            return self.state;
+        }
         let current = level.prop(self.state, "shape");
         let mut shape = None;
         if ns && !ew {

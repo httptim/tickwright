@@ -32,7 +32,7 @@ mod observer;
 mod piston;
 pub mod placement;
 mod plain;
-mod rail;
+pub(crate) mod rail;
 mod repeater;
 mod torch;
 mod tripwire;
@@ -79,6 +79,8 @@ pub enum Kind {
     Trapdoor,
     /// Powered and activator rails.
     PoweredRail,
+    /// Plain rails, which can bend.
+    Rail,
     /// Water, source or flowing.
     Water,
     Hopper,
@@ -403,6 +405,7 @@ pub fn on_place(level: &mut Level, pos: Pos, state: StateId, old: StateId, moved
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => torch::on_place(level, pos, state),
         Kind::Observer => observer::on_place(level, pos, state, old),
         Kind::PoweredRail => rail::on_place(level, pos, state, old),
+        Kind::Rail => rail::plain_on_place(level, pos, state, old),
         Kind::Water => water::on_place(level, pos, state),
         Kind::Hopper => container::hopper_on_place(level, pos, state, old),
         Kind::CopperBulb => bulb::bulb_on_place(level, pos, state, old),
@@ -425,6 +428,7 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
         Kind::PistonHead => piston::head_affect_neighbors_after_removal(level, pos, state),
         Kind::Observer => observer::affect_neighbors_after_removal(level, pos, state),
         Kind::PoweredRail => rail::affect_neighbors_after_removal(level, pos, state, moved_by_piston),
+        Kind::Rail => rail::plain_affect_neighbors_after_removal(level, pos, state, moved_by_piston),
         Kind::RedstoneTorch | Kind::RedstoneWallTorch => {
             torch::affect_neighbors_after_removal(level, pos, state, moved_by_piston)
         }
@@ -463,6 +467,7 @@ pub fn neighbor_changed(
         Kind::Comparator => comparator::neighbor_changed(level, pos, state),
         Kind::NoteBlock => note::neighbor_changed(level, pos, state),
         Kind::PoweredRail => rail::neighbor_changed(level, pos, state, moved_by_piston),
+        Kind::Rail => rail::plain_neighbor_changed(level, pos, state, source, moved_by_piston),
         Kind::Trapdoor => door::trapdoor_neighbor_changed(level, pos, state),
         Kind::Door => door::door_neighbor_changed(level, pos, state, source),
         Kind::Piston | Kind::StickyPiston => piston::neighbor_changed(level, pos, state),

@@ -1,4 +1,4 @@
-//! Entities: items, falling blocks and primed TNT, moved the way the game's
+//! Entities: items, falling blocks, primed TNT and minecarts, moved the way the game's
 //! `Entity.move` moves them, against the blocks' collision boxes.
 //!
 //! The level keeps its entities in the order they were added, which is the
@@ -9,6 +9,7 @@ pub mod explosion;
 mod falling;
 mod fluid;
 pub mod item;
+mod minecart;
 pub mod snbt;
 mod tnt;
 
@@ -33,6 +34,7 @@ pub enum Data {
     Item(item::Item),
     FallingBlock(falling::Falling),
     Tnt(tnt::Tnt),
+    Minecart(minecart::Minecart),
     /// A slot whose entity is being ticked, or one that was removed.
     #[default]
     Gone,
@@ -81,6 +83,8 @@ impl Entity {
             Data::Item(_) => "minecraft:item",
             Data::FallingBlock(_) => "minecraft:falling_block",
             Data::Tnt(_) => "minecraft:tnt",
+            Data::Minecart(ref m) if m.furnace => "minecraft:furnace_minecart",
+            Data::Minecart(_) => "minecraft:minecart",
             Data::Gone => "minecraft:none",
         }
     }
@@ -89,6 +93,7 @@ impl Entity {
     fn dimensions(&self) -> (f32, f32) {
         match self.data {
             Data::Item(_) => (0.25, 0.25),
+            Data::Minecart(_) => (0.98, 0.7),
             Data::FallingBlock(_) | Data::Tnt(_) | Data::Gone => (0.98, 0.98),
         }
     }
@@ -122,7 +127,7 @@ impl Entity {
             Data::Item(i) => Some(format!("minecraft:{}*{}", i.stack.id, i.stack.count)),
             Data::Tnt(t) => Some(format!("fuse={}", t.fuse)),
             Data::FallingBlock(f) => Some(level.reg.format(f.state)),
-            Data::Gone => None,
+            Data::Minecart(_) | Data::Gone => None,
         }
     }
 
@@ -202,6 +207,7 @@ fn tick(level: &mut Level, e: &mut Entity) {
         Data::Item(_) => item::tick(level, e),
         Data::FallingBlock(_) => falling::tick(level, e),
         Data::Tnt(_) => tnt::tick(level, e),
+        Data::Minecart(_) => minecart::tick(level, e),
         Data::Gone => {}
     }
 }
@@ -217,6 +223,7 @@ pub fn summon(level: &mut Level, entity: &str, at: Vec3, motion: Option<Vec3>, n
     let known: &[&str] = match name {
         "item" => &["Item", "PickupDelay", "Age"],
         "tnt" => &["fuse"],
+        "minecart" | "furnace_minecart" => &[],
         _ => bail!("summoning {entity} is not supported by the engine yet"),
     };
     if let Some(k) = tag.keys().into_iter().find(|k| !known.contains(k)) {
@@ -236,7 +243,8 @@ pub fn summon(level: &mut Level, entity: &str, at: Vec3, motion: Option<Vec3>, n
             }
             Data::Item(item)
         }
-        _ => Data::Tnt(tnt::Tnt { fuse: num("fuse").unwrap_or(80.0) as i32 }),
+        "tnt" => Data::Tnt(tnt::Tnt { fuse: num("fuse").unwrap_or(80.0) as i32 }),
+        _ => Data::Minecart(minecart::Minecart { furnace: name == "furnace_minecart" }),
     };
     let mut e = Entity::new(level, data, at);
     if let Some(m) = motion {
@@ -515,12 +523,42 @@ pub fn block_collisions(level: &Level, b: Aabb) -> Vec<(Pos, Vec<Aabb>)> {
 }
 
 /// `getCollisionShape` for the state at `p`.
-fn collision_shape(level: &Level, _p: Pos, state: StateId) -> Vec<Aabb> {
+fn collision_shape(level: &Level, p: Pos, state: StateId) -> Vec<Aabb> {
     if level.kind(state) == Kind::MovingPiston {
-        // Moving blocks collide by their block entity's progress; not yet.
-        return Vec::new();
+        return moving_collision_shape(level, p);
     }
     level.physics().shape(state).to_vec()
+}
+
+/// `PistonMovingBlockEntity.getCollisionShape`: a retracting piston base
+/// is its extended self, and what moves (the block, or the head) sits
+/// where its progress has taken it.
+fn moving_collision_shape(level: &Level, p: Pos) -> Vec<Aabb> {
+    let Some(crate::blocks::BlockEntity::Piston(m)) = level.block_entities.get(&p) else {
+        return Vec::new();
+    };
+    let physics = level.physics();
+    let base_kind = level.kind(m.moved_state);
+    let is_base = matches!(base_kind, Kind::Piston | Kind::StickyPiston);
+    let mut out = if !m.extending && m.is_source_piston && is_base {
+        physics.shape(level.with_bool(m.moved_state, "extended", true)).to_vec()
+    } else {
+        Vec::new()
+    };
+    let moved = if m.is_source_piston {
+        let head = level.default_state(level.block_id("piston_head"));
+        let head = level.with_dir(head, "facing", m.direction);
+        let head = level.with(head, "type", if base_kind == Kind::StickyPiston { "sticky" } else { "normal" });
+        level.with_bool(head, "short", m.extending != (1.0 - m.progress < 0.25))
+    } else {
+        m.moved_state
+    };
+    let progress = if m.extending { m.progress - 1.0 } else { 1.0 - m.progress } as f64;
+    let [dx, dy, dz] = m.direction.step();
+    out.extend(
+        physics.shape(moved).iter().map(|b| b.offset(dx as f64 * progress, dy as f64 * progress, dz as f64 * progress)),
+    );
+    out
 }
 
 /// `noCollision(entity, box)` against blocks.

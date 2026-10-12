@@ -63,6 +63,7 @@ fn block(name: &str) -> Option<Kind> {
         "cake" => Kind::Cake,
         "note_block" => Kind::NoteBlock,
         "powered_rail" | "activator_rail" => Kind::PoweredRail,
+        "rail" => Kind::Rail,
         "water" => Kind::Water,
         "hopper" => Kind::Hopper,
         "dropper" => Kind::Dropper,
