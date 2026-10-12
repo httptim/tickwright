@@ -282,6 +282,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tickwright-schematic"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "flate2",
+ "serde_json",
+ "tickwright-engine",
+ "tickwright-trace",
+]
+
+[[package]]
 name = "tickwright-trace"
 version = "0.1.0"
 dependencies = [

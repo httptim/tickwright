@@ -1,0 +1,17 @@
+[package]
+name = "tickwright-schematic"
+description = "Read and write Litematica, Sponge and vanilla structure schematics"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+flate2.workspace = true
+tickwright-trace = { path = "../trace" }
+
+[dev-dependencies]
+serde_json.workspace = true
+flate2.workspace = true
+tickwright-engine = { path = "../engine" }
