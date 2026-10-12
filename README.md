@@ -36,8 +36,9 @@ phase 1 has no comparators.
 |------|------------|
 | `crates/trace` | Fixture, trace and diff formats (`tickwright-trace`) |
 | `crates/engine` | The simulation engine (`tickwright-engine`) |
+| `crates/schematic` | Reads and writes Litematica `.litematic`, Sponge `.schem` and structure `.nbt` files, and converts them to and from fixtures (`tickwright-schematic`) |
 | `crates/wasm` | The engine as a WebAssembly module with a plain C ABI: fixture runs, and JSON-command sessions for the editor (build, click, step, rewind, inspect) |
-| `crates/cli` | The `tickwright` command: `resolve`, `run`, `diff` and `bench` |
+| `crates/cli` | The `tickwright` command: `resolve`, `run`, `diff`, `bench`, and `import`/`export` for schematics |
 | `fixtures/phase1` | Phase 1 fixtures: dust, torches, repeaters, pistons, buttons |
 | `fixtures/phase2` | Phase 2 fixtures: observers, comparators, note blocks, doors, trapdoors, rails, water, hoppers, droppers, dispensers, barrels, copper bulbs, bells |
 | `fixtures/nucleation` | Builds from [Nucleation](https://github.com/Schem-at/Nucleation)'s conformance tests (MIT, © 2025 Schem-at), converted by `tools/nucleation.py` and recaptured on 26.3 |
@@ -58,6 +59,10 @@ cargo run -p tickwright -- run resolved --out traces-engine
 
 # Compare two traces
 cargo run -p tickwright -- diff expected.json actual.json --level phase
+
+# Turn a schematic into a fixture, or a fixture's build into a schematic
+cargo run -p tickwright -- import door.litematic --out door.json --ticks 100
+cargo run -p tickwright -- export door.json --out door.schem
 
 # Ticks per second on a large dust-and-repeater build
 cargo run --release -p tickwright -- bench

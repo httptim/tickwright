@@ -65,6 +65,42 @@ async function main() {
       if (status !== 0) throw new Error(text);
       return JSON.parse(text);
     };
+    const call = (fn, a, b) => {
+      const [ap, al] = put(a);
+      const [bp, bl] = put(b);
+      const out = fn(ap, al, bp, bl);
+      const view = new DataView(e.memory.buffer);
+      const len = view.getUint32(out, true);
+      const status = view.getUint8(out + 4);
+      const body = new Uint8Array(e.memory.buffer, out + 5, len).slice();
+      e.dealloc(ap, al);
+      e.dealloc(bp, bl);
+      e.dealloc(out, len + 5);
+      if (status !== 0) throw new Error(dec.decode(body));
+      return body;
+    };
+    // Export a resolved fixture in every schematic format, import each file
+    // back, and name the formats whose blocks came back different.
+    window.schematicRoundTrip = (fixtureText) => {
+      const want = JSON.stringify(JSON.parse(fixtureText).blocks);
+      const bad = [];
+      for (const ext of ["litematic", "schem", "nbt"]) {
+        const file = call(e.export_schematic, fixtureText, `build.${ext}`);
+        const [fp, fl] = [e.alloc(file.length), file.length];
+        new Uint8Array(e.memory.buffer, fp, fl).set(file);
+        const [np, nl] = put("build");
+        const out = e.import_schematic(fp, fl, np, nl);
+        const view = new DataView(e.memory.buffer);
+        const len = view.getUint32(out, true);
+        const text = dec.decode(new Uint8Array(e.memory.buffer, out + 5, len));
+        const ok = view.getUint8(out + 4) === 0 && JSON.stringify(JSON.parse(text).blocks) === want;
+        e.dealloc(fp, fl);
+        e.dealloc(np, nl);
+        e.dealloc(out, len + 5);
+        if (!ok) bad.push(ext);
+      }
+      return bad;
+    };
     // Play a resolved fixture through a session; return its events inside the
     // fixture's box, relative to the origin, as a trace would hold them.
     window.sessionEvents = (fixtureText, version) => {
@@ -105,6 +141,7 @@ async function main() {
 
   let failed = 0;
   let refused = 0;
+  let roundTrips = 0;
   let totalMs = 0;
   for (const f of files) {
     const fixture = fs.readFileSync(path.join(resolvedDir, f), "utf8");
@@ -126,6 +163,15 @@ async function main() {
       console.log(`${f}: ran in the browser but was refused natively`);
       failed++;
       continue;
+    }
+    if (f.endsWith("@r0.json")) {
+      const bad = await page.evaluate((fx) => window.schematicRoundTrip(fx), fixture);
+      if (bad.length) {
+        console.log(`${f}: blocks changed through ${bad.join(", ")} export and import`);
+        failed++;
+        continue;
+      }
+      roundTrips++;
     }
     const native = fs.readFileSync(nativePath, "utf8");
     if (native !== r.text) {
@@ -155,6 +201,7 @@ async function main() {
   }
   await browser.close();
   console.log(`${files.length - failed - refused} of ${files.length - refused} fixtures gave identical traces in the browser, as fixture runs and as editor sessions (${refused} refused by both), ${totalMs.toFixed(0)} ms in wasm`);
+  console.log(`${roundTrips} builds survived export to and import from .litematic, .schem and .nbt unchanged`);
   process.exit(failed ? 1 : 0);
 }
 

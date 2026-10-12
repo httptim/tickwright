@@ -4,6 +4,8 @@
 //!   orientation, which is what the capture harness and the engine load.
 //! - `run` simulates resolved fixtures with the engine and writes traces.
 //! - `diff` compares two traces and reports the first divergence.
+//! - `import` turns a `.litematic`, `.schem` or structure `.nbt` into a
+//!   fixture; `export` writes a fixture's build as one.
 //! - `bench` times the engine on a large dust-and-repeater build.
 
 use std::fs;
@@ -12,7 +14,8 @@ use std::process::ExitCode;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use tickwright_trace::{FixtureSource, Level, ResolvedFixture, Trace, compare};
+use tickwright_schematic::{Format, Schematic};
+use tickwright_trace::{FixtureSource, Level, ResolvedFixture, Trace, Transform, compare};
 
 #[derive(Parser)]
 #[command(name = "tickwright", version, about)]
@@ -43,6 +46,26 @@ enum Command {
         /// Minecraft version whose rules to simulate.
         #[arg(long, default_value = "26.3")]
         mc_version: String,
+    },
+    /// Turn a `.litematic`, `.schem` or structure `.nbt` into a fixture.
+    Import {
+        schematic: PathBuf,
+        /// The fixture file to write.
+        #[arg(long)]
+        out: PathBuf,
+        /// Fixture name; defaults to the schematic's file stem.
+        #[arg(long)]
+        name: Option<String>,
+        /// Game ticks the fixture records.
+        #[arg(long, default_value_t = 100)]
+        ticks: u32,
+    },
+    /// Write a fixture's build as a schematic; the extension of `out`
+    /// (`.litematic`, `.schem` or `.nbt`) picks the format.
+    Export {
+        fixture: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
     },
     /// Time the engine on a large dust-and-repeater build.
     Bench {
@@ -133,6 +156,42 @@ fn run(cli: Cli) -> Result<ExitCode> {
                 }
             }
             println!("ran {} fixture(s) into {}, {refused} refused", files.len() - refused, out.display());
+            Ok(ExitCode::SUCCESS)
+        }
+        Command::Import { schematic, out, name, ticks } => {
+            let bytes = fs::read(&schematic).with_context(|| format!("reading {}", schematic.display()))?;
+            let s = Schematic::read(&bytes).with_context(|| format!("in {}", schematic.display()))?;
+            let name = name.unwrap_or_else(|| {
+                schematic.file_stem().map_or("imported".into(), |n| n.to_string_lossy().into_owned())
+            });
+            let fixture = s.to_fixture(&name, ticks)?;
+            fs::write(&out, serde_json::to_string_pretty(&fixture)? + "\n")?;
+            println!(
+                "{}: {}x{}x{}, {} blocks, {} container(s), {} comparator output(s) -> {}",
+                schematic.display(),
+                s.size[0],
+                s.size[1],
+                s.size[2],
+                s.blocks.len(),
+                fixture.containers.len(),
+                fixture.comparators.len(),
+                out.display()
+            );
+            Ok(ExitCode::SUCCESS)
+        }
+        Command::Export { fixture, out } => {
+            let format = Format::from_name(&out.to_string_lossy())?;
+            let text = fs::read_to_string(&fixture).with_context(|| format!("reading {}", fixture.display()))?;
+            // Either a hand-written fixture, exported unrotated, or a resolved one.
+            let resolved = match serde_json::from_str::<ResolvedFixture>(&text) {
+                Ok(r) => r,
+                Err(_) => FixtureSource::from_json(&text)
+                    .with_context(|| format!("in {}", fixture.display()))?
+                    .resolve(Transform::IDENTITY)?,
+            };
+            let s = Schematic::from_fixture(&resolved)?;
+            fs::write(&out, s.write(format))?;
+            println!("{}: {} blocks -> {}", resolved.id, s.blocks.len(), out.display());
             Ok(ExitCode::SUCCESS)
         }
         Command::Bench { rings, length, ticks, write } => {

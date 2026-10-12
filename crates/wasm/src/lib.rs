@@ -9,6 +9,10 @@
 //! [`session`] drives an interactive simulation for the editor the same way:
 //! the host writes a JSON command and reads back a JSON answer (see
 //! [`session`] for the commands).
+//!
+//! [`import_schematic`] and [`export_schematic`] convert between schematic
+//! files and resolved fixtures, so the editor can open and save the files
+//! players share.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -17,7 +21,8 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use tickwright_engine::Pos;
 use tickwright_engine::session::{Placement, Session};
-use tickwright_trace::ResolvedFixture;
+use tickwright_schematic::{Format, Schematic};
+use tickwright_trace::{ResolvedFixture, Transform};
 
 /// Allocate `len` bytes for the host to write into.
 #[unsafe(no_mangle)]
@@ -51,14 +56,18 @@ pub unsafe extern "C" fn run(ptr: *const u8, len: usize, version_ptr: *const u8,
 
 /// The result buffer: length, status byte, then the body.
 fn respond(result: anyhow::Result<String>) -> *mut u8 {
+    respond_bytes(result.map(String::into_bytes))
+}
+
+fn respond_bytes(result: anyhow::Result<Vec<u8>>) -> *mut u8 {
     let (status, body) = match result {
-        Ok(json) => (0u8, json),
-        Err(e) => (1u8, format!("{e:#}")),
+        Ok(bytes) => (0u8, bytes),
+        Err(e) => (1u8, format!("{e:#}").into_bytes()),
     };
     let mut out = Vec::with_capacity(5 + body.len());
     out.extend_from_slice(&(body.len() as u32).to_le_bytes());
     out.push(status);
-    out.extend_from_slice(body.as_bytes());
+    out.extend_from_slice(&body);
     let ptr = out.as_mut_ptr();
     std::mem::forget(out);
     ptr
@@ -254,6 +263,39 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
             Command::Items { session, pos: p } => json!({ "items": get(sessions, session)?.items(pos(p)) }),
         })
     })
+}
+
+/// Read the schematic file in `ptr[..len]` (any format) and return a
+/// resolved fixture of its build, named `name`, as JSON.
+///
+/// # Safety
+/// Both ranges must be initialised memory inside this module's heap.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn import_schematic(ptr: *const u8, len: usize, name_ptr: *const u8, name_len: usize) -> *mut u8 {
+    let input = unsafe { std::slice::from_raw_parts(ptr, len) };
+    let name = unsafe { std::slice::from_raw_parts(name_ptr, name_len) };
+    respond((|| {
+        let s = Schematic::read(input)?;
+        let fixture = s.to_fixture(std::str::from_utf8(name)?, 0)?.resolve(Transform::IDENTITY)?;
+        Ok(serde_json::to_string(&fixture)?)
+    })())
+}
+
+/// Write the resolved fixture in `ptr[..len]` as a schematic in the format
+/// its file name (`name_ptr[..name_len]`, such as `door.litematic`) names,
+/// and return the file's bytes.
+///
+/// # Safety
+/// Both ranges must be initialised memory inside this module's heap.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn export_schematic(ptr: *const u8, len: usize, name_ptr: *const u8, name_len: usize) -> *mut u8 {
+    let input = unsafe { std::slice::from_raw_parts(ptr, len) };
+    let name = unsafe { std::slice::from_raw_parts(name_ptr, name_len) };
+    respond_bytes((|| {
+        let format = Format::from_name(std::str::from_utf8(name)?)?;
+        let fixture: ResolvedFixture = serde_json::from_slice(input)?;
+        Ok(Schematic::from_fixture(&fixture)?.write(format))
+    })())
 }
 
 #[cfg(test)]

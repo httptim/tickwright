@@ -89,6 +89,24 @@ if [[ $# -eq 0 ]]; then
     done
 fi
 
+# --- version ------------------------------------------------------------------
+# The jar's version.json gives the data version files saved in this release
+# carry; the schematic writer stamps it on exports.
+if [[ $# -eq 0 ]]; then
+    mkdir -p "data/$MC_VERSION"
+    python3 -I - "data/$MC_VERSION/version.json" "$JAR" "$INNER" <<'PY'
+import json, sys, zipfile
+def read(jar):
+    try:
+        return json.loads(zipfile.ZipFile(jar).read("version.json"))
+    except (OSError, KeyError):
+        return None
+v = next(filter(None, map(read, sys.argv[2:])))
+out = {"name": v["name"], "data_version": v["world_version"], "protocol_version": v["protocol_version"]}
+open(sys.argv[1], "w").write(json.dumps(out, indent=2) + "\n")
+PY
+fi
+
 # --- data reports -------------------------------------------------------------
 # The game's own dump of every block, its properties and default state, and
 # every registry. tools/registry.py condenses it into data/<version>/.
