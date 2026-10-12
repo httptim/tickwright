@@ -13,6 +13,7 @@ use crate::blocks::{self, Kind};
 use crate::pos::{Dir, Pos, UPDATE_ORDER, UPDATE_SHAPE_ORDER};
 use crate::record::{Event, Recorder};
 use crate::registry::{BlockId, Registry, StateId};
+use crate::rules::Rules;
 use tickwright_trace::Phase;
 
 /// `Block.UPDATE_*` flags.
@@ -109,14 +110,10 @@ pub struct Level {
 }
 
 impl Level {
-    pub fn new(reg: &'static Registry) -> Level {
+    pub fn new(rules: Rules) -> Level {
+        let reg = rules.reg;
         let air = reg.block(reg.block_id("air").unwrap()).default;
-        let kinds = (0..)
-            .map_while(|i| {
-                let id = BlockId(i);
-                ((i as usize) < reg.len()).then(|| Kind::of(&reg.block(id).name))
-            })
-            .collect();
+        let kinds = rules.into_kinds();
         Level {
             reg,
             air,

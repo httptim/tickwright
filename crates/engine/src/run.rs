@@ -14,14 +14,14 @@ use crate::blocks::{self, Kind};
 use crate::level::{Level, flags};
 use crate::pos::Pos;
 use crate::record::Recorder;
-use crate::registry::Registry;
+use crate::rules::Rules;
 
 /// How the harness places fixture blocks.
 const QUIET: i32 = flags::CLIENTS | flags::KNOWN_SHAPE;
 
 pub fn run(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace> {
-    let reg = Registry::get(mc_version)?;
-    let mut level = place(fixture, reg)?;
+    let mut level = place(fixture, Rules::for_version(mc_version)?)?;
+    let reg = level.reg;
     let [ox, oy, oz] = fixture.origin;
     let origin = Pos::new(ox, oy, oz);
     let m = fixture.margin;
@@ -64,7 +64,7 @@ pub fn run(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace> {
 
 /// Run a fixture without recording anything, for benchmarks.
 pub fn run_unrecorded(fixture: &ResolvedFixture, mc_version: &str) -> Result<()> {
-    let mut level = place(fixture, Registry::get(mc_version)?)?;
+    let mut level = place(fixture, Rules::for_version(mc_version)?)?;
     for t in 1..=fixture.ticks {
         apply_stimuli(&mut level, fixture, t)?;
         level.tick();
@@ -73,12 +73,12 @@ pub fn run_unrecorded(fixture: &ResolvedFixture, mc_version: &str) -> Result<()>
 }
 
 /// A level with the fixture placed the way the harness places it.
-fn place(fixture: &ResolvedFixture, reg: &'static Registry) -> Result<Level> {
-    let mut level = Level::new(reg);
+fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
+    let reg = rules.reg;
     let [ox, oy, oz] = fixture.origin;
     let supported = |text: &str| -> Result<crate::registry::StateId> {
         let state = reg.parse(text).with_context(|| format!("{}: block {text}", fixture.id))?;
-        if Kind::of(reg.name(state)) == Kind::Other {
+        if rules.kind_of(state) == Kind::Other {
             bail!("{}: {} is not supported by the engine yet", fixture.id, reg.name(state));
         }
         Ok(state)
@@ -86,9 +86,11 @@ fn place(fixture: &ResolvedFixture, reg: &'static Registry) -> Result<Level> {
     for s in fixture.stimuli.iter().filter_map(|s| s.state.as_deref()) {
         supported(s)?;
     }
-    for (x, y, z, s) in &fixture.blocks {
-        let state = supported(s)?;
-        level.set_block(Pos::new(ox + x, oy + y, oz + z), state, QUIET);
+    let blocks = fixture.blocks.iter().map(|(x, y, z, s)| Ok((Pos::new(ox + x, oy + y, oz + z), supported(s)?)));
+    let blocks: Result<Vec<_>> = blocks.collect();
+    let mut level = Level::new(rules);
+    for (pos, state) in blocks? {
+        level.set_block(pos, state, QUIET);
     }
     Ok(level)
 }

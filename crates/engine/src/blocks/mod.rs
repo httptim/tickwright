@@ -2,7 +2,8 @@
 //! updated, ticked or used, and what signals it gives.
 //!
 //! Each function mirrors the game method of the same name and dispatches on
-//! [`Kind`]. Blocks the engine does not simulate yet are [`Kind::Other`];
+//! [`Kind`]; which blocks have which kind is up to the version's rule module
+//! ([`crate::rules`]). Blocks the engine does not simulate yet are [`Kind::Other`];
 //! [`crate::run::run`] refuses fixtures that use them rather than running
 //! them wrong.
 
@@ -46,35 +47,6 @@ pub enum Kind {
     Honey,
     Chest,
     Other,
-}
-
-impl Kind {
-    pub fn of(name: &str) -> Kind {
-        match name.strip_prefix("minecraft:").unwrap_or(name) {
-            "air" | "cave_air" | "void_air" => Kind::Air,
-            "stone" | "obsidian" | "cobblestone" | "dirt" | "smooth_stone" | "white_wool" | "iron_block"
-            | "gold_block" | "diamond_block" | "bedrock" => Kind::Solid,
-            n if n.ends_with("_concrete") => Kind::Solid,
-            "lever" => Kind::Lever,
-            "stone_button" | "polished_blackstone_button" => Kind::StoneButton,
-            n if n == "glass" || n == "tinted_glass" || n.ends_with("_stained_glass") => Kind::Glass,
-            "stone_slab" | "smooth_stone_slab" | "cobblestone_slab" | "oak_slab" => Kind::Slab,
-            "redstone_block" => Kind::RedstoneBlock,
-            "redstone_lamp" => Kind::RedstoneLamp,
-            "redstone_wire" => Kind::RedstoneWire,
-            "redstone_torch" => Kind::RedstoneTorch,
-            "redstone_wall_torch" => Kind::RedstoneWallTorch,
-            "repeater" => Kind::Repeater,
-            "piston" => Kind::Piston,
-            "sticky_piston" => Kind::StickyPiston,
-            "piston_head" => Kind::PistonHead,
-            "moving_piston" => Kind::MovingPiston,
-            "slime_block" => Kind::Slime,
-            "honey_block" => Kind::Honey,
-            "chest" | "trapped_chest" => Kind::Chest,
-            _ => Kind::Other,
-        }
-    }
 }
 
 /// Block entity data. Only what phase 1 needs.
