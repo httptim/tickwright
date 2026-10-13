@@ -242,6 +242,12 @@ pub struct FixtureSource {
     /// Orientations to capture. Defaults to all eight.
     #[serde(default)]
     pub transforms: Option<Vec<String>>,
+    /// Extra runs of the first orientation under other random seeds, for
+    /// builds whose outcome is random: `<name>@<transform>~1` to `~seeds`.
+    /// The level random is seeded from a run's whole id, so each draws
+    /// different numbers. Only seeded runs (`entities`) can have them.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub seeds: u32,
     #[serde(default)]
     pub origin: Option<[i32; 3]>,
     #[serde(default)]
@@ -283,6 +289,22 @@ pub struct FixtureSource {
 
 fn default_levels() -> Vec<Level> {
     vec![Level::State, Level::Phase]
+}
+
+fn is_zero(n: &u32) -> bool {
+    *n == 0
+}
+
+/// Splits a run's id, `<name>@<transform>` or `<name>@<transform>~<seed>`,
+/// into the fixture's name, its orientation and the seed (0 for the
+/// orientation's own run).
+pub fn split_id(id: &str) -> Result<(&str, Transform, u32)> {
+    let (name, rest) = id.split_once('@').with_context(|| format!("run id {id:?} has no '@'"))?;
+    let (transform, seed) = match rest.split_once('~') {
+        Some((t, s)) => (t, s.parse().with_context(|| format!("run id {id:?} has a bad seed"))?),
+        None => (rest, 0),
+    };
+    Ok((name, transform.parse()?, seed))
 }
 
 /// A fixture in one orientation, with every block spelled out. This is the
@@ -471,6 +493,11 @@ impl FixtureSource {
             );
         }
         self.transform_list()?;
+        ensure!(
+            self.seeds == 0 || self.entities,
+            "{}: only fixtures with \"entities\": true seed the level random, so only they can have seeds",
+            self.name
+        );
         Ok(())
     }
 
@@ -501,6 +528,12 @@ impl FixtureSource {
     }
 
     pub fn resolve(&self, t: Transform) -> Result<ResolvedFixture> {
+        self.resolve_seeded(t, 0)
+    }
+
+    /// The fixture in orientation `t` as the run with seed number `seed`
+    /// (0 is the orientation's own run), which only changes its id.
+    pub fn resolve_seeded(&self, t: Transform, seed: u32) -> Result<ResolvedFixture> {
         let size = self.size();
         let mut blocks: Vec<(i32, i32, i32, String)> = self
             .blocks()?
@@ -548,7 +581,7 @@ impl FixtureSource {
             self.comparators.iter().map(|c| ComparatorOutput { pos: t.pos(c.pos, size), output: c.output }).collect();
         Ok(ResolvedFixture {
             format: RESOLVED_FORMAT,
-            id: format!("{}@{t}", self.name),
+            id: if seed == 0 { format!("{}@{t}", self.name) } else { format!("{}@{t}~{seed}", self.name) },
             name: self.name.clone(),
             transform: t.to_string(),
             ticks: self.ticks,
@@ -573,8 +606,16 @@ impl FixtureSource {
         })
     }
 
+    /// Every run: each orientation, then the extra seeds of the first.
     pub fn resolve_all(&self) -> Result<Vec<ResolvedFixture>> {
-        self.transform_list()?.into_iter().map(|t| self.resolve(t)).collect()
+        let transforms = self.transform_list()?;
+        let mut out: Vec<ResolvedFixture> = transforms.iter().map(|&t| self.resolve(t)).collect::<Result<_>>()?;
+        if let Some(&first) = transforms.first() {
+            for seed in 1..=self.seeds {
+                out.push(self.resolve_seeded(first, seed)?);
+            }
+        }
+        Ok(out)
     }
 }
 
@@ -635,6 +676,22 @@ mod tests {
         let r90 = f.resolve("r90".parse().unwrap()).unwrap();
         assert_eq!(r90.start_entities[0].entity, "armor_stand");
         assert_eq!(r90.start_entities[0].at, [0.75, 1.0, 0.5]);
+    }
+
+    #[test]
+    fn seeds_add_runs_of_the_first_orientation() {
+        let seeded = INVERTER.replace("\"ticks\": 10,", "\"ticks\": 10, \"entities\": true, \"seeds\": 2,");
+        let f = FixtureSource::from_json(&seeded).unwrap();
+        let ids: Vec<String> = f.resolve_all().unwrap().into_iter().map(|r| r.id).collect();
+        assert_eq!(ids.len(), 10);
+        assert_eq!(ids[8..], ["torch_inverter@r0~1", "torch_inverter@r0~2"]);
+        let (name, t, seed) = split_id(&ids[9]).unwrap();
+        assert_eq!((name, t, seed), ("torch_inverter", Transform::IDENTITY, 2));
+        assert_eq!(f.resolve_seeded(t, seed).unwrap().id, ids[9]);
+        assert_eq!(split_id("torch_inverter@mr90").unwrap().2, 0);
+        // Runs that don't seed the level random would all be the same.
+        let unseeded = INVERTER.replace("\"ticks\": 10,", "\"ticks\": 10, \"seeds\": 2,");
+        assert!(FixtureSource::from_json(&unseeded).is_err());
     }
 
     #[test]

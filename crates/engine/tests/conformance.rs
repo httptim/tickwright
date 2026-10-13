@@ -2,8 +2,9 @@
 //! compares the engine's trace with it.
 //!
 //! `tests/expected.txt` lists the fixtures the engine must match, one
-//! `name level` per line; a fixture listed there must match in all eight
-//! orientations. Fixtures not listed are run and reported but do not fail
+//! `name level` per line; a fixture listed there must match in every run
+//! captured: all eight orientations, and the extra seeds of a fixture that
+//! has `seeds`. Fixtures not listed are run and reported but do not fail
 //! the test, so the list can only grow as the engine improves.
 //!
 //! `TICKWRIGHT_SHOW=<fixture id>` prints the first divergence for one
@@ -14,6 +15,7 @@ use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
+use tickwright_trace::fixture::split_id;
 use tickwright_trace::{FixtureSource, Level, Trace, compare};
 
 const VERSION: &str = "26.3";
@@ -85,17 +87,18 @@ fn engine_matches_the_game() {
     let show = std::env::var("TICKWRIGHT_SHOW").ok();
     // `TICKWRIGHT_ONLY=<substring>` runs only the fixtures whose name contains it.
     let only = std::env::var("TICKWRIGHT_ONLY").ok();
-    // fixture name -> per orientation, the highest level matched (None = not even state).
+    // fixture name -> per run, the highest level matched (None = not even state).
     let mut results: BTreeMap<String, Vec<(String, Option<Level>)>> = BTreeMap::new();
     let mut unsupported: BTreeMap<String, String> = BTreeMap::new();
     for path in &traces {
         let game = load_trace(path);
-        let (name, transform) = game.fixture.split_once('@').unwrap();
+        let (name, transform, seed) = split_id(&game.fixture).unwrap();
         if only.as_deref().is_some_and(|o| !game.fixture.contains(o)) {
             continue;
         }
         let fixture = fixtures.get(name).unwrap_or_else(|| panic!("no fixture {name}"));
-        let resolved = fixture.resolve(transform.parse().unwrap()).unwrap();
+        let resolved = fixture.resolve_seeded(transform, seed).unwrap();
+        let run = game.fixture[name.len() + 1..].to_string();
         // Builds with blocks the engine doesn't simulate yet are listed as
         // unsupported; they are ground truth for later phases.
         let ours = match tickwright_engine::run::run(&resolved, VERSION) {
@@ -122,11 +125,14 @@ fn engine_matches_the_game() {
                 None => println!("{}: matches at every level", game.fixture),
             }
         }
-        results.entry(name.to_string()).or_default().push((transform.to_string(), best));
+        results.entry(name.to_string()).or_default().push((run, best));
     }
 
     let mut failures = Vec::new();
-    println!("\n{:<36} {:>6} {:>6} {:>6}   (orientations matching, of 8)", "fixture", "state", "phase", "order");
+    println!(
+        "\n{:<36} {:>6} {:>6} {:>6}   (runs matching: 8 orientations, plus any seeds)",
+        "fixture", "state", "phase", "order"
+    );
     let mut totals = [0; 3];
     let mut count = 0;
     for (name, runs) in &results {
