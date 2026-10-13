@@ -44,7 +44,7 @@ phase 1 has no comparators.
 | `fixtures/phase2` | Phase 2 fixtures: observers, comparators, note blocks, doors, trapdoors, rails, water, hoppers, droppers, dispensers, barrels, copper bulbs, bells |
 | `fixtures/phase3` | Blocks placed as a player places them, written by `tools/placement_fixtures.py` |
 | `fixtures/nucleation` | Builds from [Nucleation](https://github.com/Schem-at/Nucleation)'s conformance tests (MIT, © 2025 Schem-at), converted by `tools/nucleation.py` and recaptured on 26.3 |
-| `fixtures/community` | Popular community builds, rebuilt from their designers' published explanations and credited in each fixture (see its README) |
+| `fixtures/community` | Popular community builds, rebuilt from the Minecraft Wiki's schematics and credited to their designers in each fixture (see its README) |
 | `harness/` | Java capture harness for the vanilla server |
 | `traces/<version>/` | Ground-truth traces from the real game, gzipped |
 | `data/<version>/` | Blocks, items and block entity types from the game's data reports, and `materials.json`: the items each block state takes and every item's stack size |

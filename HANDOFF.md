@@ -9,7 +9,7 @@ picking the work up.
 
 - The engine targets Java Edition 26.3. Every behaviour is checked against
   traces captured from the real 26.3 server (`traces/26.3`).
-- There are 218 fixtures (`fixtures/`) and 1830 traces: one per fixture
+- There are 223 fixtures (`fixtures/`) and 1870 traces: one per fixture
   and orientation, and 100 more seeds of `phase4/tnt_cannon`. Every trace
   matches at the strictest level ("order"), and no fixture is refused.
   The fixtures listed in `crates/engine/tests/expected.txt` must keep
@@ -43,8 +43,8 @@ picking the work up.
   `run --partial` it records the ticks it could simulate.
   `grep -rn 'unsupported("' crates/engine/src` lists every refusal.
 - `fixtures/QUIRKS.md` tracks which known quirks have fixtures.
-- `fixtures/community` holds popular community builds, rebuilt from their
-  designers' published explanations and credited in each fixture; its
+- `fixtures/community` holds popular community builds, rebuilt from the
+  Minecraft Wiki's schematics and credited to their designers in each fixture; its
   README lists them.
 
 ## Next engine work, in order

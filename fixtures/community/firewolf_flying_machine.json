@@ -1,6 +1,6 @@
 {
   "name": "firewolf_flying_machine",
-  "description": "Driveable four-way flying machine D, design by FirewolfQuasar (https://www.youtube.com/watch?v=MnppZ2pRxYI), rebuilt for Tickwright from the Minecraft Wiki's schematic (https://minecraft.wiki/w/Tutorial:Flying_machines#Driveable_flying_machine_D,_4-way), without a rider: 13 observers, 26 slime blocks, 8 sticky pistons and 8 pistons. As its designer describes, placing a redstone torch beside the top central observer and breaking it again starts the machine in that direction, and placing it and leaving it there stops it. The machine flies five blocks east, stops, then flies five blocks back west and stops.",
+  "description": "Driveable four-way flying machine D, design by FirewolfQuasar (https://www.youtube.com/watch?v=MnppZ2pRxYI), rebuilt for Tickwright from the Minecraft Wiki's schematic (https://minecraft.wiki/w/Tutorial:Flying_machines#Driveable_flying_machine_D,_4-way), without a rider: 13 observers, 26 slime blocks, 8 sticky pistons and 8 pistons. As the Minecraft Wiki describes, placing a redstone torch beside the top central observer and breaking it again starts the machine in that direction, and placing it and leaving it there stops it. The machine flies five blocks east, stops, then flies five blocks back west and stops.",
   "ticks": 160,
   "levels": [
     "state",
