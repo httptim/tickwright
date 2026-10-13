@@ -394,7 +394,7 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                 let s = get(sessions, session)?;
                 let mut busy = false;
                 for _ in 0..count {
-                    busy |= !s.step().is_empty();
+                    busy |= s.step();
                 }
                 json!({ "tick": s.tick(), "busy": busy })
             }
@@ -402,7 +402,8 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                 let s = get(sessions, session)?;
                 let mut events = Vec::new();
                 for _ in 0..count {
-                    events.extend_from_slice(s.step());
+                    s.step();
+                    events.extend(s.events(s.tick()));
                 }
                 json!({ "tick": s.tick(), "events": events })
             }
@@ -433,15 +434,8 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                 json!({ "powers": powers })
             }
             Command::History { session, pos: p } => {
-                let s = get(sessions, session)?;
-                let mut changes = Vec::new();
-                for t in 0..=s.tick() + 1 {
-                    for e in s.events(t) {
-                        if e.kind == tickwright_trace::Kind::Set && e.pos == p {
-                            changes.push(json!([t, e.state]));
-                        }
-                    }
-                }
+                let changes: Vec<Value> =
+                    get(sessions, session)?.history(pos(p)).into_iter().map(|(t, state)| json!([t, state])).collect();
                 json!({ "changes": changes })
             }
             Command::Block { session, pos: p } => json!({ "state": get(sessions, session)?.block(pos(p)) }),

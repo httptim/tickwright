@@ -70,8 +70,8 @@ fn session_matches_fixture_runs() {
                     Action::Summon => unreachable!("entity fixtures are skipped"),
                 }
             }
-            for e in session.step().iter().filter(|e| inside(e.pos)) {
-                let mut e = e.clone();
+            session.step();
+            for mut e in session.events(t).into_iter().filter(|e| inside(e.pos)) {
                 e.pos = [e.pos[0] - ox, e.pos[1] - oy, e.pos[2] - oz];
                 entries.push(e);
             }

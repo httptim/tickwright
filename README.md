@@ -50,7 +50,7 @@ phase 1 has no comparators.
 | `data/<version>/` | Blocks, items and block entity types from the game's data reports, and `materials.json`: the items each block state takes and every item's stack size |
 | `tools/registry.py` | Turns the game's data reports into `data/<version>/` |
 | `tools/materials.py` | Rolls the server jar's block loot tables into `data/<version>/materials.json` |
-| `tools/wasm-check.cjs` | Runs every fixture in headless Chromium, as a fixture run and as an editor session, and checks the traces match the native engine's |
+| `tools/wasm-check.cjs` | Runs every fixture in headless Chromium, as a fixture run and as an editor session, and checks the traces match the native engine's; times the benchmark build both ways |
 
 ## Usage
 
