@@ -70,6 +70,9 @@ pub struct Entity {
     piston_deltas_time: i64,
     /// The vertical motion the entity started its tick with.
     start_motion_y: f64,
+    /// `noPhysics`: an item that began its tick inside a block moves
+    /// through blocks, piston pushes included, until its next tick.
+    pub no_physics: bool,
 }
 
 impl Entity {
@@ -108,6 +111,11 @@ impl Entity {
             Data::Arrow(_) => (0.5, 0.5),
             Data::FallingBlock(_) | Data::Tnt(_) | Data::Gone => (0.98, 0.98),
         }
+    }
+
+    /// `getBbWidth`.
+    pub fn width(&self) -> f32 {
+        self.dimensions().0
     }
 
     /// `getBoundingBox`, from `EntityDimensions.makeBoundingBox`.
@@ -167,9 +175,17 @@ impl Entity {
         }
     }
 
-    /// `getBlockPosBelowThatAffectsMyMovement`.
+    /// `isSupportedBy`: whether `pos` is the block the entity stands on.
+    pub fn is_supported_by(&self, pos: Pos) -> bool {
+        self.main_support == Some(pos)
+    }
+
+    /// `getBlockPosBelowThatAffectsMyMovement`. An item looks almost a
+    /// whole block down (`ItemEntity` overrides it), so one over a honey
+    /// block's top, or flying just above it, feels the honey.
     pub fn pos_below_affecting_movement(&self, level: &Level) -> Pos {
-        self.on_pos(level, 0.500001)
+        let y_offset = if matches!(self.data, Data::Item(_)) { 0.999999 } else { 0.500001 };
+        self.on_pos(level, y_offset)
     }
 }
 
@@ -370,12 +386,19 @@ fn clamp_loaded_motion(m: Vec3) -> Vec3 {
 // --- movement --------------------------------------------------------------
 
 /// `Entity.move(MoverType.PISTON, ...)` for the entity at `index` in the
-/// level's list, with blocks moving toward `noclip` passing through it
+/// level's list, with blocks moving toward `noclip` passing through it,
+/// then the blocks it passed through feel it
 /// (`PistonMovingBlockEntity.moveEntityByPiston`). A piston moves an
 /// entity at most 0.51 along each axis per game tick (`limitPistonMovement`).
 pub fn move_by_piston(level: &mut Level, index: usize, noclip: crate::pos::Dir, movement: Vec3) {
     let mut e = std::mem::take(&mut level.entities[index]);
-    if movement.length_sqr() > 1.0E-7 {
+    if e.no_physics {
+        // `Entity.move` without physics: no piston limit, no collisions,
+        // and no blocks felt.
+        e.pos = e.pos + movement;
+        e.horizontal_collision = false;
+        e.vertical_collision = false;
+    } else if movement.length_sqr() > 1.0E-7 {
         if e.piston_deltas_time != level.game_time {
             e.piston_deltas = [0.0; 3];
             e.piston_deltas_time = level.game_time;
@@ -400,8 +423,10 @@ pub fn move_by_piston(level: &mut Level, index: usize, noclip: crate::pos::Dir, 
             if e.stuck_speed_multiplier.length_sqr() > 1.0E-7 {
                 level.unsupported("a piston pushing an entity stuck in a block");
             }
+            let from = e.pos;
             level.piston_noclip = Some(noclip);
             move_entity(level, &mut e, m);
+            apply_effects_from_blocks(level, &mut e, from);
             level.piston_noclip = None;
         }
     }
@@ -419,6 +444,9 @@ fn mth_equal(a: f64, b: f64) -> bool {
 /// The entity being ticked is out of the level's list, so it goes back on
 /// the end while blocks see it, and comes back changed.
 pub fn apply_effects_from_blocks(level: &mut Level, e: &mut Entity, from: Vec3) {
+    if e.no_physics {
+        return;
+    }
     for p in blocks_between(from, e.pos, e.bounding_box().deflate(1.0E-5f32 as f64)) {
         let state = level.get(p);
         if !level.is_air(state) && !e.removed {
@@ -537,6 +565,12 @@ pub fn update_in_water(level: &Level, e: &mut Entity) {
 
 /// `Entity.move(MoverType.SELF, movement)`.
 pub fn move_entity(level: &mut Level, e: &mut Entity, mut movement: Vec3) {
+    if e.no_physics {
+        e.pos = e.pos + movement;
+        e.horizontal_collision = false;
+        e.vertical_collision = false;
+        return;
+    }
     if e.stuck_speed_multiplier.length_sqr() > 1.0E-7 {
         let s = e.stuck_speed_multiplier;
         movement = movement.multiply(s.x, s.y, s.z);
@@ -748,6 +782,73 @@ fn moving_collision_shape(level: &Level, p: Pos) -> Vec<Aabb> {
     out
 }
 
+/// `Entity.moveTowardsClosestSpace`: an entity stuck in a block heads for
+/// the nearest side whose neighbour isn't a full block (up if none is
+/// nearer), at a speed from its own random.
+pub fn move_towards_closest_space(level: &Level, e: &mut Entity, x: f64, y: f64, z: f64) {
+    use crate::pos::Dir;
+    let pos = Pos::new(floor(x), floor(y), floor(z));
+    let offset = [x - pos.x as f64, y - pos.y as f64, z - pos.z as f64];
+    let mut closest_dir = Dir::Up;
+    let mut closest = f64::MAX;
+    for d in [Dir::North, Dir::South, Dir::West, Dir::East, Dir::Up] {
+        let p = pos.offset(d);
+        if !collision_shape_full_block(level, p) {
+            let axis_offset = offset[d.axis() as usize];
+            let positive = d.step().iter().sum::<i32>() > 0;
+            let d_offset = if positive { 1.0 - axis_offset } else { axis_offset };
+            if d_offset < closest {
+                closest = d_offset;
+                closest_dir = d;
+            }
+        }
+    }
+    let speed = e.random.next_float() * 0.2 + 0.1;
+    let step = closest_dir.step().iter().sum::<i32>() as f32;
+    let v = (step * speed) as f64;
+    let m = e.motion.scale(0.75);
+    e.motion = match closest_dir.axis() {
+        0 => Vec3::new(v, m.y, m.z),
+        1 => Vec3::new(m.x, v, m.z),
+        _ => Vec3::new(m.x, m.y, v),
+    };
+}
+
+/// `isCollisionShapeFullBlock`: whether the block's collision shape,
+/// a moving piston's as it is now included, is exactly the whole block.
+fn collision_shape_full_block(level: &Level, p: Pos) -> bool {
+    let state = level.get(p);
+    if level.kind(state) != Kind::MovingPiston {
+        return level.physics().is_full_block(state);
+    }
+    let boxes = moving_collision_shape(level, p);
+    if boxes.iter().any(|b| (0..3).any(|a| b.min[a] < 0.0 || b.max[a] > 1.0)) {
+        return false;
+    }
+    // The boxes lie inside the block; they fill it if their union's volume
+    // is the block's, counted over the grid their edges make.
+    let mut cuts: [Vec<f64>; 3] = Default::default();
+    for (a, c) in cuts.iter_mut().enumerate() {
+        c.extend([0.0, 1.0]);
+        for b in &boxes {
+            c.extend([b.min[a], b.max[a]]);
+        }
+        c.sort_by(f64::total_cmp);
+        c.dedup();
+    }
+    for xs in cuts[0].windows(2) {
+        for ys in cuts[1].windows(2) {
+            for zs in cuts[2].windows(2) {
+                let mid = [(xs[0] + xs[1]) / 2.0, (ys[0] + ys[1]) / 2.0, (zs[0] + zs[1]) / 2.0];
+                if !boxes.iter().any(|b| (0..3).all(|a| b.min[a] <= mid[a] && mid[a] <= b.max[a])) {
+                    return false;
+                }
+            }
+        }
+    }
+    true
+}
+
 /// `noCollision(entity, box)` against blocks.
 pub fn no_block_collision(level: &Level, b: Aabb) -> bool {
     block_collisions(level, b).is_empty()
@@ -777,11 +878,14 @@ fn collide(level: &Level, e: &Entity, movement: Vec3) -> Vec3 {
     result
 }
 
-/// `Level.getEntityCollisions`: the boxes of entities others can't pass
-/// through, of which the engine has minecarts. They come before the blocks.
+/// `Level.getEntityCollisions`: the boxes of entities `e` can't pass
+/// through (`canCollideWith`). They come before the blocks. Of the
+/// engine's entities only a minecart collides with others, and only with
+/// pushable ones, which are minecarts (`AbstractBoat.canVehicleCollide`);
+/// nothing collides with a minecart otherwise, so an item falls through one.
 fn entity_collisions(level: &Level, e: &Entity, area: Aabb) -> Vec<(Pos, Vec<Aabb>)> {
     let size = (0..3).map(|a| area.max[a] - area.min[a]).sum::<f64>() / 3.0;
-    if size < 1.0E-7 {
+    if size < 1.0E-7 || !matches!(e.data, Data::Minecart(_)) {
         return Vec::new();
     }
     let area = area.inflate(1.0E-7, 1.0E-7, 1.0E-7);

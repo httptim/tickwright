@@ -202,6 +202,16 @@ minecarts_head_on order
 minecart_bumps_parked order
 furnace_minecart_bump order
 sticky_slime_item order
+slime_item_sideways order
+slime_bounce_item_sideways order
+slime_rail_minecart order
+piston_push_block_into_entities order
+honey_carry_item order
+honey_carry_minecart order
+honey_rail_minecart order
+honey_lift_item order
+honey_side_items order
+flying_machine_honey_cargo order
 rail_dupe order
 slime_drop order
 slime_launch_tnt order

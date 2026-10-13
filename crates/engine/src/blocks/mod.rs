@@ -621,6 +621,7 @@ pub fn entity_inside(level: &mut Level, pos: Pos, state: StateId) {
         Kind::Cobweb => bubble::web_entity_inside(level),
         Kind::Button => button::entity_inside(level, pos, state),
         Kind::Fire => fire::entity_inside(level),
+        Kind::Honey => plain::honey_entity_inside(level, pos),
         _ => {}
     }
 }

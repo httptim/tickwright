@@ -98,10 +98,11 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
     } else {
         apply_gravity(e, 0.04);
     }
-    if !no_block_collision(level, e.bounding_box().deflate(1.0E-7)) {
-        // `moveTowardsClosestSpace` pushes by the entity's own random,
-        // which captures can't repeat.
-        level.unsupported("an item inside a block");
+    // An item inside a block heads out of it, through blocks, this tick.
+    e.no_physics = !no_block_collision(level, e.bounding_box().deflate(1.0E-7));
+    if e.no_physics {
+        let b = e.bounding_box();
+        super::move_towards_closest_space(level, e, e.pos.x, (b.min[1] + b.max[1]) / 2.0, e.pos.z);
     }
     if !e.on_ground || e.motion.horizontal_distance_sqr() > 1.0E-5f32 as f64 || (e.tick_count + e.id) % 4 == 0 {
         move_entity(level, e, e.motion);
@@ -119,7 +120,7 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
         // Fitted from 26.3 captures: a resting item still feels the
         // blocks it is in, and slime under it still slows it.
         super::apply_effects_from_blocks(level, e, old);
-        if e.on_ground {
+        if e.on_ground && !e.no_physics {
             super::step_on(level, e);
         }
     }

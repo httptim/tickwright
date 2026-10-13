@@ -1,6 +1,6 @@
 {
   "name": "honey_side_items",
-  "description": "Two items fall down the sides of a two-high honey pillar and slide on it. A piston pushes the pillar east: the item on the east face is shoved along by the honey and keeps sliding, and the one on the north face is left behind and falls freely.",
+  "description": "Two items fall down the sides of a two-high honey pillar and slide on it. A piston pushes the pillar east: the item on the east face is shoved along by the honey and keeps sliding, and the one on the north face is left behind and drops, catching for a tick on the passing piston head.",
   "ticks": 40,
   "levels": [
     "state",
