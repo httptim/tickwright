@@ -1,0 +1,91 @@
+{
+  "name": "items_caught_by_doors",
+  "description": "An oak door and an oak trapdoor close on items lying in their way. Each item, inside the door's or trapdoor's box, heads out of it: south out of the door, north out from under the trapdoor.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "item",
+    "door",
+    "trapdoor"
+  ],
+  "palette": {
+    "#": "stone",
+    "D": "oak_door[facing=north,half=lower,hinge=left,open=true,powered=false]",
+    "U": "oak_door[facing=north,half=upper,hinge=left,open=true,powered=false]",
+    "T": "oak_trapdoor[facing=north,half=bottom,open=true,powered=false,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "###",
+      "###",
+      "###",
+      "###",
+      "###",
+      "###"
+    ],
+    [
+      "...",
+      ".D.",
+      "...",
+      "...",
+      ".T.",
+      "..."
+    ],
+    [
+      "...",
+      ".U.",
+      "...",
+      "...",
+      "...",
+      "..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        1.0,
+        1.875
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        1.0,
+        4.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:dirt\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 10,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        4
+      ]
+    }
+  ],
+  "entities": true
+}

@@ -1,0 +1,65 @@
+{
+  "name": "honey_pull_overhanging_minecart",
+  "description": "A minecart rests half off a honey block, its centre past the honey's side. A sticky piston pulls the honey west: once the cart stands on the moving honey it rides along, though its centre isn't over the honey (isSupportedBy).",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "minecart",
+    "honey",
+    "piston"
+  ],
+  "palette": {
+    "#": "obsidian",
+    "R": "redstone_block",
+    "P": "sticky_piston[extended=true,facing=east]",
+    "h": "piston_head[facing=east,short=false,type=sticky]",
+    "H": "honey_block"
+  },
+  "layers": [
+    [
+      "######",
+      "######",
+      "######",
+      "######"
+    ],
+    [
+      "......",
+      "RPhH..",
+      "......",
+      "......"
+    ],
+    [
+      "......",
+      "......",
+      "......",
+      "......"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        3.5,
+        2.0,
+        2.2
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        1
+      ]
+    }
+  ],
+  "entities": true
+}

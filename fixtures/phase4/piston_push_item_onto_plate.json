@@ -1,0 +1,66 @@
+{
+  "name": "piston_push_item_onto_plate",
+  "description": "A piston shoves an item onto a wooden pressure plate. The plate feels the item during the push itself, so it turns on in the block entity phase, not on the item's next tick.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "item",
+    "piston",
+    "pressure_plate"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "piston[extended=false,facing=east]",
+    "W": "oak_pressure_plate[powered=false]"
+  },
+  "layers": [
+    [
+      "######",
+      "######",
+      "######"
+    ],
+    [
+      "......",
+      ".P.W..",
+      "......"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        2.5,
+        1.0,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 30,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        1
+      ]
+    }
+  ],
+  "entities": true
+}

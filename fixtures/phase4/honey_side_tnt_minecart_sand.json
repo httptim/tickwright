@@ -1,0 +1,112 @@
+{
+  "name": "honey_side_tnt_minecart_sand",
+  "description": "Primed TNT, a minecart and falling sand drop beside three honey pillars and slide down them. TNT and minecarts draw twice from the level random every tick they slide; falling sand doesn't, and lands as a block.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "honey",
+    "tnt",
+    "minecart",
+    "falling_block"
+  ],
+  "palette": {
+    "#": "stone",
+    "H": "honey_block"
+  },
+  "layers": [
+    [
+      "####",
+      "####",
+      "####",
+      "####",
+      "####",
+      "####",
+      "####",
+      "####",
+      "####"
+    ],
+    [
+      "....",
+      ".H..",
+      "....",
+      "....",
+      ".H..",
+      "....",
+      "....",
+      ".H..",
+      "...."
+    ],
+    [
+      "....",
+      ".H..",
+      "....",
+      "....",
+      ".H..",
+      "....",
+      "....",
+      ".H..",
+      "...."
+    ],
+    [
+      "....",
+      ".H..",
+      "....",
+      "....",
+      ".H..",
+      "....",
+      "....",
+      ".H..",
+      "...."
+    ],
+    [
+      "....",
+      "....",
+      "....",
+      "....",
+      "....",
+      "....",
+      "....",
+      "....",
+      "...."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        2.43,
+        4.2,
+        1.5
+      ],
+      "nbt": "{fuse:200}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        2.43,
+        4.2,
+        4.5
+      ]
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "falling_block",
+      "at": [
+        2.43,
+        4.2,
+        7.5
+      ]
+    }
+  ],
+  "entities": true
+}
