@@ -478,10 +478,11 @@ fn placed_by(level: &mut Level, pos: Pos, state: StateId) {
     }
 }
 
-/// `BlockItem.place`: right-click `click.face` of `click.clicked` holding
-/// `item`. Returns whether a block was placed; an item the engine cannot
-/// place is an error.
-pub fn place(level: &mut Level, item: &str, click: Click) -> Result<bool> {
+/// Where `place` would put a block and the state it would set, without
+/// changing the world: `BlockItem.place` up to `getStateForPlacement`. None
+/// when the click would place nothing; an item the engine cannot place is
+/// an error. The editor draws this as the block about to be placed.
+pub fn preview(level: &Level, item: &str, click: Click) -> Result<Option<(Pos, StateId)>> {
     let Some(block) = block_for_item(level, item) else {
         bail!("placing {item} is not supported by the engine yet");
     };
@@ -493,9 +494,16 @@ pub fn place(level: &mut Level, item: &str, click: Click) -> Result<bool> {
     let pos = if replace_clicked { click.clicked } else { click.clicked.offset(click.face) };
     let ctx = Context { click, pos, replace_clicked, block };
     if !replace_clicked && !can_be_replaced(level, level.get(pos), &click, pos, block, false) {
-        return Ok(false);
+        return Ok(None);
     }
-    let Some(state) = state_for_placement(level, &ctx) else {
+    Ok(state_for_placement(level, &ctx).map(|state| (pos, state)))
+}
+
+/// `BlockItem.place`: right-click `click.face` of `click.clicked` holding
+/// `item`. Returns whether a block was placed; an item the engine cannot
+/// place is an error.
+pub fn place(level: &mut Level, item: &str, click: Click) -> Result<bool> {
+    let Some((pos, state)) = preview(level, item, click)? else {
         return Ok(false);
     };
     if !level.set_block(pos, state, flags::ALL_IMMEDIATE) {

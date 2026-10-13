@@ -168,6 +168,15 @@ enum Command {
         #[serde(flatten)]
         input: PlaceInput,
     },
+    /// What `place` with the same fields would do, without doing it:
+    /// `{"pos": [x, y, z], "state": "minecraft:repeater[…]"}`, or both null
+    /// when the click would place nothing. The editor draws it as a ghost.
+    Preview {
+        session: u32,
+        pos: [i32; 3],
+        #[serde(flatten)]
+        input: PlaceInput,
+    },
     /// Right-click with an empty hand.
     Use {
         session: u32,
@@ -242,9 +251,11 @@ enum Command {
     Entities {
         session: u32,
     },
-    /// The blocks a version's rules simulate, without the `minecraft:`
-    /// prefix: `{"blocks": ["stone", …]}`. Setting or placing any other
-    /// block is refused.
+    /// The blocks a version's rules simulate and the entity types the
+    /// engine simulates, without the `minecraft:` prefix:
+    /// `{"blocks": ["stone", …], "entities": ["item", …]}`. Setting or
+    /// placing any other block is refused; a build's other entities are
+    /// carried in its file but left out of the world.
     Simulated {
         version: String,
     },
@@ -345,6 +356,13 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                 let click = tickwright_engine::run::click(pos(p), &input)?;
                 json!({ "placed": get(sessions, session)?.place(&input.item, click)? })
             }
+            Command::Preview { session, pos: p, input } => {
+                let click = tickwright_engine::run::click(pos(p), &input)?;
+                match get(sessions, session)?.preview_place(&input.item, click)? {
+                    Some((at, state)) => json!({ "pos": [at.x, at.y, at.z], "state": state }),
+                    None => json!({ "pos": null, "state": null }),
+                }
+            }
             Command::Use { session, pos: p } => {
                 get(sessions, session)?.use_block(pos(p));
                 json!({})
@@ -439,7 +457,8 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                         name.strip_prefix("minecraft:").unwrap_or(name)
                     })
                     .collect();
-                json!({ "blocks": blocks })
+                let entities: Vec<&str> = tickwright_engine::entity::simulated().collect();
+                json!({ "blocks": blocks, "entities": entities })
             }
             Command::Unsupported { session } => json!({ "unsupported": get(sessions, session)?.unsupported() }),
             Command::Summon { session, entity, at, motion, nbt } => {
@@ -617,6 +636,29 @@ mod tests {
         ok(&format!(r#"{{"op":"set","session":{id},"pos":[0,0,0],"state":"repeater"}}"#));
         let refused = command(format!(r#"{{"op":"set","session":{id},"pos":[0,1,0],"state":"red_bed"}}"#).as_bytes());
         assert!(refused.unwrap_err().to_string().contains("not supported"));
+        let entities = ok(r#"{"op":"simulated","version":"26.3"}"#)["entities"].clone();
+        let entities: Vec<&str> = entities.as_array().unwrap().iter().map(|e| e.as_str().unwrap()).collect();
+        assert!(entities.contains(&"chest_minecart") && entities.contains(&"arrow"), "{entities:?}");
+        assert!(!entities.contains(&"armor_stand"));
+    }
+
+    #[test]
+    fn a_preview_shows_what_a_place_would_set_without_setting_it() {
+        let id = ok(r#"{"op":"open","version":"26.3"}"#)["session"].as_u64().unwrap();
+        ok(&format!(r#"{{"op":"set","session":{id},"pos":[0,0,0],"state":"stone"}}"#));
+        let click = r#""pos":[0,0,0],"item":"repeater","face":"up","look":"east","pitch":40"#;
+        let preview = ok(&format!(r#"{{"op":"preview","session":{id},{click}}}"#));
+        assert_eq!(preview["pos"], serde_json::json!([0, 1, 0]));
+        let state = preview["state"].as_str().unwrap().to_string();
+        assert!(state.contains("facing=west"), "{state}");
+        let before = ok(&format!(r#"{{"op":"block","session":{id},"pos":[0,1,0]}}"#));
+        assert_eq!(before["state"], "minecraft:air");
+        assert_eq!(ok(&format!(r#"{{"op":"place","session":{id},{click}}}"#))["placed"], true);
+        let after = ok(&format!(r#"{{"op":"block","session":{id},"pos":[0,1,0]}}"#));
+        assert_eq!(after["state"], state.as_str());
+        // A repeater can't go on a repeater's top: nothing to show.
+        let none = ok(&format!(r#"{{"op":"preview","session":{id},{}}}"#, click.replace("[0,0,0]", "[0,1,0]")));
+        assert!(none["pos"].is_null() && none["state"].is_null(), "{none}");
     }
 
     #[test]

@@ -261,17 +261,29 @@ pub fn place_start_entity(
     Ok(true)
 }
 
-/// The summon data keys the engine reads for each type it simulates.
+/// Each entity type the engine simulates, without `minecraft:`, and the
+/// summon data keys it reads.
+const KNOWN_DATA: &[(&str, &[&str])] = &[
+    ("item", &["Item", "PickupDelay", "Age"]),
+    ("tnt", &["fuse"]),
+    ("falling_block", &["BlockState", "Time", "DropItem", "CancelDrop"]),
+    ("minecart", &[]),
+    ("furnace_minecart", &[]),
+    ("chest_minecart", &["Items"]),
+    ("hopper_minecart", &["Items"]),
+    ("small_fireball", &[]),
+    ("arrow", &[]),
+];
+
 fn known_data(name: &str) -> Option<&'static [&'static str]> {
-    Some(match name {
-        "item" => &["Item", "PickupDelay", "Age"],
-        "tnt" => &["fuse"],
-        "falling_block" => &["BlockState", "Time", "DropItem", "CancelDrop"],
-        "minecart" | "furnace_minecart" => &[],
-        "chest_minecart" | "hopper_minecart" => &["Items"],
-        "small_fireball" | "arrow" => &[],
-        _ => return None,
-    })
+    KNOWN_DATA.iter().find(|(n, _)| *n == name).map(|(_, keys)| *keys)
+}
+
+/// The entity types the engine simulates, without `minecraft:`. A build's
+/// entities of any other type are left out of the world and carried in its
+/// file unchanged.
+pub fn simulated() -> impl Iterator<Item = &'static str> {
+    KNOWN_DATA.iter().map(|(name, _)| *name)
 }
 
 fn parse_data(nbt: Option<&str>) -> Result<snbt::Tag> {
