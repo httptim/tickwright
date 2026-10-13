@@ -82,7 +82,9 @@ pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId) {
         level.schedule_tick(pos, level.block(state), 4, 0);
         level.set_block(pos, level.with_bool(state, "triggered", true), flags::CLIENTS);
     } else if !powered && triggered {
-        level.set_block(pos, level.with_bool(state, "triggered", false), flags::CLIENTS);
+        // A falling edge also puts out the crafting light at once.
+        let off = level.with_bool(level.with_bool(state, "triggered", false), "crafting", false);
+        level.set_block(pos, off, flags::CLIENTS);
     }
 }
 

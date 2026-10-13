@@ -1,8 +1,9 @@
 //! `PrimedTnt`.
 
-use super::{DRAG, Data, Entity, apply_gravity, explosion, move_entity};
+use super::{DRAG, Data, Entity, apply_gravity, explosion, move_entity, update_in_water};
 use crate::game_event::GameEvent;
 use crate::level::Level;
+use crate::math;
 use crate::physics::Vec3;
 use crate::pos::Pos;
 
@@ -16,7 +17,7 @@ pub struct Tnt {
 pub fn new_primed(level: &mut Level, at: Vec3) -> Entity {
     let d = level.random.next_double() * 6.2831854820251465;
     let mut e = Entity::new(level, Data::Tnt(Tnt { fuse: 80 }), at);
-    e.motion = Vec3::new(-d.sin() * 0.02, 0.2f32 as f64, -d.cos() * 0.02);
+    e.motion = Vec3::new(-math::sin(d) * 0.02, 0.2f32 as f64, -math::cos(d) * 0.02);
     e
 }
 
@@ -52,5 +53,9 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
         e.discard();
         let center = Vec3::new(e.pos.x, e.pos.y + (0.98f32 as f64) * 0.0625, e.pos.z);
         explosion::explode(level, Some(e), center, 4.0, false);
+    } else {
+        // `updateFluidInteraction`: water currents push it, as they push
+        // items, but only while it has fuse left.
+        update_in_water(level, e);
     }
 }
