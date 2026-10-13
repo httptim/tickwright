@@ -14,7 +14,7 @@
     "honey"
   ],
   "palette": {
-    "#": "stone",
+    "#": "obsidian",
     "P": "piston[extended=false,facing=east]",
     "H": "honey_block"
   },

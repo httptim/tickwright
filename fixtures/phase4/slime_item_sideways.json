@@ -14,7 +14,7 @@
     "slime"
   ],
   "palette": {
-    "#": "stone",
+    "#": "obsidian",
     "P": "piston[extended=false,facing=east]",
     "S": "slime_block"
   },

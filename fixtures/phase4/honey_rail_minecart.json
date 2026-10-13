@@ -15,7 +15,7 @@
     "rail"
   ],
   "palette": {
-    "#": "stone",
+    "#": "obsidian",
     "P": "sticky_piston[extended=false,facing=east]",
     "H": "honey_block",
     "R": "rail[shape=east_west,waterlogged=false]"

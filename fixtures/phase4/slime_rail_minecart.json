@@ -15,7 +15,7 @@
     "rail"
   ],
   "palette": {
-    "#": "stone",
+    "#": "obsidian",
     "P": "piston[extended=false,facing=east]",
     "S": "slime_block",
     "R": "rail[shape=east_west,waterlogged=false]"
