@@ -1,0 +1,72 @@
+{
+  "name": "honey_rail_minecart",
+  "description": "A sticky piston pushes a honey block east with a rail and a minecart on top, then pulls it back: a cart on rails is never on the ground, so the honey does not carry it. The rail leaves without it and comes back under it.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "minecart",
+    "honey",
+    "rail"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "sticky_piston[extended=false,facing=east]",
+    "H": "honey_block",
+    "R": "rail[shape=east_west,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "######",
+      "######",
+      "######"
+    ],
+    [
+      "......",
+      ".PH...",
+      "......"
+    ],
+    [
+      "......",
+      "..R...",
+      "......"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        2.5,
+        2.0625,
+        1.5
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 25,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        1
+      ]
+    }
+  ],
+  "entities": true
+}

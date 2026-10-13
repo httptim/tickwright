@@ -1,0 +1,71 @@
+{
+  "name": "honey_lift_item",
+  "description": "A piston pushes a honey block up under an item: the honey lifts the item a block but, unlike slime, does not launch it.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "item",
+    "honey"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "piston[extended=false,facing=up]",
+    "H": "honey_block"
+  },
+  "layers": [
+    [
+      "###",
+      "###",
+      "###"
+    ],
+    [
+      "...",
+      ".P.",
+      "..."
+    ],
+    [
+      "...",
+      ".H.",
+      "..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        3.0,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        2,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 25,
+      "action": "destroy",
+      "pos": [
+        2,
+        1,
+        1
+      ]
+    }
+  ],
+  "entities": true
+}

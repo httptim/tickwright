@@ -1,0 +1,78 @@
+{
+  "name": "honey_flying_machine",
+  "description": "A two-piston observer flying machine built with honey blocks flies east a block every ten ticks, carrying an item on one honey block and a minecart on the other.",
+  "ticks": 66,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "item",
+    "minecart",
+    "honey",
+    "observer"
+  ],
+  "palette": {
+    "#": "observer[facing=west,powered=false]",
+    "A": "honey_block",
+    "B": "sticky_piston[extended=false,facing=west]",
+    "C": "sticky_piston[extended=false,facing=east]",
+    "D": "observer[facing=east,powered=false]"
+  },
+  "layers": [
+    [
+      ".#AB.........",
+      "..CAD........"
+    ],
+    [
+      ".............",
+      "............."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        2.5,
+        1.0,
+        0.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        3.5,
+        1.0,
+        1.5
+      ]
+    },
+    {
+      "tick": 3,
+      "action": "set",
+      "pos": [
+        2,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 5,
+      "action": "destroy",
+      "pos": [
+        2,
+        1,
+        1
+      ]
+    }
+  ],
+  "entities": true
+}

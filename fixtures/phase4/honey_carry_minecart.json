@@ -1,0 +1,65 @@
+{
+  "name": "honey_carry_minecart",
+  "description": "A sticky piston pushes a honey block east with a minecart resting on it (no rail), then pulls it back: the honey carries the cart out and back.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "minecart",
+    "honey"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "sticky_piston[extended=false,facing=east]",
+    "H": "honey_block"
+  },
+  "layers": [
+    [
+      "######",
+      "######",
+      "######"
+    ],
+    [
+      "......",
+      ".PH...",
+      "......"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        2.5,
+        2.0,
+        1.5
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 25,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        1
+      ]
+    }
+  ],
+  "entities": true
+}
