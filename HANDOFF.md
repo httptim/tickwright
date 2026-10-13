@@ -9,7 +9,7 @@ picking the work up.
 
 - The engine targets Java Edition 26.3. Every behaviour is checked against
   traces captured from the real 26.3 server (`traces/26.3`).
-- There are 223 fixtures (`fixtures/`) and 1870 traces: one per fixture
+- There are 242 fixtures (`fixtures/`) and 2022 traces: one per fixture
   and orientation, and 100 more seeds of `phase4/tnt_cannon`. Every trace
   matches at the strictest level ("order"), and no fixture is refused.
   The fixtures listed in `crates/engine/tests/expected.txt` must keep
@@ -34,6 +34,7 @@ picking the work up.
     - moving blocks shoving entities, slime launching them, and honey
       carrying them sideways, flying machines included
     - honey blocks that entities slide down
+    - items caught inside blocks working their way out
     - bubble columns
     - cobwebs
     - pressure plates
@@ -161,5 +162,12 @@ differs from the committed traces. That keeps them honest.
   builds each new checkpoint is checked against the one before it run
   again with the logged edits, which panics on such an edit. The session
   tests also check every fixture against a session that keeps every tick.
+- **Blocks an entity passes** feel it by the game's own walk
+  (`entity::blocks_between`, a port of `forEachBlockIntersectedBetween`),
+  one axis at a time for the entity's own moves. Three paths follow the
+  game's code but no capture tells them apart yet: a piston pushing an
+  item without physics past the 0.51 limit, a moving piston that fills
+  its block counting as full for an item stuck next to it, and block
+  effects on a piston push the limit cut to nothing.
 - **Some refused cases are close to supported:** an arrow is refused once
   the block it is stuck in goes. The full list is in the code.
