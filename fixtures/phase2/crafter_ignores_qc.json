@@ -1,0 +1,119 @@
+{
+  "name": "crafter_ignores_qc",
+  "description": "Quirk crafter-no-qc: one redstone block powers the spaces above a crafter and a dropper, which counts as power for the dropper (quasi-connectivity) but not for the crafter. A block placed beside the dropper updates it and it fires into its chest; a block placed beside the crafter updates it and it does nothing. Then a redstone block between them powers both directly: the crafter turns its oak log into planks in its chest, while the dropper, already triggered, stays still. When that block goes, the crafter resets and the dropper stays triggered.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "quirk",
+    "crafter",
+    "dropper"
+  ],
+  "palette": {
+    "#": "stone",
+    "C": "crafter[crafting=false,orientation=east_up,triggered=false]",
+    "D": "dropper[facing=east,triggered=false]",
+    "h": "chest[facing=north,type=single,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "###",
+      "###",
+      "###"
+    ],
+    [
+      ".Ch",
+      "...",
+      ".Dh"
+    ],
+    [
+      "...",
+      "...",
+      "..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        1,
+        2,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 6,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        2
+      ],
+      "state": "stone"
+    },
+    {
+      "tick": 8,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "state": "stone"
+    },
+    {
+      "tick": 16,
+      "action": "set",
+      "pos": [
+        1,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 24,
+      "action": "destroy",
+      "pos": [
+        1,
+        1,
+        1
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        1,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "oak_log",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "pos": [
+        1,
+        1,
+        2
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "stone",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

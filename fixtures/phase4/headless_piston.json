@@ -1,0 +1,102 @@
+{
+  "name": "headless_piston",
+  "description": "Quirk headless-pistons: a redstone block under an upward piston makes it extend, and a TNT in mid-air beside it goes off while the head is still a moving block. The blast breaks the moving head, which has no blast resistance, but obsidian shields the base from every ray, so the piston is left extended with no head. Bedrock is then set where the head would be; taking the power away makes the headless piston retract, which removes whatever is in front of it, bedrock included. Powered again, it extends with a head as usual.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "quirk",
+    "piston",
+    "entities",
+    "tnt",
+    "explosion"
+  ],
+  "palette": {
+    "#": "obsidian",
+    "P": "piston[extended=false,facing=up]"
+  },
+  "layers": [
+    [
+      "######",
+      "######",
+      "######"
+    ],
+    [
+      "###...",
+      "#P#...",
+      "###..."
+    ],
+    [
+      ".#....",
+      "#.....",
+      ".#...."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 4,
+      "action": "set",
+      "pos": [
+        1,
+        0,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 5,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        3.5,
+        1.94,
+        1.5
+      ],
+      "nbt": "{fuse:1}"
+    },
+    {
+      "tick": 12,
+      "action": "set",
+      "pos": [
+        1,
+        2,
+        1
+      ],
+      "state": "bedrock"
+    },
+    {
+      "tick": 16,
+      "action": "set",
+      "pos": [
+        1,
+        0,
+        1
+      ],
+      "state": "obsidian"
+    },
+    {
+      "tick": 24,
+      "action": "set",
+      "pos": [
+        1,
+        0,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 32,
+      "action": "set",
+      "pos": [
+        1,
+        0,
+        1
+      ],
+      "state": "obsidian"
+    }
+  ],
+  "entities": true
+}
