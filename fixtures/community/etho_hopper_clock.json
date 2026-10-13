@@ -1,0 +1,55 @@
+{
+  "name": "etho_hopper_clock",
+  "description": "Etho hopper clock, design by EthosLab (Minecraft - Tutorial: Hopper Timer, https://www.youtube.com/watch?v=bYwzd62cLSw), rebuilt for Tickwright from the Minecraft Wiki's schematic (https://minecraft.wiki/w/Redstone_circuits/Clock/Hopper_clocks). Two hoppers face each other and a comparator reads each one, powering a sticky piston through a block and dust. The pistons hand a redstone block between the hoppers: the hopper beside it is locked, so the three items flow into it from the other. When the other hopper runs empty its comparator turns off and its piston pulls the redstone block across, reversing the flow. The items start in the right-hand hopper, so the clock starts itself; after the first swing it runs with a 36-tick period.",
+  "ticks": 120,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "community",
+    "clock",
+    "hopper",
+    "comparator",
+    "piston",
+    "sticky"
+  ],
+  "palette": {
+    "#": "stone",
+    "d": "redstone_wire[east=side,north=side,power=0,south=side,west=side]",
+    "P": "sticky_piston[extended=false,facing=east]",
+    "R": "redstone_block",
+    "Q": "sticky_piston[extended=false,facing=west]",
+    "K": "comparator[facing=east,mode=compare,powered=false]",
+    "k": "comparator[facing=west,mode=compare,powered=false]",
+    "G": "hopper[enabled=false,facing=east]",
+    "H": "hopper[enabled=true,facing=west]"
+  },
+  "layers": [
+    [
+      "######",
+      "######"
+    ],
+    [
+      "dPR.Qd",
+      "#KGHk#"
+    ]
+  ],
+  "containers": [
+    {
+      "pos": [
+        3,
+        1,
+        1
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "cobblestone",
+          "count": 3
+        }
+      ]
+    }
+  ]
+}

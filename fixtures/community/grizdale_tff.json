@@ -1,0 +1,94 @@
+{
+  "name": "grizdale_tff",
+  "description": "Grizdale's compact T flip-flop (variant A), as credited on the Minecraft Wiki (https://minecraft.wiki/w/Redstone_circuits/Memory/TFF_Grizdale), rebuilt for Tickwright. One stick cycles between two droppers: the top dropper drops into a chest, the hopper under the chest feeds the bottom dropper, and the bottom dropper drops back up into the top one. A button on the top dropper fires both droppers, so each press moves the stick one step, and a comparator reading the top dropper lights a lamp under the output dust while the stick is there. Four presses turn the lamp on, off, on and off.",
+  "ticks": 120,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "community",
+    "flip-flop",
+    "dropper",
+    "hopper",
+    "comparator",
+    "container"
+  ],
+  "palette": {
+    "#": "stone",
+    "H": "hopper[enabled=true,facing=east]",
+    "U": "dropper[facing=up,triggered=false]",
+    "L": "redstone_lamp[lit=false]",
+    "C": "chest[facing=south,type=single,waterlogged=false]",
+    "D": "dropper[facing=west,triggered=false]",
+    "K": "comparator[facing=west,mode=compare,powered=false]",
+    "w": "redstone_wire[east=side,north=none,power=0,south=none,west=side]",
+    "B": "stone_button[face=floor,facing=north,powered=false]"
+  },
+  "layers": [
+    [
+      "HU#L"
+    ],
+    [
+      "CDKw"
+    ],
+    [
+      ".B.."
+    ]
+  ],
+  "containers": [
+    {
+      "pos": [
+        1,
+        0,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "stick",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        1,
+        2,
+        0
+      ]
+    },
+    {
+      "tick": 32,
+      "action": "use",
+      "pos": [
+        1,
+        2,
+        0
+      ]
+    },
+    {
+      "tick": 62,
+      "action": "use",
+      "pos": [
+        1,
+        2,
+        0
+      ]
+    },
+    {
+      "tick": 92,
+      "action": "use",
+      "pos": [
+        1,
+        2,
+        0
+      ]
+    }
+  ]
+}

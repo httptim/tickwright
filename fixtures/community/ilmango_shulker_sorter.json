@@ -1,0 +1,84 @@
+{
+  "name": "ilmango_shulker_sorter",
+  "description": "ilmango's potion sorter (Minecraft Potion Sorter, https://www.youtube.com/watch?v=1-oKvnnUX4c), rebuilt for Tickwright from the Minecraft Wiki's schematic of ilmango's hopper-speed version (https://minecraft.wiki/w/Tutorial:Hopper#Alternate_version), with a shulker box as the filter, which the wiki's sorter section allows (https://minecraft.wiki/w/Tutorial:Hopper#Potions,_books_and_shulker_boxes). A hopper under the input chest feeds a dropper that faces the shulker box. While that hopper holds an item, a subtracting comparator pulses, switched off each time by a 1-tick repeater loop into its side; each pulse fires the dropper through a 2-tick repeater and locks the hopper under the dropper. What the shulker box takes drains through the hopper under it into the chest below. A shulker box can't go into a shulker box, so the two shulker boxes stay in the dropper until the hopper under it, unlocked between pulses, takes them to the other chest. The input chest holds four cobblestone and two shulker boxes.",
+  "ticks": 110,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "community",
+    "sorter",
+    "hopper",
+    "dropper",
+    "comparator",
+    "shulker",
+    "container"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "chest[facing=north,type=single,waterlogged=false]",
+    "h": "hopper[enabled=true,facing=down]",
+    "K": "comparator[facing=west,mode=subtract,powered=false]",
+    "x": "redstone_wire[east=side,north=side,power=0,south=side,west=side]",
+    "l": "redstone_wire[east=side,north=side,power=0,south=none,west=none]",
+    "S": "shulker_box[facing=up]",
+    "D": "dropper[facing=west,triggered=false]",
+    "r": "repeater[delay=2,facing=east,locked=false,powered=false]",
+    "q": "repeater[delay=1,facing=east,locked=false,powered=false]"
+  },
+  "layers": [
+    [
+      "AA#..",
+      "....."
+    ],
+    [
+      "hhx#.",
+      "....."
+    ],
+    [
+      "SD#r#",
+      "..##."
+    ],
+    [
+      ".hK#x",
+      "..lq#"
+    ],
+    [
+      ".A...",
+      "....."
+    ]
+  ],
+  "containers": [
+    {
+      "pos": [
+        1,
+        4,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "cobblestone",
+          "count": 2
+        },
+        {
+          "slot": 1,
+          "id": "shulker_box",
+          "count": 1
+        },
+        {
+          "slot": 2,
+          "id": "cobblestone",
+          "count": 2
+        },
+        {
+          "slot": 3,
+          "id": "red_shulker_box",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
