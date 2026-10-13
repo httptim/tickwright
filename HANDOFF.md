@@ -31,6 +31,9 @@ picking the work up.
     - primed TNT and explosions
     - minecarts (plain, furnace, chest and hopper)
     - slime bounces and launches
+    - moving blocks shoving entities, slime launching them, and honey
+      carrying them sideways, flying machines included
+    - honey blocks that entities slide down
     - bubble columns
     - cobwebs
     - pressure plates
@@ -60,31 +63,27 @@ picking the work up.
 
 ## Next engine work, in order
 
-1. **Honey and slime carrying entities.** A flying machine moving an entity
-   is refused today (`a honey block moving entities` in
-   `blocks/piston.rs`). Capture an item and a minecart riding a moving
-   slime and honey block, then implement `moveStuckEntities`.
-2. **Lava.** Its spread delay draws from the level random, which the
+1. **Lava.** Its spread delay draws from the level random, which the
    engine already reproduces. Add lava with source rules, cobblestone and
    stone generation, and items burning.
-3. **Projectiles hitting entities and burning arrows.** Arrows and
+2. **Projectiles hitting entities and burning arrows.** Arrows and
    fireballs that would hit an entity, a bell or TNT are refused. Flaming
    arrows light TNT.
-4. **TNT minecarts.** Their explosion power depends on speed, and the
+3. **TNT minecarts.** Their explosion power depends on speed, and the
    activator rail primes them.
-5. **Fire beyond fireballs.** Fire on flammable blocks, and fire beside
+4. **Fire beyond fireballs.** Fire on flammable blocks, and fire beside
    obsidian (portals), are refused. Captures never spread fire because no
    player is nearby, so the engine only reschedules it.
-6. **Stack sizes from data.** `container::max_stack_size` should read
+5. **Stack sizes from data.** `container::max_stack_size` should read
    `data/26.3/materials.json` (`stack_sizes`) instead of a heuristic.
-7. **Performance.** The bench went from about 540 to more than 2000 ticks
+6. **Performance.** The bench went from about 540 to more than 2000 ticks
    a second. The next hotspots are `Registry::value` name comparisons,
    wire `update_power_strength` and `run_updates`. Profile with
    `valgrind --tool=callgrind target/release/tickwright bench`, because
    wall-clock timings are noisy.
-8. **Minecart Improvements** (an opt-in experiment in 26.3). The engine
+7. **Minecart Improvements** (an opt-in experiment in 26.3). The engine
    runs the default `OldMinecartBehavior` only.
-9. **New game versions.** Add a rule module under
+8. **New game versions.** Add a rule module under
    `crates/engine/src/rules/` layered on 26.3, set `MC_VERSION` in the
    oracle workflow, and capture a new `traces/<version>`.
 
