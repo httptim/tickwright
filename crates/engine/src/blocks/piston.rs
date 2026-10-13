@@ -499,6 +499,7 @@ pub fn tick_moving(level: &mut Level, pos: Pos) {
     } else {
         let new_progress = be.progress + 0.5;
         move_collided_entities(level, pos, new_progress);
+        move_stuck_entities(level, pos, new_progress);
         if let Some(BlockEntity::Piston(be)) = level.block_entities.get_mut(&pos) {
             be.progress = new_progress.min(1.0);
         }
@@ -516,31 +517,12 @@ fn move_collided_entities(level: &mut Level, pos: Pos, new_progress: f32) {
     let be = be.clone();
     let movement = if be.extending { be.direction } else { be.direction.opposite() };
     let delta = (new_progress - be.progress) as f64;
-    // `getCollisionRelatedBlockState`: the head, for the piston's own move.
-    let state = if be.is_source_piston {
-        let head = level.default_state(level.block_id("piston_head"));
-        let head = level.with(
-            head,
-            "type",
-            if level.kind(be.moved_state) == Kind::StickyPiston { "sticky" } else { "normal" },
-        );
-        level.with_dir(head, "facing", be.direction)
-    } else {
-        be.moved_state
-    };
-    if level.kind(state) == Kind::Honey {
-        level.unsupported("a honey block moving entities");
-    }
+    let state = collision_related_state(level, &be);
     let shape = level.physics().shape(state).to_vec();
     if shape.is_empty() {
         return;
     }
-    // `moveByPositionAndProgress`: where the shape is now.
-    let p = if be.extending { be.progress - 1.0 } else { 1.0 - be.progress } as f64;
-    let [dx, dy, dz] = be.direction.step();
-    let place =
-        |b: &Aabb| b.offset(pos.x as f64 + p * dx as f64, pos.y as f64 + p * dy as f64, pos.z as f64 + p * dz as f64);
-    let placed: Vec<Aabb> = shape.iter().map(place).collect();
+    let placed: Vec<Aabb> = shape.iter().map(|b| move_by_position_and_progress(pos, b, &be)).collect();
     let bounds = placed.iter().skip(1).fold(placed[0], |a, b| a.minmax(b));
     let area = movement_area(&bounds, movement, delta).minmax(&bounds);
     let mut hit: Vec<usize> = (0..level.entities.len())
@@ -577,6 +559,60 @@ fn move_collided_entities(level: &mut Level, pos: Pos, new_progress: f32) {
                 fix_entity_within_piston_base(level, pos, i, movement, delta);
             }
         }
+    }
+}
+
+/// `getCollisionRelatedBlockState`: a retracting piston base moves
+/// entities as its head, short once it has come a quarter of the way home.
+/// Anything else, the extending head included, moves them as itself.
+fn collision_related_state(level: &Level, be: &Moving) -> StateId {
+    let base = level.kind(be.moved_state);
+    if be.extending || !be.is_source_piston || !matches!(base, Kind::Piston | Kind::StickyPiston) {
+        return be.moved_state;
+    }
+    let head = level.default_state(level.block_id("piston_head"));
+    let head = level.with_bool(head, "short", be.progress > 0.25);
+    let head = level.with(head, "type", if base == Kind::StickyPiston { "sticky" } else { "normal" });
+    level.with_dir(head, "facing", level.dir(be.moved_state, "facing"))
+}
+
+/// `moveByPositionAndProgress`: a box of the moving block, where its
+/// progress has taken it.
+fn move_by_position_and_progress(pos: Pos, b: &Aabb, be: &Moving) -> Aabb {
+    let p = if be.extending { be.progress - 1.0 } else { 1.0 - be.progress } as f64;
+    let [dx, dy, dz] = be.direction.step();
+    b.offset(pos.x as f64 + p * dx as f64, pos.y as f64 + p * dy as f64, pos.z as f64 + p * dz as f64)
+}
+
+/// `PistonMovingBlockEntity.moveStuckEntities`: a honey block moving
+/// sideways takes along what stands on it. An entity is taken when it is
+/// on the ground, in the space from the honey's top to half a block above
+/// the block, and either stands on this very block or has its centre over
+/// it. A minecart on a rail is never on the ground, so it stays behind.
+fn move_stuck_entities(level: &mut Level, pos: Pos, new_progress: f32) {
+    if level.entities.is_empty() {
+        return;
+    }
+    let Some(BlockEntity::Piston(be)) = level.block_entities.get(&pos) else { return };
+    let be = be.clone();
+    let movement = if be.extending { be.direction } else { be.direction.opposite() };
+    if level.kind(be.moved_state) != Kind::Honey || movement.axis() == 1 {
+        return;
+    }
+    let top = level.physics().shape(be.moved_state).iter().fold(f64::NEG_INFINITY, |m, b| m.max(b.max[1]));
+    let area = move_by_position_and_progress(pos, &Aabb::new(0.0, top, 0.0, 1.0, 1.5000010000000001, 1.0), &be);
+    let delta = (new_progress - be.progress) as f64;
+    let mut stuck: Vec<usize> = (0..level.entities.len())
+        .filter(|&i| {
+            let e = &level.entities[i];
+            let over =
+                e.pos.x >= area.min[0] && e.pos.x <= area.max[0] && e.pos.z >= area.min[2] && e.pos.z <= area.max[2];
+            !e.removed && e.bounding_box().intersects(&area) && e.on_ground && (e.is_supported_by(pos) || over)
+        })
+        .collect();
+    stuck.sort_by_key(|&i| level.entities[i].id);
+    for i in stuck {
+        push_entity(level, i, movement, delta, movement);
     }
 }
 

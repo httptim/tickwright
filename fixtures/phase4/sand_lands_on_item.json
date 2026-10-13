@@ -1,0 +1,69 @@
+{
+  "name": "sand_lands_on_item",
+  "description": "Sand falls three blocks onto an item lying on the floor and lands as a block over it; the item, inside the sand, heads out north.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "item",
+    "falling_block"
+  ],
+  "palette": {
+    "#": "stone"
+  },
+  "layers": [
+    [
+      "###",
+      "###",
+      "###"
+    ],
+    [
+      "...",
+      "...",
+      "..."
+    ],
+    [
+      "...",
+      "...",
+      "..."
+    ],
+    [
+      "...",
+      "...",
+      "..."
+    ],
+    [
+      "...",
+      "...",
+      "..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        1.0,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        1,
+        4,
+        1
+      ],
+      "state": "sand"
+    }
+  ],
+  "entities": true
+}

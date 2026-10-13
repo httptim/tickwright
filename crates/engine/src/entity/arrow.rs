@@ -5,7 +5,10 @@
 //! pressed. Arrows hitting entities, falling out of the ground and flying
 //! through water are refused.
 
-use super::{Data, Entity, apply_effects_from_blocks, base_tick, collision_shape, floor, no_block_collision};
+use super::{
+    Data, Entity, apply_effects_between, apply_effects_from_blocks, base_tick, collision_shape, floor,
+    no_block_collision,
+};
 use crate::blocks::{Kind, plain};
 use crate::level::Level;
 use crate::physics::{Aabb, Vec3};
@@ -91,7 +94,8 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
             e.motion = Vec3::new(m.x * f, m.y * f - 0.05, m.z * f);
         }
     }
-    apply_effects_from_blocks(level, e, from);
+    let to = e.pos;
+    apply_effects_between(level, e, from, to);
 }
 
 /// An arrow in the ground stays until what holds it goes, or it despawns.
@@ -109,8 +113,7 @@ fn in_ground_tick(level: &mut Level, e: &mut Entity) {
         e.discard();
         return;
     }
-    let old = e.pos;
-    apply_effects_from_blocks(level, e, old);
+    apply_effects_from_blocks(level, e);
 }
 
 /// Whether anything a projectile can hit lies on its path. Items and

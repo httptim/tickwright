@@ -317,9 +317,10 @@ mod tests {
     #[test]
     fn a_partial_run_stops_before_the_unsupported_tick() {
         let source = FixtureSource::from_json(
-            r###"{"name": "t", "ticks": 10, "entities": true, "palette": {"#": "stone"}, "layers": [["##"], [".."]],
+            r###"{"name": "t", "ticks": 10, "entities": true, "palette": {"#": "stone", "f": "fire"},
+                "layers": [["##"], ["f."]],
                 "stimuli": [
-                    {"tick": 3, "action": "summon", "entity": "item", "at": [0.5, 0.5, 0.5],
+                    {"tick": 3, "action": "summon", "entity": "item", "at": [0.5, 1.0, 0.5],
                      "nbt": "{Item:{id:\"stone\",count:1}}"}
                 ]}"###,
         )
@@ -328,7 +329,7 @@ mod tests {
         let trace = super::run_partial(&fixture, "26.3").unwrap();
         let u = trace.unsupported.as_ref().unwrap();
         assert_eq!(u.tick, 3);
-        assert_eq!(u.message, "an item inside a block is not simulated by the engine yet");
+        assert_eq!(u.message, "an entity in fire is not simulated by the engine yet");
         assert_eq!(trace.ticks, 2);
         assert!(trace.entries.iter().all(|e| e.tick <= 2));
         assert_eq!(trace.rng.last().map(|r| r.0), Some(2));

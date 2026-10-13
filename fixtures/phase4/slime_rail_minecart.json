@@ -1,0 +1,72 @@
+{
+  "name": "slime_rail_minecart",
+  "description": "A piston pushes a slime block east with a rail and a minecart on top: the rail goes with the slime but the cart is left behind, rests on the piston head, and drops to the floor when the piston retracts.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "minecart",
+    "slime",
+    "rail"
+  ],
+  "palette": {
+    "#": "obsidian",
+    "P": "piston[extended=false,facing=east]",
+    "S": "slime_block",
+    "R": "rail[shape=east_west,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "######",
+      "######",
+      "######"
+    ],
+    [
+      "......",
+      ".PS...",
+      "......"
+    ],
+    [
+      "......",
+      "..R...",
+      "......"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        2.5,
+        2.0625,
+        1.5
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 25,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        1
+      ]
+    }
+  ],
+  "entities": true
+}

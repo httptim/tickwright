@@ -1,0 +1,171 @@
+{
+  "name": "items_caught_in_blocks",
+  "description": "Blocks end up where items lie, and each item, inside a block, heads for the nearest side without a full block next to it (moveTowardsClosestSpace): stone set on an item in the open (north, the first of four equal sides), on one walled in on four sides (up), and on one off centre (west); stone placed by a player on an item (north); and an item summoned inside stone walled on two sides (south). Moving without physics, they also sink into the floor and work their way back out of it.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "item"
+  ],
+  "palette": {
+    "#": "stone"
+  },
+  "layers": [
+    [
+      "###",
+      "###",
+      "###",
+      "###",
+      "###",
+      "###",
+      "###",
+      "###",
+      "###",
+      "###",
+      "###",
+      "###",
+      "###",
+      "###",
+      "###"
+    ],
+    [
+      "...",
+      "...",
+      "...",
+      ".#.",
+      "#.#",
+      ".#.",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      ".#.",
+      "##.",
+      "..."
+    ],
+    [
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "...",
+      "..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        1.0,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        1.0,
+        4.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:dirt\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.3,
+        1.0,
+        7.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:cobblestone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        1.0,
+        10.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:oak_planks\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        1,
+        1,
+        1
+      ],
+      "state": "stone"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        1,
+        1,
+        4
+      ],
+      "state": "stone"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        1,
+        1,
+        7
+      ],
+      "state": "stone"
+    },
+    {
+      "tick": 10,
+      "action": "place",
+      "pos": [
+        1,
+        0,
+        10
+      ],
+      "item": "stone",
+      "face": "up",
+      "look": "north",
+      "pitch": 50
+    },
+    {
+      "tick": 10,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        1.0,
+        13.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:sand\",count:1},PickupDelay:40}"
+    }
+  ],
+  "entities": true
+}

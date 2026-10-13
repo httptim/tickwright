@@ -34,7 +34,7 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
         return;
     }
     e.pos = hit.as_ref().map_or(to, |h| h.at);
-    apply_effects_from_blocks(level, e, from);
+    apply_effects_from_blocks(level, e);
     let Some(h) = hit else { return };
     if e.removed {
         return;

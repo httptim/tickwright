@@ -1,0 +1,82 @@
+{
+  "name": "flying_machine_honey_cargo",
+  "description": "A two-piston slime and observer flying machine pushes two honey blocks ahead of it, flying east a block every ten ticks. The honey carries an item and a minecart resting on it.",
+  "ticks": 66,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "item",
+    "minecart",
+    "honey",
+    "slime",
+    "observer"
+  ],
+  "palette": {
+    "#": "observer[facing=west,powered=false]",
+    "A": "slime_block",
+    "B": "sticky_piston[extended=false,facing=west]",
+    "C": "sticky_piston[extended=false,facing=east]",
+    "D": "observer[facing=east,powered=false]",
+    "H": "honey_block"
+  },
+  "layers": [
+    [
+      ".#AB.........",
+      "..CADH.......",
+      ".....H......."
+    ],
+    [
+      ".............",
+      ".............",
+      "............."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        5.5,
+        1.0,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        5.5,
+        1.0,
+        2.5
+      ]
+    },
+    {
+      "tick": 3,
+      "action": "set",
+      "pos": [
+        2,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 5,
+      "action": "destroy",
+      "pos": [
+        2,
+        1,
+        1
+      ]
+    }
+  ],
+  "entities": true
+}

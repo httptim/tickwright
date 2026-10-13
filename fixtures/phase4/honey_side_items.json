@@ -1,0 +1,82 @@
+{
+  "name": "honey_side_items",
+  "description": "Two items fall down the sides of a two-high honey pillar and slide on it. A piston pushes the pillar east: the item on the east face is shoved along by the honey and keeps sliding, and the one on the north face is left behind and drops, catching for a tick on the passing piston head.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "item",
+    "honey"
+  ],
+  "palette": {
+    "#": "obsidian",
+    "P": "piston[extended=false,facing=east]",
+    "H": "honey_block"
+  },
+  "layers": [
+    [
+      "######",
+      "######",
+      "######"
+    ],
+    [
+      "......",
+      ".PH...",
+      "......"
+    ],
+    [
+      "......",
+      "..H...",
+      "......"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        3.07,
+        3.2,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        2.5,
+        3.2,
+        0.93
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 9,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 25,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        1
+      ]
+    }
+  ],
+  "entities": true
+}

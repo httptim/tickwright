@@ -1,0 +1,65 @@
+{
+  "name": "piston_retract_item_behind",
+  "description": "An item rests on a slab against the back of a piston. When the piston retracts, its head turns short a quarter of the way home, so its arm never reaches back through the base to the item, which stays put.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "item",
+    "piston"
+  ],
+  "palette": {
+    "#": "stone",
+    "b": "smooth_stone_slab[type=bottom,waterlogged=false]",
+    "P": "piston[extended=false,facing=east]"
+  },
+  "layers": [
+    [
+      "######",
+      "######",
+      "######"
+    ],
+    [
+      "......",
+      ".bP...",
+      "......"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.875,
+        1.5,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 5,
+      "action": "set",
+      "pos": [
+        2,
+        1,
+        0
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 15,
+      "action": "destroy",
+      "pos": [
+        2,
+        1,
+        0
+      ]
+    }
+  ],
+  "entities": true
+}

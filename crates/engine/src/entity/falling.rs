@@ -43,9 +43,8 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
     }
     falling(e).time += 1;
     apply_gravity(e, 0.04);
-    let old = e.pos;
     move_entity(level, e, e.motion);
-    super::apply_effects_from_blocks(level, e, old);
+    super::apply_effects_from_blocks(level, e);
     let pos = e.block_position();
     if !e.on_ground {
         let time = falling(e).time;

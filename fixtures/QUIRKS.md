@@ -30,7 +30,7 @@ all eight orientations and must match at the order level
 | `rail-carpet-dupe` | yes, captured | `phase4/carpet_dupe`, `phase4/rail_dupe` | covered: in 26.3 the dropped carpet or rail and the placed copy both appear. The carpet pops when the coral fan under it does; the rail drops when the fan's pop updates it while a moving piston, not yet solid, stands under it |
 | `gravity-dupe` | unverified | | not simulated: it needs end portals, dimension travel and an entity riding in the portal, none of which the engine has. A build with an end portal is refused by name |
 | `string-dupe` | no | | not present in 26.3 |
-| `flying-machines` | yes | `nucleation/flying_kick`, `nucleation/slime_extender` | covered |
+| `flying-machines` | yes | `nucleation/flying_kick`, `nucleation/slime_extender`, `phase4/flying_machine_honey_cargo` | covered, with entities: honey carries what stands on it sideways, slime does not |
 | `block-entities-immovable` | yes | `phase1/piston_block_entity`, `phase1/piston_immovable` | covered |
 | `push-limit` | yes | `phase1/piston_push_limit_12`, `phase1/piston_push_limit_13` | covered |
 | `headless-pistons` | yes, captured | `phase4/headless_piston` | covered: TNT goes off while an extending piston's head is still a moving block, which has no blast resistance, and breaks it; obsidian shields the base from every ray. The headless piston stays extended while powered, and when it retracts it removes whatever is in front of it, bedrock included |

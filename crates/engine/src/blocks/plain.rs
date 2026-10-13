@@ -1,8 +1,10 @@
 //! Blocks with little redstone behaviour of their own that builds still
-//! lean on: leaves, target blocks, jukeboxes and tripwire hooks without
-//! string.
+//! lean on: leaves, target blocks, jukeboxes, tripwire hooks without
+//! string, and honey blocks that entities slide down.
 
+use crate::entity::{Data, Entity};
 use crate::level::{Level, flags};
+use crate::physics::Vec3;
 use crate::pos::{Dir, Pos};
 use crate::registry::StateId;
 
@@ -121,4 +123,54 @@ pub fn hook_update_shape(level: &Level, pos: Pos, state: StateId, dir: Dir) -> S
         }
     }
     state
+}
+
+// --- HoneyBlock --------------------------------------------------------------------
+
+/// `HoneyBlock.entityInside`: an entity falling down a side of a honey
+/// block slides, held to a slow fall. 26.3 applies the slide after the
+/// entity's gravity and drag, so it works back to the speed before them
+/// (`getOldDeltaY`) and sets the speed after them (`getNewDeltaY`), with a
+/// living entity's gravity and drag whatever the entity. Minecarts and
+/// primed TNT draw twice from the level random for the slide's sound and
+/// particles.
+pub fn honey_entity_inside(level: &mut Level, pos: Pos) {
+    let e = level.entities.last_mut().expect("the entity inside");
+    if !honey_sliding_down(pos, e) {
+        return;
+    }
+    let m = e.motion;
+    let old = honey_old_delta_y(m.y);
+    e.motion = if old < -0.13 {
+        let f = -0.05 / old;
+        Vec3::new(m.x * f, honey_new_delta_y(-0.05), m.z * f)
+    } else {
+        Vec3::new(m.x, honey_new_delta_y(-0.05), m.z)
+    };
+    if matches!(e.data, Data::Minecart(_) | Data::Tnt(_)) {
+        level.random.next_int_bounded(5);
+        level.random.next_int_bounded(5);
+    }
+}
+
+/// `HoneyBlock.getOldDeltaY`.
+fn honey_old_delta_y(y: f64) -> f64 {
+    y / 0.98f32 as f64 + 0.08
+}
+
+/// `HoneyBlock.getNewDeltaY`.
+fn honey_new_delta_y(y: f64) -> f64 {
+    (y - 0.08) * 0.98f32 as f64
+}
+
+/// `HoneyBlock.isSlidingDown`: in the air, below the honey's top, falling
+/// faster than a gentle drop, and against a side rather than over the top.
+fn honey_sliding_down(pos: Pos, e: &Entity) -> bool {
+    if e.on_ground || e.pos.y > pos.y as f64 + 0.9375 - 1.0E-7 || honey_old_delta_y(e.motion.y) >= -0.08 {
+        return false;
+    }
+    let dx = (pos.x as f64 + 0.5 - e.pos.x).abs();
+    let dz = (pos.z as f64 + 0.5 - e.pos.z).abs();
+    let d = 0.4375 + (e.width() / 2.0) as f64;
+    dx + 1.0E-7 > d || dz + 1.0E-7 > d
 }

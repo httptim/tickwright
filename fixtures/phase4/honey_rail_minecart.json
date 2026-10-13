@@ -1,0 +1,72 @@
+{
+  "name": "honey_rail_minecart",
+  "description": "A sticky piston pushes a honey block east with a rail and a minecart on it, then pulls it back. A cart on rails isn't on the ground, so the honey's first half-step leaves it behind. It drops onto the sticky piston's head (y 2.0, above the honey's top at 1.9375), and the second half-step carries it only because its centre then lies exactly on the edge of the space the honey carries. The rail can't stand on honey and pops off as an item, which falls through the cart onto the honey. Pulling back, the honey carries both.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "minecart",
+    "honey",
+    "rail"
+  ],
+  "palette": {
+    "#": "obsidian",
+    "P": "sticky_piston[extended=false,facing=east]",
+    "H": "honey_block",
+    "R": "rail[shape=east_west,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "######",
+      "######",
+      "######"
+    ],
+    [
+      "......",
+      ".PH...",
+      "......"
+    ],
+    [
+      "......",
+      "..R...",
+      "......"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        2.5,
+        2.0625,
+        1.5
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 25,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        1
+      ]
+    }
+  ],
+  "entities": true
+}

@@ -16,11 +16,17 @@ pub fn trapdoor_neighbor_changed(level: &mut Level, pos: Pos, state: StateId) {
     let powered = level.has_neighbor_signal(pos);
     if powered != level.flag(state, "powered") {
         if level.flag(state, "open") != powered {
+            play_sound(level);
             level.game_event(open_event(powered), pos);
         }
         let state = level.with_bool(state, "open", powered);
         level.set_block(pos, level.with_bool(state, "powered", powered), flags::CLIENTS);
     }
+}
+
+/// `playSound`: the sound's pitch is drawn from the level random.
+fn play_sound(level: &mut Level) {
+    level.random.next_float();
 }
 
 /// `BLOCK_OPEN` or `BLOCK_CLOSE`.
@@ -32,6 +38,7 @@ pub fn trapdoor_use(level: &mut Level, pos: Pos, state: StateId) {
     if opens_by_hand(level, state) {
         let open = !level.flag(state, "open");
         level.set_block(pos, level.with_bool(state, "open", open), flags::CLIENTS);
+        play_sound(level);
         level.game_event(open_event(open), pos);
     }
 }
@@ -61,6 +68,7 @@ pub fn door_neighbor_changed(level: &mut Level, pos: Pos, state: StateId, source
     let powered = level.has_neighbor_signal(pos) || level.has_neighbor_signal(other);
     if powered != level.flag(state, "powered") {
         if level.flag(state, "open") != powered {
+            play_sound(level);
             level.game_event(open_event(powered), pos);
         }
         let state = level.with_bool(state, "open", powered);
@@ -72,6 +80,7 @@ pub fn door_use(level: &mut Level, pos: Pos, state: StateId) {
     if opens_by_hand(level, state) {
         let open = !level.flag(state, "open");
         level.set_block(pos, level.with_bool(state, "open", open), flags::CLIENTS | flags::IMMEDIATE);
+        play_sound(level);
         level.game_event(open_event(open), pos);
     }
 }
