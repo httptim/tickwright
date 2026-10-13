@@ -1,0 +1,60 @@
+{
+  "name": "item_pushed_out_onto_plate",
+  "description": "Stone is set on an item walled in on three sides, so the item heads east out of it, into a wooden pressure plate's space. While it is still in the stone it moves without physics and presses nothing; the plate turns on only once it is out.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "item",
+    "pressure_plate"
+  ],
+  "palette": {
+    "#": "stone",
+    "W": "oak_pressure_plate[powered=false]"
+  },
+  "layers": [
+    [
+      "####",
+      "####",
+      "####"
+    ],
+    [
+      ".#..",
+      "#.W.",
+      ".#.."
+    ],
+    [
+      "....",
+      "....",
+      "...."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        1.0,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        1,
+        1,
+        1
+      ],
+      "state": "stone"
+    }
+  ],
+  "entities": true
+}
