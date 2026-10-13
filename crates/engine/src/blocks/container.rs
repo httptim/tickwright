@@ -312,14 +312,27 @@ pub(super) fn add_item(level: &mut Level, source: Option<Inv>, dest: Inv, mut st
     stack
 }
 
+/// `BlockItem.canFitInsideContainerItems` is false for shulker boxes, of
+/// any colour.
+fn is_shulker_box(id: &str) -> bool {
+    let name = id.strip_prefix("minecraft:").unwrap_or(id);
+    name == "shulker_box" || name.ends_with("_shulker_box")
+}
+
 /// `HopperBlockEntity.tryMoveInItem`.
 fn try_move_in_item(level: &mut Level, source: Option<Inv>, dest: Inv, mut stack: Stack, slot: usize) -> Stack {
-    // `canPlaceItemInContainer`: only the crafter refuses items.
-    if let Inv::Block(d) = dest
-        && level.kind_at(d) == Kind::Crafter
-        && !super::crafter::can_place_item(level, d, slot, &stack)
-    {
-        return stack;
+    // `canPlaceItemInContainer`: a crafter spreads items over its slots, and
+    // a shulker box refuses shulker boxes
+    // (`ShulkerBoxBlockEntity.canPlaceItemThroughFace`).
+    if let Inv::Block(d) = dest {
+        let refused = match level.kind_at(d) {
+            Kind::Crafter => !super::crafter::can_place_item(level, d, slot, &stack),
+            Kind::ShulkerBox => is_shulker_box(&stack.id),
+            _ => false,
+        };
+        if refused {
+            return stack;
+        }
     }
     let current = get_item(level, dest, slot);
     let mut changed = false;
