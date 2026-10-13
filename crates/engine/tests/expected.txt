@@ -217,3 +217,8 @@ headless_piston order
 crafter_ignores_qc order
 item_sorter order
 tnt_cannon order
+jeb_door order
+etho_hopper_clock order
+grizdale_tff order
+ilmango_shulker_sorter order
+firewolf_flying_machine order

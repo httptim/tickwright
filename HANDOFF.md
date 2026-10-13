@@ -43,6 +43,9 @@ picking the work up.
   `run --partial` it records the ticks it could simulate.
   `grep -rn 'unsupported("' crates/engine/src` lists every refusal.
 - `fixtures/QUIRKS.md` tracks which known quirks have fixtures.
+- `fixtures/community` holds popular community builds, rebuilt from their
+  designers' published explanations and credited in each fixture; its
+  README lists them.
 
 ## Next engine work, in order
 
