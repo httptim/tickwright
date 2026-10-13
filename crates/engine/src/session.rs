@@ -120,6 +120,14 @@ impl Session {
         blocks::placement::place(&mut self.level, item, click)
     }
 
+    /// Where `place` would put a block and the state it would set, such as
+    /// `minecraft:repeater[delay=1,facing=west,…]`, without changing the
+    /// world. None when the click would place nothing.
+    pub fn preview_place(&self, item: &str, click: blocks::placement::Click) -> Result<Option<(Pos, String)>> {
+        let planned = blocks::placement::preview(&self.level, item, click)?;
+        Ok(planned.map(|(pos, state)| (pos, self.level.reg.format(state))))
+    }
+
     /// Break the block at `pos` without drops, with normal updates.
     pub fn destroy(&mut self, pos: Pos) {
         self.level.destroy_block(pos, false, MAX_RECURSION);
