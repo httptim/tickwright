@@ -40,9 +40,8 @@ pub fn prime_by_explosion(level: &mut Level, pos: Pos) {
 /// `PrimedTnt.tick`.
 pub fn tick(level: &mut Level, e: &mut Entity) {
     apply_gravity(e, 0.04);
-    let old = e.pos;
     move_entity(level, e, e.motion);
-    super::apply_effects_from_blocks(level, e, old);
+    super::apply_effects_from_blocks(level, e);
     e.motion = e.motion.scale(DRAG);
     if e.on_ground {
         e.motion = e.motion.multiply(0.7, -0.5, 0.7);

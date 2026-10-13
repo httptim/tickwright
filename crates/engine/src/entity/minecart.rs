@@ -197,7 +197,10 @@ fn behavior_tick(level: &mut Level, e: &mut Entity) {
     } else {
         come_off_track(level, e);
     }
-    super::apply_effects_from_blocks(level, e, old);
+    // `AbstractMinecart.applyEffectsFromBlocks`: only where the cart is.
+    let at = e.pos;
+    super::apply_effects_between(level, e, at, at);
+    e.clear_movements();
     turn(e, old, y_rot_o);
     push_entities(level, e);
 }

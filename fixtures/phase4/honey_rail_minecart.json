@@ -1,6 +1,6 @@
 {
   "name": "honey_rail_minecart",
-  "description": "A sticky piston pushes a honey block east with a rail and a minecart on it, then pulls it back. A cart on rails is never on the ground, so the honey's first half-step leaves it behind; it drops onto the moving honey and rides the second. The rail can't stand on honey and pops off as an item, which falls through the cart onto the honey. The honey carries both back.",
+  "description": "A sticky piston pushes a honey block east with a rail and a minecart on it, then pulls it back. A cart on rails isn't on the ground, so the honey's first half-step leaves it behind. It drops onto the sticky piston's head (y 2.0, above the honey's top at 1.9375), and the second half-step carries it only because its centre then lies exactly on the edge of the space the honey carries. The rail can't stand on honey and pops off as an item, which falls through the cart onto the honey. Pulling back, the honey carries both.",
   "ticks": 40,
   "levels": [
     "state",

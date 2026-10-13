@@ -1,6 +1,6 @@
 {
   "name": "items_caught_in_blocks",
-  "description": "Blocks end up where items lie, and each item, inside a block, heads for the nearest side without a full block next to it (moveTowardsClosestSpace): stone set on an item in the open (north, the first of four equal sides), on one walled in on four sides (up), and on one off centre (west); stone placed by a player on an item (north); and an item summoned inside stone walled on two sides (south).",
+  "description": "Blocks end up where items lie, and each item, inside a block, heads for the nearest side without a full block next to it (moveTowardsClosestSpace): stone set on an item in the open (north, the first of four equal sides), on one walled in on four sides (up), and on one off centre (west); stone placed by a player on an item (north); and an item summoned inside stone walled on two sides (south). Moving without physics, they also sink into the floor and work their way back out of it.",
   "ticks": 40,
   "levels": [
     "state",

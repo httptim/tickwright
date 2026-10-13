@@ -106,7 +106,7 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
     }
     if !e.on_ground || e.motion.horizontal_distance_sqr() > 1.0E-5f32 as f64 || (e.tick_count + e.id) % 4 == 0 {
         move_entity(level, e, e.motion);
-        super::apply_effects_from_blocks(level, e, old);
+        super::apply_effects_from_blocks(level, e);
         let mut f = 0.98f32;
         if e.on_ground {
             let below = level.get(e.pos_below_affecting_movement(level));
@@ -117,12 +117,9 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
             e.motion = e.motion.multiply(1.0, -0.5, 1.0);
         }
     } else {
-        // Fitted from 26.3 captures: a resting item still feels the
-        // blocks it is in, and slime under it still slows it.
-        super::apply_effects_from_blocks(level, e, old);
-        if e.on_ground && !e.no_physics {
-            super::step_on(level, e);
-        }
+        // A resting item feels the blocks of its last moves again, and
+        // the block it stands on (`applyEffectsFromBlocksForLastMovements`).
+        super::apply_effects_for_last_movements(level, e);
     }
     let moved_block = super::floor(old.x) != super::floor(e.pos.x)
         || super::floor(old.y) != super::floor(e.pos.y)
