@@ -1,0 +1,100 @@
+{
+  "name": "jeb_door",
+  "description": "Jeb door, the 2x2 flush piston door first shown by Jens \"Jeb\" Bergensten in Mojang's sticky piston preview (https://www.youtube.com/watch?v=uZJr86d2IUo), rebuilt for Tickwright from the Minecraft Wiki's full Jeb door schematic (https://minecraft.wiki/w/Tutorial:Piston_uses/Full_Jeb_door). Eight sticky pistons; the lower four fire by quasi-connectivity. A lever behind the door powers a line of dust and two repeaters. After the repeaters' delay, the side pistons push the door blocks, and the back pistons, into the doorway; there the blocks above the back pistons are powered, so they push the door blocks into the wall's face, flush with it. Turned off, the back pistons pull the door blocks back at once and the side pistons pull everything to the sides 4 ticks later. The lever closes and opens the door twice.",
+  "ticks": 130,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "community",
+    "piston",
+    "sticky",
+    "qc",
+    "door"
+  ],
+  "palette": {
+    "#": "stone",
+    "E": "sticky_piston[extended=false,facing=east]",
+    "S": "sticky_piston[extended=false,facing=south]",
+    "W": "sticky_piston[extended=false,facing=west]",
+    "L": "lever[face=wall,facing=north,powered=false]",
+    "a": "redstone_wire[east=side,north=none,power=0,south=side,west=none]",
+    "b": "redstone_wire[east=none,north=side,power=0,south=side,west=none]",
+    "c": "redstone_wire[east=side,north=none,power=0,south=none,west=side]",
+    "d": "redstone_wire[east=none,north=none,power=0,south=side,west=side]",
+    "r": "repeater[delay=2,facing=east,locked=false,powered=false]",
+    "q": "repeater[delay=2,facing=west,locked=false,powered=false]"
+  },
+  "layers": [
+    [
+      "######",
+      "######",
+      "######",
+      "######"
+    ],
+    [
+      "......",
+      "ES..SW",
+      "E#..#W",
+      "##..##"
+    ],
+    [
+      "......",
+      "ES..SW",
+      "E#..#W",
+      "##..##"
+    ],
+    [
+      "...L..",
+      "######",
+      "######",
+      "######"
+    ],
+    [
+      "......",
+      "arccqd",
+      "b....b",
+      "......"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        3,
+        3,
+        0
+      ]
+    },
+    {
+      "tick": 40,
+      "action": "use",
+      "pos": [
+        3,
+        3,
+        0
+      ]
+    },
+    {
+      "tick": 70,
+      "action": "use",
+      "pos": [
+        3,
+        3,
+        0
+      ]
+    },
+    {
+      "tick": 100,
+      "action": "use",
+      "pos": [
+        3,
+        3,
+        0
+      ]
+    }
+  ]
+}

@@ -1,0 +1,140 @@
+{
+  "name": "firewolf_flying_machine",
+  "description": "Driveable four-way flying machine D, design by FirewolfQuasar (https://www.youtube.com/watch?v=MnppZ2pRxYI), rebuilt for Tickwright from the Minecraft Wiki's schematic (https://minecraft.wiki/w/Tutorial:Flying_machines#Driveable_flying_machine_D,_4-way), without a rider: 13 observers, 26 slime blocks, 8 sticky pistons and 8 pistons. As its designer describes, placing a redstone torch beside the top central observer and breaking it again starts the machine in that direction, and placing it and leaving it there stops it. The machine flies five blocks east, stops, then flies five blocks back west and stops.",
+  "ticks": 160,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "community",
+    "flying-machine",
+    "slime",
+    "observer",
+    "piston",
+    "sticky"
+  ],
+  "palette": {
+    "#": "slime_block",
+    "E": "piston[extended=false,facing=east]",
+    "W": "piston[extended=false,facing=west]",
+    "N": "piston[extended=false,facing=north]",
+    "S": "piston[extended=false,facing=south]",
+    "e": "sticky_piston[extended=false,facing=east]",
+    "w": "sticky_piston[extended=false,facing=west]",
+    "n": "sticky_piston[extended=false,facing=north]",
+    "s": "sticky_piston[extended=false,facing=south]",
+    "v": "observer[facing=down,powered=false]",
+    "^": "observer[facing=up,powered=false]",
+    "<": "observer[facing=south,powered=false]",
+    ">": "observer[facing=north,powered=false]"
+  },
+  "layers": [
+    [
+      "..................",
+      ".E.#.W............",
+      ".#.v.#............",
+      ".#v.v#............",
+      ".#.v.#............",
+      ".E.#.W............",
+      ".................."
+    ],
+    [
+      "..................",
+      "...#..............",
+      ".<.s.<............",
+      ".#e#w#............",
+      ".>.n.>............",
+      "...#..............",
+      ".................."
+    ],
+    [
+      "..................",
+      "...#..............",
+      "...n..............",
+      ".#w#e#............",
+      "...s..............",
+      "...#..............",
+      ".................."
+    ],
+    [
+      "..>.>.............",
+      ".S###S............",
+      "..................",
+      ".#.^.#............",
+      "..................",
+      ".N###N............",
+      "..<.<............."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "set",
+      "pos": [
+        4,
+        3,
+        3
+      ],
+      "state": "redstone_wall_torch[facing=east,lit=true]"
+    },
+    {
+      "tick": 3,
+      "action": "destroy",
+      "pos": [
+        4,
+        3,
+        3
+      ]
+    },
+    {
+      "tick": 55,
+      "action": "set",
+      "pos": [
+        9,
+        3,
+        3
+      ],
+      "state": "redstone_wall_torch[facing=east,lit=true]"
+    },
+    {
+      "tick": 70,
+      "action": "destroy",
+      "pos": [
+        9,
+        3,
+        3
+      ]
+    },
+    {
+      "tick": 80,
+      "action": "set",
+      "pos": [
+        7,
+        3,
+        3
+      ],
+      "state": "redstone_wall_torch[facing=west,lit=true]"
+    },
+    {
+      "tick": 81,
+      "action": "destroy",
+      "pos": [
+        7,
+        3,
+        3
+      ]
+    },
+    {
+      "tick": 133,
+      "action": "set",
+      "pos": [
+        2,
+        3,
+        3
+      ],
+      "state": "redstone_wall_torch[facing=west,lit=true]"
+    }
+  ]
+}
