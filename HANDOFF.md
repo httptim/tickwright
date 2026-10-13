@@ -52,7 +52,11 @@ picking the work up.
   rebuilt by running the ticks after the copy before it again. On the
   benchmark build a session keeps 7 to 8 KB a tick (it was 369 KB), and a
   rewind takes at most about 11 ms in a browser. `step` with
-  `"events": false` answers only whether anything happened.
+  `"events": false` answers only whether anything happened. Known limit:
+  a checkpoint also comes after 256 KB of packed events, so a build that
+  packs that much in every tick (about 75 times the benchmark) is copied
+  every tick, as before this change: no worse, but its memory still grows
+  without bound.
 
 ## Next engine work, in order
 
@@ -154,7 +158,9 @@ differs from the committed traces. That keeps them honest.
 - **Session edits must replay:** a session rebuilds past ticks by running
   them again with the edits it logged. A new session command that changes
   the world must go through `Session::edit` with an `Input`, never change
-  the level directly, or a rewind will quietly lose it. The session tests
-  check every fixture against a session that keeps every tick.
+  the level directly, or a rewind will quietly lose it. In tests and debug
+  builds each new checkpoint is checked against the one before it run
+  again with the logged edits, which panics on such an edit. The session
+  tests also check every fixture against a session that keeps every tick.
 - **Some refused cases are close to supported:** an arrow is refused once
   the block it is stuck in goes. The full list is in the code.

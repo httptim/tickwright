@@ -41,7 +41,8 @@ pub const CHECKPOINT_TICKS: u32 = 32;
 /// Packed event bytes after which a checkpoint comes sooner. The benchmark
 /// packs about 3.4 KB of events a tick, so it checkpoints every 32 ticks;
 /// a build more than twice as busy checkpoints more often, keeping rewinds
-/// as quick at the cost of more copies.
+/// as quick at the cost of more copies. A build packing this much in a
+/// single tick is copied after every tick, as sessions once did for all.
 pub const CHECKPOINT_BYTES: usize = 256 * 1024;
 
 /// How a block is written.
@@ -148,6 +149,32 @@ fn sorted_blocks(level: &Level) -> Vec<(Pos, String)> {
     let mut out: Vec<(Pos, String)> = level.non_air().map(|(p, s)| (p, level.reg.format(s))).collect();
     out.sort_by_key(|(p, _)| (p.y, p.z, p.x));
     out
+}
+
+/// Everything a level holds that the editor reads or a later tick depends
+/// on, as text, to check a level rebuilt by replaying against the one it
+/// should equal.
+#[cfg(any(test, debug_assertions))]
+fn fingerprint(level: &Level) -> String {
+    let mut block_entities: Vec<_> = level.block_entities.iter().map(|(p, e)| format!("{p:?} {e:?}")).collect();
+    block_entities.sort();
+    format!(
+        "time {} {} random {} ids {} {} unsupported {:?} toggles {:?}\nblocks {:?}\npending {:?}\nentities {:?}\nblock entities {block_entities:?}",
+        level.game_time,
+        level.day_time,
+        level.random.internal(),
+        level.entity_counter,
+        level.unique_seeds,
+        level.unsupported,
+        level.torch_toggles,
+        {
+            let mut blocks: Vec<(Pos, StateId)> = level.non_air().collect();
+            blocks.sort();
+            blocks
+        },
+        level.pending_block_ticks(),
+        level.entities,
+    )
 }
 
 /// Bytes of packed events are kept in chunks of this size, so a long run
@@ -383,10 +410,28 @@ impl Session {
         let &(last, _) = self.checkpoints.last().unwrap();
         if t - last >= self.every || self.log.bytes_after(last) >= self.budget {
             let recorder = self.level.recorder.take();
+            #[cfg(any(test, debug_assertions))]
+            self.check_replay(t);
             self.checkpoints.push((t, self.level.clone()));
             self.level.recorder = recorder;
         }
         busy
+    }
+
+    /// Check that the last checkpoint, run again with the edits kept, gives
+    /// the world as it is after tick `t`: an edit that changed the level
+    /// without going through [`Session::edit`] would be lost on rewinding.
+    /// Only in tests and debug builds, as it runs the ticks twice.
+    #[cfg(any(test, debug_assertions))]
+    fn check_replay(&self, t: u32) {
+        let (c, ref checkpoint) = *self.checkpoints.last().unwrap();
+        let mut rebuilt = checkpoint.clone();
+        replay(&mut rebuilt, c, t, &self.inputs);
+        assert!(
+            fingerprint(&rebuilt) == fingerprint(&self.level),
+            "tick {t} run again from the checkpoint at tick {c} differs from the world: \
+             something changed it without Session::edit"
+        );
     }
 
     /// The first thing the run met that the engine can't simulate exactly,
@@ -821,26 +866,6 @@ mod tests {
         }
     }
 
-    /// Everything a level holds that the editor reads or a later tick
-    /// depends on, as text.
-    fn fingerprint(level: &Level) -> String {
-        let mut block_entities: Vec<_> = level.block_entities.iter().map(|(p, e)| format!("{p:?} {e:?}")).collect();
-        block_entities.sort();
-        format!(
-            "time {} {} random {} ids {} {} unsupported {:?} toggles {:?}\nblocks {:?}\npending {:?}\nentities {:?}\nblock entities {block_entities:?}",
-            level.game_time,
-            level.day_time,
-            level.random.internal(),
-            level.entity_counter,
-            level.unique_seeds,
-            level.unsupported,
-            level.torch_toggles,
-            sorted_blocks(level),
-            level.pending_block_ticks(),
-            level.entities,
-        )
-    }
-
     /// An edit made to both sessions.
     #[derive(Debug)]
     enum Edit {
@@ -849,6 +874,9 @@ mod tests {
         Destroy(Pos),
         Place(&'static str, blocks::placement::Click),
         Summon(&'static str, [f64; 3], &'static str),
+        Item(Pos, usize, &'static str, i32),
+        Page(Pos, i32),
+        Time(i64),
     }
 
     fn edit_both(s: &mut Session, r: &mut Reference, edit: &Edit) {
@@ -882,6 +910,24 @@ mod tests {
                 let b = crate::entity::summon(level, entity, at, None, Some(nbt)).is_ok();
                 assert_eq!(a, b, "{edit:?}");
             }
+            Edit::Item(pos, slot, id, count) => {
+                let a = s.set_item(pos, slot, id, count).is_ok();
+                let size = blocks::container::size(level, pos);
+                let b = size > 0 && slot < size;
+                if b {
+                    let id = format!("minecraft:{id}");
+                    blocks::container::set_item(level, pos, slot, blocks::container::Stack::new(&id, count));
+                }
+                assert_eq!(a, b, "{edit:?}");
+            }
+            Edit::Page(pos, page) => {
+                s.turn_page(pos, page);
+                blocks::lectern::set_page(level, pos, page);
+            }
+            Edit::Time(time) => {
+                s.set_day_time(time);
+                level.day_time = time;
+            }
         }
     }
 
@@ -902,8 +948,10 @@ mod tests {
         }
     }
 
-    fn random_edit(dice: &mut Dice, lo: Pos, size: [i32; 3]) -> Edit {
-        const STATES: [&str; 8] = [
+    /// A random edit somewhere in the box from `lo`, of `size`. Item and
+    /// page edits mostly go to the containers and lecterns in `level`.
+    fn random_edit(dice: &mut Dice, lo: Pos, size: [i32; 3], level: &Level) -> Edit {
+        const STATES: [&str; 11] = [
             "air",
             "stone",
             "redstone_block",
@@ -912,8 +960,36 @@ mod tests {
             "lever[face=floor,facing=north,powered=false]",
             "redstone_lamp",
             "observer[facing=up]",
+            "chest[facing=north,type=single]",
+            "hopper[enabled=true,facing=down]",
+            "comparator[facing=west]",
         ];
         let pos = dice.pos(lo, size);
+        let holders = |dice: &mut Dice, is: fn(&blocks::BlockEntity) -> bool| {
+            let mut at: Vec<Pos> = level.block_entities.iter().filter(|(_, e)| is(e)).map(|(p, _)| *p).collect();
+            at.sort_by_key(|p| (p.y, p.z, p.x));
+            match at.len() {
+                0 => pos,
+                n if dice.below(5) > 0 => at[dice.below(n as u64) as usize],
+                _ => pos,
+            }
+        };
+        match dice.below(9) {
+            6 => {
+                let at = holders(dice, |e| {
+                    !matches!(e, blocks::BlockEntity::Lectern(_) | blocks::BlockEntity::Comparator(_))
+                });
+                let slot = dice.below(blocks::container::size(level, at) as u64 + 1) as usize;
+                let id = ["redstone", "stone", "glowstone_dust"][dice.below(3) as usize];
+                return Edit::Item(at, slot, id, 1 + dice.below(64) as i32);
+            }
+            7 => {
+                let at = holders(dice, |e| matches!(e, blocks::BlockEntity::Lectern(_)));
+                return Edit::Page(at, dice.below(12) as i32);
+            }
+            8 => return Edit::Time([0, 6000, 13000, 18000, 23000][dice.below(5) as usize]),
+            _ => {}
+        }
         match dice.below(6) {
             0 => {
                 let how = if dice.below(3) == 0 { Placement::Quiet } else { Placement::Updates };
@@ -992,7 +1068,8 @@ mod tests {
             let what = format!("{what}, round {round}");
             for _ in 0..20 + dice.below(40) {
                 if dice.below(4) == 0 {
-                    edit_both(&mut s, &mut r, &random_edit(&mut dice, lo, size));
+                    let edit = random_edit(&mut dice, lo, size, &s.level);
+                    edit_both(&mut s, &mut r, &edit);
                 }
                 let busy = s.step();
                 r.step();
@@ -1002,7 +1079,8 @@ mod tests {
             check_the_past(&s, &mut r, &mut dice, lo, size, &what);
             assert_eq!(fingerprint(&s.level), fingerprint(&r.level), "{what}: the world now");
             for _ in 0..dice.below(3) {
-                edit_both(&mut s, &mut r, &random_edit(&mut dice, lo, size));
+                let edit = random_edit(&mut dice, lo, size, &s.level);
+                edit_both(&mut s, &mut r, &edit);
             }
             check_the_past(&s, &mut r, &mut dice, lo, size, &format!("{what}, with edits waiting"));
             let t = match dice.below(4) {
@@ -1019,9 +1097,35 @@ mod tests {
         }
     }
 
+    /// Three rings of the benchmark, and between the first two a chest, a
+    /// lectern and a daylight detector, each read by a comparator, so
+    /// item, page and time edits change what the redstone does.
     fn busy_build() -> ResolvedFixture {
+        use tickwright_trace::fixture::Lectern;
         let mut f = crate::bench::redstone_rings(3, 13, 0);
         f.entities = true;
+        f.day_time = Some(6000);
+        for x in 1..=10 {
+            f.blocks.push((x, 0, 2, "minecraft:stone".into()));
+        }
+        for (x, state) in [
+            (1, "chest[facing=north,type=single]"),
+            (2, "comparator[facing=west,mode=compare,powered=false]"),
+            (3, "redstone_lamp[lit=false]"),
+            (5, "lectern[facing=north,has_book=true,powered=false]"),
+            (6, "comparator[facing=west,mode=compare,powered=false]"),
+            (7, "redstone_lamp[lit=false]"),
+            (9, "daylight_detector[inverted=false,power=0]"),
+            (10, "redstone_lamp[lit=false]"),
+        ] {
+            f.blocks.push((x, 1, 2, format!("minecraft:{state}")));
+        }
+        f.blocks.sort_by_key(|&(x, y, z, _)| (y, z, x));
+        f.containers = vec![Container {
+            pos: [1, 1, 2],
+            items: vec![ItemSlot { slot: 0, id: "minecraft:redstone".into(), count: 10 }],
+        }];
+        f.lecterns = vec![Lectern { pos: [5, 1, 2], pages: 10, page: 0 }];
         f
     }
 
