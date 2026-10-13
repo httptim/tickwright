@@ -271,6 +271,7 @@ impl Schematic {
             ticks,
             levels: vec![Level::State, Level::Phase, Level::Order],
             transforms: None,
+            seeds: 0,
             origin: None,
             tags: Vec::new(),
             palette,

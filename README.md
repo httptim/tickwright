@@ -123,6 +123,13 @@ After changing fixtures or the harness, run the workflow by hand with
   point in sixteenths, or sneaking), so the block's own placement rules
   choose its state.
 - Fixtures are placed at `[0, 100, 0]` unless `origin` says otherwise.
+- Every fixture is captured in all eight orientations unless `transforms`
+  lists fewer. A fixture with `"entities": true` runs with the level random
+  seeded from its run's id, so a build whose outcome is random (a TNT
+  cannon) can add `"seeds": 100` to capture its first orientation 100 more
+  times, as `<name>@r0~1` to `<name>@r0~100`, each drawing different
+  numbers. That shows the spread without capturing every orientation 100
+  times.
 
 ## License
 

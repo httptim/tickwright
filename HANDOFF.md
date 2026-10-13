@@ -9,11 +9,11 @@ picking the work up.
 
 - The engine targets Java Edition 26.3. Every behaviour is checked against
   traces captured from the real 26.3 server (`traces/26.3`).
-- There are 214 fixtures (`fixtures/`) and 1698 traces, one per fixture
-  and orientation. Every trace matches at the strictest level ("order"),
-  and no fixture is refused. The 215 fixtures listed in
-  `crates/engine/tests/expected.txt` must keep matching in every
-  orientation.
+- There are 218 fixtures (`fixtures/`) and 1830 traces: one per fixture
+  and orientation, and 100 more seeds of `phase4/tnt_cannon`. Every trace
+  matches at the strictest level ("order"), and no fixture is refused.
+  The fixtures listed in `crates/engine/tests/expected.txt` must keep
+  matching in every captured run.
 - What is simulated:
   - **Redstone:** dust (with and without Redstone Experiments), torches,
     repeaters, comparators, observers, pistons and sticky pistons with
@@ -50,31 +50,29 @@ picking the work up.
    is refused today (`a honey block moving entities` in
    `blocks/piston.rs`). Capture an item and a minecart riding a moving
    slime and honey block, then implement `moveStuckEntities`.
-2. **Headless pistons and crafter quasi-connectivity.** Both quirks are
-   present in 26.3 but have no fixture yet (see `fixtures/QUIRKS.md`).
-3. **Lava.** Its spread delay draws from the level random, which the
+2. **Lava.** Its spread delay draws from the level random, which the
    engine already reproduces. Add lava with source rules, cobblestone and
    stone generation, and items burning.
-4. **Projectiles hitting entities and burning arrows.** Arrows and
+3. **Projectiles hitting entities and burning arrows.** Arrows and
    fireballs that would hit an entity, a bell or TNT are refused. Flaming
    arrows light TNT.
-5. **TNT minecarts.** Their explosion power depends on speed, and the
+4. **TNT minecarts.** Their explosion power depends on speed, and the
    activator rail primes them.
-6. **Fire beyond fireballs.** Fire on flammable blocks, and fire beside
+5. **Fire beyond fireballs.** Fire on flammable blocks, and fire beside
    obsidian (portals), are refused. Captures never spread fire because no
    player is nearby, so the engine only reschedules it.
-7. **Stack sizes from data.** `container::max_stack_size` should read
+6. **Stack sizes from data.** `container::max_stack_size` should read
    `data/26.3/materials.json` (`stack_sizes`) instead of a heuristic.
-8. **Performance.** The bench went from about 540 to more than 2000 ticks
+7. **Performance.** The bench went from about 540 to more than 2000 ticks
    a second. The next hotspots are `Registry::value` name comparisons,
    wire `update_power_strength` and `run_updates`. Profile with
    `valgrind --tool=callgrind target/release/tickwright bench`, because
    wall-clock timings are noisy.
-9. **Minecart Improvements** (an opt-in experiment in 26.3). The engine
+8. **Minecart Improvements** (an opt-in experiment in 26.3). The engine
    runs the default `OldMinecartBehavior` only.
-10. **New game versions.** Add a rule module under
-    `crates/engine/src/rules/` layered on 26.3, set `MC_VERSION` in the
-    oracle workflow, and capture a new `traces/<version>`.
+9. **New game versions.** Add a rule module under
+   `crates/engine/src/rules/` layered on 26.3, set `MC_VERSION` in the
+   oracle workflow, and capture a new `traces/<version>`.
 
 ## Running the conformance tests
 
@@ -135,7 +133,11 @@ differs from the committed traces. That keeps them honest.
   the rule from the trace.
 - **Summon positions:** the summon command centres whole-number x and z,
   so `[1, y, 1]` means `[1.5, y, 1.5]`. Write positions as short exact
-  decimals.
+  decimals; a whole number also turns wrongly, since it is mirrored before
+  the game centres it.
+- **Trigonometry:** where the game calls `Math.sin` or `Math.cos` (the
+  kick of newly primed TNT), use `crate::math`, which rounds correctly as
+  the captures do. The platform's `sin` is an ulp off in a few cases.
 - **Check the capture:** make sure a new fixture really does what its
   description says. It's easy to aim an arrow or drop an item that never
   touches the block under test.

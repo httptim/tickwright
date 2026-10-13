@@ -12,6 +12,7 @@ pub mod game_event;
 pub mod items;
 pub mod level;
 pub mod loot;
+pub mod math;
 pub mod orientation;
 pub mod physics;
 pub mod pos;

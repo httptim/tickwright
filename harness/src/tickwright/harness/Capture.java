@@ -293,7 +293,8 @@ public final class Capture {
         if (trackEntities) {
             // Entities draw from the level's random source when they spawn
             // and when explosions sample rays; a fixed seed keeps the
-            // capture repeatable.
+            // capture repeatable. A fixture's extra seeds are runs whose ids
+            // differ only in their `~<n>` suffix, so each draws differently.
             level.getRandom().setSeed(id.hashCode());
             // Entity ids decide when resting items move ((tickCount + id) % 4);
             // number them from 1 in every capture.
