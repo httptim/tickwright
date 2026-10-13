@@ -46,6 +46,17 @@ picking the work up.
 - `fixtures/community` holds popular community builds, rebuilt from the
   Minecraft Wiki's schematics and credited to their designers in each fixture; its
   README lists them.
+- **Editor sessions** (`session.rs`, and the wasm `session` commands) keep
+  a copy of the world at most every 32 ticks, every edit, and each tick's
+  events packed to about a byte each (`record::Packer`). Any other tick is
+  rebuilt by running the ticks after the copy before it again. On the
+  benchmark build a session keeps 7 to 8 KB a tick (it was 369 KB), and a
+  rewind takes at most about 11 ms in a browser. `step` with
+  `"events": false` answers only whether anything happened. Known limit:
+  a checkpoint also comes after 256 KB of packed events, so a build that
+  packs that much in every tick (about 75 times the benchmark) is copied
+  every tick, as before this change: no worse, but its memory still grows
+  without bound.
 
 ## Next engine work, in order
 
@@ -144,5 +155,12 @@ differs from the committed traces. That keeps them honest.
 - **Check the capture:** make sure a new fixture really does what its
   description says. It's easy to aim an arrow or drop an item that never
   touches the block under test.
+- **Session edits must replay:** a session rebuilds past ticks by running
+  them again with the edits it logged. A new session command that changes
+  the world must go through `Session::edit` with an `Input`, never change
+  the level directly, or a rewind will quietly lose it. In tests and debug
+  builds each new checkpoint is checked against the one before it run
+  again with the logged edits, which panics on such an edit. The session
+  tests also check every fixture against a session that keeps every tick.
 - **Some refused cases are close to supported:** an arrow is refused once
   the block it is stuck in goes. The full list is in the code.

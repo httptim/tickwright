@@ -201,11 +201,18 @@ enum Command {
         count: i32,
     },
     /// Run `count` ticks (default 1). Answers the last tick and every event
-    /// of the ticks run, so the host can redraw what changed.
+    /// of the ticks run, so the host can redraw what changed:
+    /// `{"events": [...], "tick": N}`. With `"events": false` it answers
+    /// only `{"busy": bool, "tick": N}`, where `busy` says whether anything
+    /// happened in the ticks run (any event, the input before them
+    /// included), which is much quicker on a busy build: a long run that
+    /// only watches for the world to settle needs nothing else.
     Step {
         session: u32,
         #[serde(default = "one")]
         count: u32,
+        #[serde(default = "yes")]
+        events: bool,
     },
     Rewind {
         session: u32,
@@ -300,6 +307,10 @@ fn one() -> u32 {
     1
 }
 
+fn yes() -> bool {
+    true
+}
+
 fn pos(p: [i32; 3]) -> Pos {
     Pos::new(p[0], p[1], p[2])
 }
@@ -379,11 +390,20 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                 get(sessions, session)?.set_item(pos(p), slot, &id, count)?;
                 json!({})
             }
-            Command::Step { session, count } => {
+            Command::Step { session, count, events: false } => {
+                let s = get(sessions, session)?;
+                let mut busy = false;
+                for _ in 0..count {
+                    busy |= s.step();
+                }
+                json!({ "tick": s.tick(), "busy": busy })
+            }
+            Command::Step { session, count, events: true } => {
                 let s = get(sessions, session)?;
                 let mut events = Vec::new();
                 for _ in 0..count {
-                    events.extend_from_slice(s.step());
+                    s.step();
+                    events.extend(s.events(s.tick()));
                 }
                 json!({ "tick": s.tick(), "events": events })
             }
@@ -414,15 +434,8 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                 json!({ "powers": powers })
             }
             Command::History { session, pos: p } => {
-                let s = get(sessions, session)?;
-                let mut changes = Vec::new();
-                for t in 0..=s.tick() + 1 {
-                    for e in s.events(t) {
-                        if e.kind == tickwright_trace::Kind::Set && e.pos == p {
-                            changes.push(json!([t, e.state]));
-                        }
-                    }
-                }
+                let changes: Vec<Value> =
+                    get(sessions, session)?.history(pos(p)).into_iter().map(|(t, state)| json!([t, state])).collect();
                 json!({ "changes": changes })
             }
             Command::Block { session, pos: p } => json!({ "state": get(sessions, session)?.block(pos(p)) }),
@@ -570,6 +583,57 @@ mod tests {
         );
         assert_eq!(turned["states"][0], "minecraft:repeater[delay=1,facing=east,locked=false,powered=false]");
         assert_eq!(turned["states"][1], "minecraft:stone");
+    }
+
+    #[test]
+    fn a_step_can_answer_without_its_events() {
+        let open = || {
+            let id = ok(r#"{"op":"open","version":"26.3"}"#)["session"].as_u64().unwrap();
+            ok(&format!(r#"{{"op":"set","session":{id},"pos":[0,0,0],"state":"stone"}}"#));
+            ok(&format!(
+                r#"{{"op":"set","session":{id},"pos":[0,1,0],"state":"lever[face=floor,facing=north,powered=false]"}}"#
+            ));
+            ok(&format!(r#"{{"op":"set","session":{id},"pos":[1,1,0],"state":"redstone_lamp[lit=false]"}}"#));
+            id
+        };
+        let (lean, full) = (open(), open());
+        let step = |count: u32| {
+            let a = ok(&format!(r#"{{"op":"step","session":{lean},"count":{count},"events":false}}"#));
+            let b = ok(&format!(r#"{{"op":"step","session":{full},"count":{count}}}"#));
+            assert_eq!(a.as_object().unwrap().len(), 2, "{a}");
+            assert_eq!(a["tick"], b["tick"]);
+            assert_eq!(a["busy"], !b["events"].as_array().unwrap().is_empty(), "{a} {b}");
+            a
+        };
+        // The blocks set before tick 1 are its input.
+        assert_eq!(step(1), serde_json::json!({ "tick": 1, "busy": true }));
+        assert_eq!(step(1), serde_json::json!({ "tick": 2, "busy": false }));
+        for id in [lean, full] {
+            ok(&format!(r#"{{"op":"use","session":{id},"pos":[0,1,0]}}"#));
+        }
+        assert_eq!(step(1), serde_json::json!({ "tick": 3, "busy": true }));
+        assert_eq!(step(5), serde_json::json!({ "tick": 8, "busy": false }));
+        for id in [lean, full] {
+            ok(&format!(r#"{{"op":"use","session":{id},"pos":[0,1,0]}}"#));
+        }
+        // The lamp goes out four ticks after the lever.
+        assert_eq!(step(3), serde_json::json!({ "tick": 11, "busy": true }));
+        assert_eq!(step(3), serde_json::json!({ "tick": 14, "busy": true }));
+        assert_eq!(step(3), serde_json::json!({ "tick": 17, "busy": false }));
+        // Either way, the session keeps the same past.
+        for op in [r#""op":"events","tick":12"#, r#""op":"history","pos":[1,1,0]"#, r#""op":"blocks","tick":5"#] {
+            let a = ok(&format!(r#"{{"session":{lean},{op}}}"#));
+            assert_eq!(a, ok(&format!(r#"{{"session":{full},{op}}}"#)), "{op}");
+        }
+        let lamp = ok(&format!(r#"{{"op":"history","session":{lean},"pos":[1,1,0]}}"#));
+        assert_eq!(
+            lamp["changes"],
+            serde_json::json!([
+                [1, "minecraft:redstone_lamp[lit=false]"],
+                [3, "minecraft:redstone_lamp[lit=true]"],
+                [12, "minecraft:redstone_lamp[lit=false]"]
+            ]),
+        );
     }
 
     #[test]

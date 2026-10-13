@@ -297,7 +297,7 @@ impl Level {
 
     fn record(&mut self, event: Event, pos: Pos) {
         if let Some(r) = self.recorder.as_mut() {
-            r.record(self.phase, event, pos);
+            r.record(self.reg, self.phase, event, pos);
         }
     }
 
@@ -345,9 +345,7 @@ impl Level {
         if old == state {
             return None;
         }
-        if let Some(r) = self.recorder.as_mut() {
-            r.record(self.phase, Event::Set(self.reg.format(state)), pos);
-        }
+        self.record(Event::Set(state), pos);
         self.blocks.set(pos, state);
         let block_changed = self.block(old) != self.block(state);
         let moved_by_piston = flags & flags::MOVE_BY_PISTON != 0;

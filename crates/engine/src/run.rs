@@ -15,7 +15,7 @@ use crate::entity;
 use crate::level::{Level, flags};
 use crate::physics::Vec3;
 use crate::pos::Pos;
-use crate::record::Recorder;
+use crate::record::{Recorder, TraceRecorder};
 use crate::rules::Rules;
 
 /// How the harness places fixture blocks.
@@ -59,7 +59,7 @@ pub fn run_partial(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace>
         .collect();
     initial.sort();
 
-    level.recorder = Some(Recorder::new(origin, min, max));
+    level.recorder = Some(Recorder::Trace(TraceRecorder::new(origin, min, max)));
     let mut entities = Vec::new();
     let mut rng = Vec::new();
     let mut numbers: Vec<i32> = Vec::new();
@@ -68,7 +68,9 @@ pub fn run_partial(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace>
         rng.push((0, level.random.internal()));
     }
     for t in 1..=fixture.ticks {
-        level.recorder.as_mut().unwrap().tick = t;
+        if let Some(Recorder::Trace(r)) = level.recorder.as_mut() {
+            r.tick = t;
+        }
         apply_stimuli(&mut level, fixture, t)?;
         level.tick();
         if let Some(what) = &level.unsupported {
@@ -81,7 +83,8 @@ pub fn run_partial(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace>
         }
     }
 
-    let mut entries = level.recorder.take().unwrap().entries;
+    let Some(Recorder::Trace(recorder)) = level.recorder.take() else { unreachable!("a fixture run records a trace") };
+    let mut entries = recorder.entries;
     let ticks = unsupported.as_ref().map_or(fixture.ticks, |u| u.tick - 1);
     entries.retain(|e| e.tick <= ticks);
     Ok(Trace {
@@ -252,7 +255,7 @@ pub fn click(pos: Pos, p: &tickwright_trace::fixture::PlaceInput) -> Result<bloc
 }
 
 /// Apply the stimuli for game tick `t`, before the world tick runs.
-fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result<()> {
+pub(crate) fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result<()> {
     let [ox, oy, oz] = fixture.origin;
     for s in fixture.stimuli.iter().filter(|s| s.tick == t) {
         let [x, y, z] = s.pos;

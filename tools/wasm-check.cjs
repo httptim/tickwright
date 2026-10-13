@@ -7,7 +7,7 @@
 //   node tools/wasm-check.cjs <engine.wasm> <resolved dir> <native traces dir> [bench fixture]
 //
 // With a bench fixture (`tickwright bench --write`), it also times that build
-// in the browser.
+// in the browser, as a fixture run and as an editor session.
 //
 // Needs the `playwright` package and its Chromium.
 
@@ -145,6 +145,46 @@ async function main() {
       window.cmd({ op: "close", session });
       return out;
     };
+    // Step an editor session on the bench build the way a long Settle does,
+    // answering only whether each tick was busy, then the same with every
+    // event in the answer; and time rewinding to each of the last 64 ticks.
+    // A fresh instance, so its memory shows what the session keeps.
+    window.benchSession = async (fixtureText, version, ticks) => {
+      const x = (await WebAssembly.instantiate(bytes, {})).instance.exports;
+      const send = (command) => {
+        const b = enc.encode(JSON.stringify(command));
+        const p = x.alloc(b.length) >>> 0;
+        new Uint8Array(x.memory.buffer, p, b.length).set(b);
+        const out = x.session(p, b.length) >>> 0;
+        const view = new DataView(x.memory.buffer);
+        const len = view.getUint32(out, true);
+        const status = view.getUint8(out + 4);
+        const text = status === 0 && len < 1000 ? dec.decode(new Uint8Array(x.memory.buffer, out + 5, len)) : "";
+        x.dealloc(p, b.length);
+        x.dealloc(out, len + 5);
+        if (status !== 0) throw new Error(`${command.op} failed`);
+        return text;
+      };
+      const fixture = JSON.parse(fixtureText);
+      const run = (events) => {
+        const { session } = JSON.parse(send({ op: "open", version, fixture }));
+        const before = x.memory.buffer.byteLength;
+        const t0 = performance.now();
+        for (let i = 0; i < ticks; i++) send({ op: "step", session, events });
+        return { session, ms: performance.now() - t0, grew: x.memory.buffer.byteLength - before };
+      };
+      const lean = run(false);
+      let worst = 0;
+      for (let t = ticks - 1; t >= ticks - 64; t--) {
+        const t0 = performance.now();
+        send({ op: "rewind", session: lean.session, tick: t });
+        worst = Math.max(worst, performance.now() - t0);
+      }
+      send({ op: "close", session: lean.session });
+      const full = run(true);
+      send({ op: "close", session: full.session });
+      return { lean: lean.ms, full: full.ms, grew: lean.grew, worst };
+    };
     window.benchFixture = (fixture, version) => {
       const [fp, fl] = put(fixture);
       const [vp, vl] = put(version);
@@ -244,6 +284,13 @@ async function main() {
       const secs = r.ms / 1000;
       console.log(`${name}: ${blocks.length} blocks, ${ticks} ticks in ${secs.toFixed(3)} s, ${(ticks / secs).toFixed(0)} ticks/s (browser)`);
     }
+    const n = 1000;
+    const b = await page.evaluate(([fx, v, n]) => window.benchSession(fx, v, n), [fixture, version, n]);
+    console.log(
+      `${name} as an editor session: ${n} ticks in ${(b.lean / 1000).toFixed(3)} s answering only whether each was busy, ` +
+        `${(b.full / 1000).toFixed(3)} s answering every event; memory grew ${(b.grew / n / 1024).toFixed(1)} KB a tick; ` +
+        `rewinding took at most ${b.worst.toFixed(1)} ms (browser)`,
+    );
   }
   await browser.close();
   console.log(`${files.length - failed - refused} of ${files.length - refused} fixtures gave identical traces in the browser, as fixture runs and as editor sessions (${refused} refused by both, ${partial} of them with a partial trace), ${totalMs.toFixed(0)} ms in wasm`);
