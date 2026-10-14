@@ -159,9 +159,10 @@ differs from the committed traces. That keeps them honest.
   (`tnt_kicks` hits two). The oracle workflow's `kick-trig` job
   (`harness/kick-trig.sh`) compares the two on a million kick angles: on
   2026-10-14, with Temurin 25.0.4.1 on Intel Xeon Platinum 8370C and 8573C
-  runners, all matched. Check it again when the oracle's Java changes.
-  HotSpot on arm64 differs on about one kick angle in six, so a server on
-  an arm64 machine throws TNT a little differently from the captures.
+  and AMD EPYC 7763 runners, all matched. Check it again when the oracle's
+  Java changes. HotSpot on arm64 differs on about one kick angle in six,
+  so a server on an arm64 machine throws TNT a little differently from the
+  captures.
 - **Check the capture:** make sure a new fixture really does what its
   description says. It's easy to aim an arrow or drop an item that never
   touches the block under test.
