@@ -350,13 +350,8 @@ impl Level {
         let block_changed = self.block(old) != self.block(state);
         let moved_by_piston = flags & flags::MOVE_BY_PISTON != 0;
         if block_changed && blocks::has_block_entity(self.kind(old)) {
-            // `preRemoveSideEffects`: a container spills what it holds, and a
-            // lectern its book, as item entities.
-            if self.simulate_entities
-                && flags & flags::SKIP_BLOCK_ENTITY_SIDEEFFECTS == 0
-                && blocks::drops_items_when_removed(self, pos, old)
-            {
-                self.unsupported(format!("removing {} with items in it", self.reg.name(old)));
+            if flags & flags::SKIP_BLOCK_ENTITY_SIDEEFFECTS == 0 {
+                blocks::pre_remove_side_effects(self, pos, old);
             }
             self.remove_block_entity(pos);
         }

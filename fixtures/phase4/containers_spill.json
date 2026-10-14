@@ -1,0 +1,189 @@
+{
+  "name": "containers_spill",
+  "description": "Block entities removed with their side effects (preRemoveSideEffects, Containers.dropContents) spill what they hold: a filled chest and an empty dropper destroyed, a filled hopper set to air, a crafter and a shelf with items in them destroyed and set to air, and a filled barrel replaced by stone. Every slot, filled or not, takes a spot from the level's random source, so the empty dropper still moves it on; a filled one flies out from there in stacks of 10 to 30, which land, merge, and work their way out of the stone that replaced the barrel.",
+  "ticks": 80,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "container",
+    "item",
+    "rng"
+  ],
+  "palette": {
+    "#": "stone",
+    "c": "chest[facing=north,type=single,waterlogged=false]",
+    "h": "hopper[enabled=true,facing=down]",
+    "d": "dropper[facing=up,triggered=false]",
+    "C": "crafter[crafting=false,orientation=north_up,triggered=false]",
+    "s": "oak_shelf[facing=south,powered=false,side_chain=unconnected,waterlogged=false]",
+    "b": "barrel[facing=up,open=false]"
+  },
+  "layers": [
+    [
+      "##########",
+      "##########",
+      "##########",
+      "##########",
+      "##########",
+      "##########",
+      "##########",
+      "##########"
+    ],
+    [
+      "..........",
+      ".c..h..d..",
+      "..........",
+      "..........",
+      ".C..s..b..",
+      "..........",
+      "..........",
+      ".........."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 5,
+      "action": "destroy",
+      "pos": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        4,
+        1,
+        1
+      ],
+      "state": "air"
+    },
+    {
+      "tick": 15,
+      "action": "destroy",
+      "pos": [
+        7,
+        1,
+        1
+      ]
+    },
+    {
+      "tick": 20,
+      "action": "destroy",
+      "pos": [
+        1,
+        1,
+        4
+      ]
+    },
+    {
+      "tick": 25,
+      "action": "set",
+      "pos": [
+        4,
+        1,
+        4
+      ],
+      "state": "air"
+    },
+    {
+      "tick": 30,
+      "action": "set",
+      "pos": [
+        7,
+        1,
+        4
+      ],
+      "state": "stone"
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        1,
+        1,
+        1
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "cobblestone",
+          "count": 64
+        },
+        {
+          "slot": 13,
+          "id": "dirt",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "pos": [
+        4,
+        1,
+        1
+      ],
+      "items": [
+        {
+          "slot": 2,
+          "id": "oak_planks",
+          "count": 40
+        }
+      ]
+    },
+    {
+      "pos": [
+        1,
+        1,
+        4
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "oak_log",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "pos": [
+        4,
+        1,
+        4
+      ],
+      "items": [
+        {
+          "slot": 1,
+          "id": "stone",
+          "count": 7
+        }
+      ]
+    },
+    {
+      "pos": [
+        7,
+        1,
+        4
+      ],
+      "items": [
+        {
+          "slot": 26,
+          "id": "cobblestone",
+          "count": 30
+        },
+        {
+          "slot": 0,
+          "id": "cobblestone",
+          "count": 31
+        }
+      ]
+    }
+  ],
+  "entities": true
+}

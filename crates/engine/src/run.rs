@@ -344,33 +344,55 @@ mod tests {
     }
 
     #[test]
-    fn a_filled_container_removed_among_entities_is_refused() {
-        // The game spills a container's items as entities when it goes
-        // (`preRemoveSideEffects`); an empty one goes quietly.
-        let json = |items: &str| {
-            format!(
+    fn a_container_removed_among_entities_spills_what_it_holds() {
+        // `preRemoveSideEffects` (`Containers.dropContents`): a filled chest
+        // spills its items as entities when it goes, an empty one only draws
+        // from the level's random source, and one removed as `/setblock`
+        // removes it does neither.
+        let run = |items: &str, discard: bool| {
+            let json = format!(
                 r###"{{"name": "t", "ticks": 4, "entities": true,
-                    "palette": {{"#": "stone", "c": "chest[facing=north,type=single,waterlogged=false]"}},
-                    "layers": [["##"], ["c."]],
-                    "stimuli": [{{"tick": 2, "action": "set", "pos": [0, 1, 0], "state": "air"}}],
+                    "palette": {{"o": "stone", "c": "chest[facing=north,type=single,waterlogged=false]"}},
+                    "layers": [["oo"], ["c."]],
+                    "stimuli": [{{"tick": 2, "action": "set", "pos": [0, 1, 0], "state": "air",
+                        "discard_contents": {discard}}}],
                     "containers": [{{"pos": [0, 1, 0], "items": [{items}]}}]}}"###
-            )
+            );
+            let fixture = FixtureSource::from_json(&json).unwrap().resolve(Transform::IDENTITY).unwrap();
+            super::run(&fixture, "26.3").unwrap()
         };
-        let fixture = FixtureSource::from_json(&json(r#"{"slot": 0, "id": "stone", "count": 3}"#)).unwrap();
-        let fixture = fixture.resolve(Transform::IDENTITY).unwrap();
-        let trace = super::run_partial(&fixture, "26.3").unwrap();
-        let u = trace.unsupported.as_ref().unwrap();
-        assert_eq!(u.tick, 2);
-        assert_eq!(u.message, "removing minecraft:chest with items in it is not simulated by the engine yet");
-        let fixture = FixtureSource::from_json(&json("")).unwrap().resolve(Transform::IDENTITY).unwrap();
-        assert!(super::run(&fixture, "26.3").is_ok());
-        // Removed as `/setblock` removes it, it spills nothing.
-        let fixture = FixtureSource::from_json(
-            &json(r#"{"slot": 0, "id": "stone", "count": 3}"#)
-                .replace(r#""state": "air"}"#, r#""state": "air", "discard_contents": true}"#),
+        let stone = r#"{"slot": 0, "id": "stone", "count": 64}"#;
+        let spilled = run(stone, false);
+        let counts: Vec<&str> =
+            spilled.entities.iter().filter(|e| e.tick == 2).filter_map(|e| e.detail.as_deref()).collect();
+        let total: i32 = counts.iter().map(|d| d.rsplit('*').next().unwrap().parse::<i32>().unwrap()).sum();
+        assert_eq!(total, 64, "{counts:?}");
+        assert!(counts.len() >= 3, "64 stone fly out in stacks of 10 to 30: {counts:?}");
+        let empty = run("", false);
+        assert!(empty.entities.is_empty());
+        let quiet = run("", true);
+        assert!(quiet.entities.is_empty());
+        let draws = |t: &tickwright_trace::Trace| t.rng.iter().find(|r| r.0 == 2).unwrap().1;
+        assert_ne!(draws(&empty), draws(&quiet), "an empty chest still draws a spot for each slot");
+        assert!(run(stone, true).entities.is_empty());
+    }
+
+    #[test]
+    fn a_lectern_removed_with_its_book_among_entities_is_refused() {
+        let source = FixtureSource::from_json(
+            r###"{"name": "t", "ticks": 4, "entities": true,
+                "palette": {"o": "stone", "l": "lectern[facing=north,has_book=true,powered=false]"},
+                "layers": [["oo"], ["l."]],
+                "stimuli": [{"tick": 2, "action": "destroy", "pos": [0, 1, 0]}],
+                "lecterns": [{"pos": [0, 1, 0], "pages": 3}]}"###,
         )
         .unwrap();
-        assert!(super::run(&fixture.resolve(Transform::IDENTITY).unwrap(), "26.3").is_ok());
+        let trace = super::run_partial(&source.resolve(Transform::IDENTITY).unwrap(), "26.3").unwrap();
+        let u = trace.unsupported.as_ref().unwrap();
+        assert_eq!(
+            (u.tick, u.message.as_str()),
+            (2, "removing a lectern with its book is not simulated by the engine yet")
+        );
     }
 
     #[test]
