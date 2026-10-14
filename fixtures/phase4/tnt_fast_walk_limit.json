@@ -1,6 +1,6 @@
 {
   "name": "tnt_fast_walk_limit",
-  "description": "Primed TNT moving 9.9 blocks east and 9.9 south in one tick, as a large cannon throws it, on four obsidian floors. Its move is felt one axis at a time: the east leg takes about eleven steps of the walk, leaving the south leg the rest of sixteen (checkInsideBlocks' limit), then the blocks where it ends are felt anyway. A cobweb on the east leg (bottom floor) and one early on the south leg (second) catch the TNT, which crawls on its next move; one late on the south leg (third) is past the limit and missed, so the TNT flies on to the wall; one where the TNT ends (top) is felt again.",
+  "description": "Primed TNT moving 9.9 blocks east and 9.5 south in one tick, as a large cannon throws it, on four obsidian floors. Its move is felt one axis at a time, the larger first: the east leg takes eleven steps of the walk, leaving the south leg the rest of sixteen (checkInsideBlocks' limit), then the blocks where it ends are felt anyway. A cobweb on the east leg (bottom floor) and one early on the south leg (second) catch the TNT, which crawls on its next move; one late on the south leg (third) is past the limit and missed, so the TNT flies on to the wall; one where the TNT ends (top) is felt again.",
   "ticks": 30,
   "levels": [
     "state",
@@ -223,7 +223,7 @@
       "motion": [
         9.9,
         0.0,
-        9.9
+        9.5
       ],
       "nbt": "{fuse:200}"
     },
@@ -239,7 +239,7 @@
       "motion": [
         9.9,
         0.0,
-        9.9
+        9.5
       ],
       "nbt": "{fuse:200}"
     },
@@ -255,7 +255,7 @@
       "motion": [
         9.9,
         0.0,
-        9.9
+        9.5
       ],
       "nbt": "{fuse:200}"
     },
@@ -271,7 +271,7 @@
       "motion": [
         9.9,
         0.0,
-        9.9
+        9.5
       ],
       "nbt": "{fuse:200}"
     }
