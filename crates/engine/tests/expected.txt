@@ -271,3 +271,4 @@ tnt_breaks_empty_shulker_boxes order
 jukebox_hopper_loop order
 jukebox_dropper_sculk order
 jukebox_pop_out order
+jukebox_blown_up order

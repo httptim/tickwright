@@ -240,6 +240,16 @@ fn activate(level: &mut Level, pos: Pos, state: StateId, power: i32) {
     level.schedule_tick(pos, level.block(state), active_ticks(level, state), 0);
     update_neighbours(level, pos, state);
     post(level, GameEvent::SculkSensorTendrilsClicking, pos);
+    click_pitch(level, state);
+}
+
+/// The clicking sound's pitch, `level.getRandom().nextFloat() * 0.2F +
+/// 0.8F`, drawn from the level's random source unless the sensor is
+/// waterlogged and stays quiet.
+fn click_pitch(level: &mut Level, state: StateId) {
+    if !level.flag(state, "waterlogged") {
+        level.random.next_float();
+    }
 }
 
 /// `SculkSensorBlock.updateNeighbours`.
@@ -261,6 +271,7 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
         "cooldown" => {
             let inactive = level.with(state, "sculk_sensor_phase", "inactive");
             level.set_block(pos, inactive, flags::ALL);
+            click_pitch(level, state);
         }
         _ => {}
     }

@@ -229,7 +229,15 @@ differs from the committed traces. That keeps them honest.
   what it holds (`blocks::pre_remove_side_effects`, a port of
   `Containers.dropContents`): every slot, even an empty one, draws from
   the level's random source, and a lectern removed with its book in an
-  entity run is refused.
+  entity run is refused. A jukebox pops its disc out
+  (`jukebox::pre_remove_side_effects`); this runs with the jukebox's
+  block already replaced, so its updates name the old state, which
+  `container::set_changed_as` takes.
+- **Schematics keep a jukebox's disc as the game does:** `RecordItem` and
+  `ticks_since_song_started`, not `Items`. A fixture can only start a song
+  from the beginning, so an import part way through a song, or with a
+  disc that is not playing, is refused by name. `tools/wasm-check.cjs`
+  checks exported files for `RecordItem` and round-trips contents.
 - **Block entity tickers follow the state:** `blocks::has_ticker` says
   whether a block entity's state has a ticker. A change of state that
   keeps the block calls `Level::update_block_entity_ticker`, which keeps a
