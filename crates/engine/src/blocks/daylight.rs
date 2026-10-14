@@ -246,6 +246,15 @@ mod tests {
     use super::*;
 
     #[test]
+    fn output_rounds_as_the_game_does() {
+        // daylight_detector_transitions' capture at the day times where
+        // f32::cos, or easing the sun angle in doubles, gives another value.
+        for (t, p) in [(170, 8), (539, 9), (2447, 12), (10625, 11), (11461, 9), (12927, 3), (23073, 3), (23533, 5)] {
+            assert_eq!(power(t, false), p, "day time {t}");
+        }
+    }
+
+    #[test]
     fn darken_spans_day_and_night() {
         assert_eq!(sky_darken(6000), 0);
         assert_eq!(sky_darken(18000), 11);
