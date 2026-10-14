@@ -140,8 +140,10 @@ mod tests {
     fn plant_stems_are_not_logs() {
         let rules = Rules::for_version("26.3").unwrap();
         let kind = |n: &str| rules.kind(rules.reg.block_id(n).unwrap());
-        assert_eq!(kind("crimson_stem"), Kind::Log);
-        for plant in ["pumpkin_stem", "attached_melon_stem", "big_dripleaf_stem"] {
+        for log in ["crimson_stem", "stripped_warped_stem", "warped_hyphae", "oak_log"] {
+            assert_eq!(kind(log), Kind::Log, "{log}");
+        }
+        for plant in ["pumpkin_stem", "attached_melon_stem", "big_dripleaf_stem", "mushroom_stem"] {
             assert_eq!(kind(plant), Kind::Other, "{plant}");
         }
     }
