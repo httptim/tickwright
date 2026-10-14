@@ -1,0 +1,46 @@
+{
+  "name": "plate_item_lights_tnt",
+  "description": "An item dropped on an oak pressure plate presses it in its own tick, and the plate lights the TNT beside it at once. The primed TNT hops and settles beside the plate, and the item stays on the plate.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "pressure_plate",
+    "tnt"
+  ],
+  "palette": {
+    "#": "stone",
+    "p": "oak_pressure_plate[powered=false]",
+    "T": "tnt[unstable=false]"
+  },
+  "layers": [
+    [
+      "###",
+      "###",
+      "###"
+    ],
+    [
+      "...",
+      ".pT",
+      "..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        2.0,
+        1.5
+      ],
+      "nbt": "{Item:{id:\"stone\",count:1}}"
+    }
+  ],
+  "entities": true
+}
