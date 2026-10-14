@@ -24,6 +24,10 @@ picking the work up.
   - **Containers:** chests, barrels, hoppers, droppers, dispensers,
     crafters and shelves. Droppers and dispensers pick a filled slot with
     the level's random source, as the game does.
+    Every item stacks as high as the game's item
+    data says (64, 16 or 1, from `data/26.3/materials.json`), in
+    containers and minecarts, in comparator readings, and when item
+    entities or explosion drops merge.
   - **Rails:** plain, powered, activator and detector rails.
   - **Fluids:** water.
   - **Entities (phase 4):**
@@ -79,16 +83,14 @@ picking the work up.
 4. **Fire beyond fireballs.** Fire on flammable blocks, and fire beside
    obsidian (portals), are refused. Captures never spread fire because no
    player is nearby, so the engine only reschedules it.
-5. **Stack sizes from data.** `container::max_stack_size` should read
-   `data/26.3/materials.json` (`stack_sizes`) instead of a heuristic.
-6. **Performance.** The bench went from about 540 to more than 2000 ticks
+5. **Performance.** The bench went from about 540 to more than 2000 ticks
    a second. The next hotspots are `Registry::value` name comparisons,
    wire `update_power_strength` and `run_updates`. Profile with
    `valgrind --tool=callgrind target/release/tickwright bench`, because
    wall-clock timings are noisy.
-7. **Minecart Improvements** (an opt-in experiment in 26.3). The engine
+6. **Minecart Improvements** (an opt-in experiment in 26.3). The engine
    runs the default `OldMinecartBehavior` only.
-8. **New game versions.** Add a rule module under
+7. **New game versions.** Add a rule module under
    `crates/engine/src/rules/` layered on 26.3, set `MC_VERSION` in the
    oracle workflow, and capture a new `traces/<version>`.
 

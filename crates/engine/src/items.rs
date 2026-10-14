@@ -229,6 +229,12 @@ mod tests {
         assert_eq!(max_stack_size("minecraft:stone"), 64);
         assert_eq!(max_stack_size("minecraft:egg"), 16);
         assert_eq!(max_stack_size("cake"), 1);
+        for id in ["ender_pearl", "snowball", "oak_sign", "bucket", "honey_bottle", "armor_stand"] {
+            assert_eq!(max_stack_size(id), 16, "{id}");
+        }
+        for id in ["diamond_pickaxe", "iron_sword", "water_bucket", "milk_bucket", "minecart", "white_bed", "potion"] {
+            assert_eq!(max_stack_size(id), 1, "{id}");
+        }
     }
 
     #[test]
