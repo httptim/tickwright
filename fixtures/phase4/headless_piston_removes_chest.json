@@ -1,0 +1,68 @@
+{
+  "name": "headless_piston_removes_chest",
+  "description": "An extended sticky piston with no head has a filled chest where its head would be. When its power goes it retracts, finds nothing to pull, and removes the block at its head position (Level.removeBlock), the chest, which spills what it holds as item entities.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "container",
+    "item"
+  ],
+  "palette": {
+    "#": "stone",
+    "R": "redstone_block",
+    "P": "sticky_piston[extended=true,facing=east]",
+    "c": "chest[facing=north,type=single,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#R###",
+      "#####"
+    ],
+    [
+      ".....",
+      ".Pc..",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 3,
+      "action": "set",
+      "pos": [
+        1,
+        0,
+        1
+      ],
+      "state": "stone"
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        2,
+        1,
+        1
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "cobblestone",
+          "count": 40
+        },
+        {
+          "slot": 13,
+          "id": "dirt",
+          "count": 7
+        }
+      ]
+    }
+  ],
+  "entities": true
+}

@@ -1,0 +1,117 @@
+{
+  "name": "explosion_spills_containers",
+  "description": "TNT goes off in an obsidian pen beside a filled chest, an empty shulker box and a filled hopper. The explosion sets each to air with its side effects (onExplosionHit, setBlockAndUpdate), so the chest and the hopper spill what they hold as item entities (Containers.dropContents) as they go, every slot drawing a spot from the level's random source, and their own drops pop out after. The shulker box's preRemoveSideEffects does nothing, so it draws nothing and drops as one item. (A filled one would drop with its items inside, which the engine refuses.)",
+  "ticks": 60,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "tnt",
+    "explosion",
+    "container",
+    "item"
+  ],
+  "palette": {
+    "O": "obsidian",
+    "c": "chest[facing=north,type=single,waterlogged=false]",
+    "s": "shulker_box[facing=up]",
+    "h": "hopper[enabled=true,facing=down]"
+  },
+  "layers": [
+    [
+      "OOOOOOOOO",
+      "OOOOOOOOO",
+      "OOOOOOOOO",
+      "OOOOOOOOO",
+      "OOOOOOOOO",
+      "OOOOOOOOO",
+      "OOOOOOOOO",
+      "OOOOOOOOO",
+      "OOOOOOOOO"
+    ],
+    [
+      "OOOOOOOOO",
+      "O.......O",
+      "O.......O",
+      "O..c.s..O",
+      "O.......O",
+      "O...h...O",
+      "O.......O",
+      "O.......O",
+      "OOOOOOOOO"
+    ],
+    [
+      "OOOOOOOOO",
+      "O.......O",
+      "O.......O",
+      "O.......O",
+      "O.......O",
+      "O.......O",
+      "O.......O",
+      "O.......O",
+      "OOOOOOOOO"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        4.5,
+        1,
+        4.5
+      ],
+      "nbt": "{fuse:4}"
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        3,
+        1,
+        3
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "cobblestone",
+          "count": 64
+        },
+        {
+          "slot": 9,
+          "id": "dirt",
+          "count": 12
+        },
+        {
+          "slot": 26,
+          "id": "oak_planks",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "pos": [
+        4,
+        1,
+        5
+      ],
+      "items": [
+        {
+          "slot": 1,
+          "id": "stone",
+          "count": 30
+        },
+        {
+          "slot": 4,
+          "id": "cobblestone",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "entities": true
+}

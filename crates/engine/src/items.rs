@@ -1,5 +1,5 @@
-//! Item data the engine needs from the game: stack sizes and crafting
-//! recipes, read from `data/<version>/`.
+//! Item data the engine needs from the game: stack sizes, crafting recipes
+//! and the songs music discs play, read from `data/<version>/`.
 
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -8,6 +8,7 @@ use serde_json::Value;
 
 const MATERIALS_26_3: &str = include_str!("../../../data/26.3/materials.json");
 const RECIPES_26_3: &str = include_str!("../../../data/26.3/recipes.json");
+const JUKEBOX_SONGS_26_3: &str = include_str!("../../../data/26.3/jukebox_songs.json");
 
 fn stack_sizes() -> &'static HashMap<String, i32> {
     static SIZES: OnceLock<HashMap<String, i32>> = OnceLock::new();
@@ -32,6 +33,46 @@ pub fn max_stack_size(id: &str) -> i32 {
         &full
     };
     stack_sizes().get(id).copied().unwrap_or(64)
+}
+
+/// `JukeboxSong`: what a jukebox needs of the song an item plays.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct JukeboxSong {
+    pub length_in_seconds: f32,
+    pub comparator_output: i32,
+}
+
+impl JukeboxSong {
+    /// `lengthInTicks`: `Mth.ceil(lengthInSeconds * 20.0F)`.
+    pub fn length_in_ticks(self) -> i64 {
+        (self.length_in_seconds * 20.0).ceil() as i64
+    }
+
+    /// `hasFinished`: a song ends a second after its length.
+    pub fn has_finished(self, ticks: i64) -> bool {
+        ticks >= self.length_in_ticks() + 20
+    }
+}
+
+/// `JukeboxSong.fromStack`: the song an item plays in a jukebox, from its
+/// `jukebox_playable` component.
+pub fn jukebox_song(id: &str) -> Option<JukeboxSong> {
+    static SONGS: OnceLock<HashMap<String, JukeboxSong>> = OnceLock::new();
+    let songs = SONGS.get_or_init(|| {
+        let v: Value = serde_json::from_str(JUKEBOX_SONGS_26_3).expect("data/26.3/jukebox_songs.json is valid");
+        v.as_object()
+            .expect("an object of items")
+            .iter()
+            .map(|(k, s)| {
+                let song = JukeboxSong {
+                    length_in_seconds: s["length_in_seconds"].as_f64().expect("a length") as f32,
+                    comparator_output: s["comparator_output"].as_i64().expect("a comparator output") as i32,
+                };
+                (k.clone(), song)
+            })
+            .collect()
+    });
+    if id.contains(':') { songs.get(id).copied() } else { songs.get(&format!("minecraft:{id}")).copied() }
 }
 
 /// `Item.getCraftingRemainder`: what a crafting slot leaves behind.

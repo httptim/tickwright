@@ -9,8 +9,9 @@ picking the work up.
 
 - The engine targets Java Edition 26.3. Every behaviour is checked against
   traces captured from the real 26.3 server (`traces/26.3`).
-- There are 269 fixtures (`fixtures/`) and 2231 traces: one per fixture
-  and orientation, and 100 more seeds of `phase4/tnt_cannon`. Every trace
+- There are 275 fixtures (`fixtures/`) and 2279 traces: one per fixture
+  and orientation it is captured in (all eight, unless the fixture lists
+  fewer), and 100 more seeds of `phase4/tnt_cannon`. Every trace
   matches at the strictest level ("order"), and no fixture is refused.
   The fixtures listed in `crates/engine/tests/expected.txt` must keep
   matching in every captured run.
@@ -19,11 +20,13 @@ picking the work up.
     repeaters, comparators, observers, pistons and sticky pistons with
     their update order and quasi-connectivity, lamps, levers, buttons,
     note blocks, doors, trapdoors, copper bulbs, bells, target blocks,
-    daylight detectors, lecterns, tripwire, and sculk and calibrated
-    sculk sensors.
+    daylight detectors, lecterns, jukeboxes, tripwire, and sculk and
+    calibrated sculk sensors.
   - **Containers:** chests, barrels, hoppers, droppers, dispensers,
-    crafters and shelves. Droppers and dispensers pick a filled slot with
-    the level's random source, as the game does.
+    crafters and shelves, and jukeboxes, which take music discs from
+    hoppers and droppers and play them for the song's length. Droppers and
+    dispensers pick a filled slot with the level's random source, as the
+    game does.
   - **Rails:** plain, powered, activator and detector rails.
   - **Fluids:** water.
   - **Entities (phase 4):**
@@ -227,7 +230,21 @@ differs from the committed traces. That keeps them honest.
   what it holds (`blocks::pre_remove_side_effects`, a port of
   `Containers.dropContents`): every slot, even an empty one, draws from
   the level's random source, and a lectern removed with its book in an
-  entity run is refused.
+  entity run is refused. A jukebox pops its disc out
+  (`jukebox::pre_remove_side_effects`); this runs with the jukebox's
+  block already replaced, so its updates name the old state, which
+  `container::set_changed_as` takes.
+- **Schematics keep a jukebox's disc as the game does:** `RecordItem` and
+  `ticks_since_song_started`, not `Items`. A fixture can only start a song
+  from the beginning, so an import part way through a song, or with a
+  disc that is not playing, is refused by name. `tools/wasm-check.cjs`
+  checks exported files for `RecordItem` and round-trips contents.
+- **Block entity tickers follow the state:** `blocks::has_ticker` says
+  whether a block entity's state has a ticker. A change of state that
+  keeps the block calls `Level::update_block_entity_ticker`, which keeps a
+  ticker's place in the list or puts a new one at the end, and drops one
+  the state no longer has (`LevelChunk.updateBlockEntityTicker`). Only the
+  jukebox's depends on its state (`has_record`) so far.
 - **Some refused cases are close to supported:** an arrow is refused once
   the block it is stuck in goes, a lectern once it is removed with its
   book, and a dispenser firing an item whose own behaviour the engine

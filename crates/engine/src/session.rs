@@ -1345,9 +1345,6 @@ mod tests {
         assert!(s.checkpoints.len() > 4, "a busy stretch checkpoints sooner: {:?}", s.checkpoints.len());
     }
 
-    /// Every fixture, played through a session that keeps a checkpoint
-    /// every three ticks and through the reference, gives the same events,
-    /// and every tick read back or rewound to is the same.
     /// A build of every block entity that holds things, each filled, in a
     /// session that simulates entities as the editor's do.
     fn filled_block_entities() -> Session {
@@ -1433,6 +1430,9 @@ mod tests {
         s.set_item(Pos::new(3, 101, 0), 0, "tnt", 1).unwrap();
     }
 
+    /// Every fixture, played through a session that keeps a checkpoint
+    /// every three ticks and through the reference, gives the same events,
+    /// and every tick read back or rewound to is the same.
     #[test]
     fn every_fixture_rewinds_as_a_session_that_kept_every_tick() {
         let mut dirs = vec![std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures")];

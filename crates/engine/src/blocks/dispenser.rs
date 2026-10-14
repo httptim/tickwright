@@ -60,6 +60,8 @@ pub fn supported_item(id: &str) -> bool {
         "saddle",
         "armor_stand",
         "egg",
+        "blue_egg",
+        "brown_egg",
         "snowball",
         "splash_potion",
         "lingering_potion",
@@ -294,4 +296,21 @@ fn insert_item(level: &mut Level, pos: Pos, mut stack: Stack) -> Stack {
         }
     }
     stack
+}
+
+#[cfg(test)]
+mod tests {
+    use super::supported_item;
+
+    #[test]
+    fn eggs_are_projectiles_but_egg_blocks_are_not() {
+        // 26.3 registers all three eggs as projectiles.
+        for egg in ["egg", "minecraft:blue_egg", "brown_egg"] {
+            assert!(!supported_item(egg), "{egg}");
+        }
+        // Blocks named `_egg` take the default behaviour and fly out.
+        for block in ["dragon_egg", "turtle_egg", "sniffer_egg", "cobblestone"] {
+            assert!(supported_item(block), "{block}");
+        }
+    }
 }

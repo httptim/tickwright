@@ -47,9 +47,10 @@ phase 1 has no comparators.
 | `fixtures/community` | Popular community builds, rebuilt from the Minecraft Wiki's schematics and credited to their designers in each fixture (see its README) |
 | `harness/` | Java capture harness for the vanilla server |
 | `traces/<version>/` | Ground-truth traces from the real game, gzipped |
-| `data/<version>/` | Blocks, items and block entity types from the game's data reports, and `materials.json`: the items each block state takes and every item's stack size |
+| `data/<version>/` | Blocks, items and block entity types from the game's data reports, `materials.json`: the items each block state takes and every item's stack size, and `jukebox_songs.json`: the song each music disc plays, its length and comparator output |
 | `tools/registry.py` | Turns the game's data reports into `data/<version>/` |
 | `tools/materials.py` | Rolls the server jar's block loot tables into `data/<version>/materials.json` |
+| `tools/jukebox.py` | Writes `data/<version>/jukebox_songs.json` from the item report's `jukebox_playable` components and the server jar's songs |
 | `tools/wasm-check.cjs` | Runs every fixture in headless Chromium, as a fixture run and as an editor session, and checks the traces match the native engine's; times the benchmark build both ways |
 
 ## Usage

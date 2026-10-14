@@ -152,4 +152,7 @@ if [[ -n "${REPORTS:-}" ]]; then
         exit 1
     fi
     echo "$out"
+    # The song each music disc plays, its length and comparator output,
+    # for the jukebox.
+    python3 -I tools/jukebox.py "$INNER" "$WORK/reports/reports" "data/$MC_VERSION"
 fi

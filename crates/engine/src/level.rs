@@ -367,11 +367,14 @@ impl Level {
         if flags & flags::SKIP_ON_PLACE == 0 {
             blocks::on_place(self, pos, state, old, moved_by_piston);
         }
-        if blocks::has_block_entity(self.kind(state))
-            && !self.block_entities.contains_key(&pos)
-            && let Some(be) = blocks::new_block_entity(self, pos, state)
-        {
-            self.add_block_entity(pos, be);
+        if blocks::has_block_entity(self.kind(state)) {
+            if self.block_entities.contains_key(&pos) {
+                // `blockEntity.setBlockState(state)`, then a new ticker or
+                // none for the new state.
+                self.update_block_entity_ticker(pos);
+            } else if let Some(be) = blocks::new_block_entity(self, pos, state) {
+                self.add_block_entity(pos, be);
+            }
         }
         Some(old)
     }
@@ -435,8 +438,15 @@ impl Level {
 
     /// `Level.setBlockEntity`, with `LevelChunk.updateBlockEntityTicker`.
     pub fn add_block_entity(&mut self, pos: Pos, be: blocks::BlockEntity) {
-        let ticks = be.ticks();
         self.block_entities.insert(pos, be);
+        self.update_block_entity_ticker(pos);
+    }
+
+    /// `LevelChunk.updateBlockEntityTicker`: a block entity whose state has
+    /// a ticker keeps its place in the list, or joins the end of it; one
+    /// without loses its place.
+    pub fn update_block_entity_ticker(&mut self, pos: Pos) {
+        let ticks = self.block_entities.get(&pos).is_some_and(|be| blocks::has_ticker(self, self.get(pos), be));
         if !ticks {
             self.unbind_ticker(pos);
         } else if !self.ticker_at.contains_key(&pos) {

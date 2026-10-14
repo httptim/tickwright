@@ -80,9 +80,18 @@ async function main() {
       return body;
     };
     // Export a resolved fixture in every schematic format, import each file
-    // back, and name the formats whose blocks came back different.
-    window.schematicRoundTrip = (fixtureText) => {
-      const want = JSON.stringify(JSON.parse(fixtureText).blocks);
+    // back, and name the formats whose blocks or container contents came
+    // back different. A jukebox's disc must be written as the game saves it
+    // (`RecordItem`), which a round trip alone would not show.
+    window.schematicRoundTrip = async (fixtureText) => {
+      const fx = JSON.parse(fixtureText);
+      const want = JSON.stringify(fx.blocks);
+      const contents = (cs) => JSON.stringify([...(cs || [])].sort((a, b) => String(a.pos).localeCompare(String(b.pos))));
+      const wantContents = contents(fx.containers);
+      const same = (p, q) => p[0] === q[0] && p[1] === q[1] && p[2] === q[2];
+      const disc = (fx.containers || []).some((c) =>
+        fx.blocks.some((b) => same(b, c.pos) && b[3].startsWith("minecraft:jukebox")),
+      );
       const bad = [];
       for (const ext of ["litematic", "schem", "nbt"]) {
         const file = call(e.export_schematic, fixtureText, `build.${ext}`);
@@ -93,10 +102,16 @@ async function main() {
         const view = new DataView(e.memory.buffer);
         const len = view.getUint32(out, true);
         const text = dec.decode(new Uint8Array(e.memory.buffer, out + 5, len));
-        const ok = view.getUint8(out + 4) === 0 && JSON.stringify(JSON.parse(text).blocks) === want;
+        const back = view.getUint8(out + 4) === 0 ? JSON.parse(text) : null;
+        let ok = back !== null && JSON.stringify(back.blocks) === want && contents(back.containers) === wantContents;
         e.dealloc(fp, fl);
         e.dealloc(np, nl);
         e.dealloc(out, len + 5);
+        if (ok && disc) {
+          const stream = new Blob([file]).stream().pipeThrough(new DecompressionStream("gzip"));
+          const raw = new Uint8Array(await new Response(stream).arrayBuffer());
+          ok = new TextDecoder("latin1").decode(raw).includes("RecordItem");
+        }
         if (!ok) bad.push(ext);
       }
       return bad;
@@ -242,7 +257,7 @@ async function main() {
     if (f.endsWith("@r0.json")) {
       const bad = await page.evaluate((fx) => window.schematicRoundTrip(fx), fixture);
       if (bad.length) {
-        console.log(`${f}: blocks changed through ${bad.join(", ")} export and import`);
+        console.log(`${f}: blocks or contents changed through ${bad.join(", ")} export and import`);
         failed++;
         continue;
       }

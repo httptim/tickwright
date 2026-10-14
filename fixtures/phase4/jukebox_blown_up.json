@@ -1,0 +1,79 @@
+{
+  "name": "jukebox_blown_up",
+  "description": "A hopper puts music disc pigstep into a jukebox, which lights the lamp beside it, locks the hopper, and posts block_change, which a sculk sensor further off hears (its comparator lights a lamp). A comparator reads the jukebox's 13 through obsidian, shielded from the blast, into a lamp. Past the sensor's cooldown, summoned TNT beside the jukebox blows it up with the hopper and the lamp. The jukebox's preRemoveSideEffects run with its block already gone: the song stops, the jukebox updates its neighbours and comparators by its own name twice, and the disc pops out above it with offsets from the level's random source, ahead of the explosion's drops. The shielded comparator goes off, and the sensor hears only the explosion.",
+  "ticks": 90,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "jukebox",
+    "tnt",
+    "comparator",
+    "sculk",
+    "hopper"
+  ],
+  "palette": {
+    "O": "obsidian",
+    "J": "jukebox[has_record=false]",
+    "l": "redstone_lamp[lit=false]",
+    "C": "comparator[facing=west,mode=compare,powered=false]",
+    "S": "sculk_sensor[power=0,sculk_sensor_phase=inactive,waterlogged=false]",
+    "h": "hopper[enabled=true,facing=down]"
+  },
+  "layers": [
+    [
+      "OOOOOOOOOOOO",
+      "OOOOOOOOOOOO",
+      "OOOOOOOOOOOO",
+      "OOOOOOOOOOOO",
+      "OOOOOOOOOOOO"
+    ],
+    [
+      "OOOOOOOOOOOO",
+      "OOlOOOOOOOOO",
+      "..JOCl.SCl..",
+      "OOOOOOOOOOOO",
+      "............"
+    ],
+    [
+      "............",
+      "..O.........",
+      "..hOOO......",
+      "............",
+      "............"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 40,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        1.5,
+        1,
+        2.5
+      ],
+      "nbt": "{fuse:10}"
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        2,
+        2,
+        2
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "music_disc_pigstep",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "entities": true
+}
