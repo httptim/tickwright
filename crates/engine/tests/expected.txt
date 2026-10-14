@@ -179,6 +179,7 @@ tnt_chain order
 tnt_knockback order
 tnt_lit_by_lever order
 tnt_summoned order
+tnt_kicks order
 tripwire_item_drop order
 nucleation_bubble order
 nucleation_item_fall order

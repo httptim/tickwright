@@ -1,0 +1,61 @@
+{
+  "name": "tnt_kicks",
+  "description": "A floor lever lights nine TNT in one tick: the five around it and the four around the block it powers. Each is kicked in a random direction, through Math.sin and Math.cos of an angle drawn from the level's random source, which is seeded from the run's id. In this fixture's r0 run the sixth kick's angle, and in r90 the ninth's, are ones where the server's JVM (HotSpot on x86-64) gives a cosine an ulp from the correctly rounded one, so these runs only match an engine that computes it as HotSpot does. The run stops long before the fuses do.",
+  "ticks": 12,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "tnt"
+  ],
+  "palette": {
+    "#": "obsidian",
+    "T": "tnt[unstable=false]",
+    "l": "lever[face=floor,facing=north,powered=false]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".....",
+      "..T..",
+      ".T#T.",
+      "..T..",
+      "....."
+    ],
+    [
+      ".....",
+      "..T..",
+      ".TlT.",
+      "..T..",
+      "....."
+    ],
+    [
+      ".....",
+      ".....",
+      "..T..",
+      ".....",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        2,
+        2,
+        2
+      ]
+    }
+  ],
+  "entities": true
+}
