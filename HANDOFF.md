@@ -153,8 +153,15 @@ differs from the committed traces. That keeps them honest.
   decimals; a whole number also turns wrongly, since it is mirrored before
   the game centres it.
 - **Trigonometry:** where the game calls `Math.sin` or `Math.cos` (the
-  kick of newly primed TNT), use `crate::math`, which rounds correctly as
-  the captures do. The platform's `sin` is an ulp off in a few cases.
+  kick of newly primed TNT), use `crate::math`. It does the arithmetic of
+  the stub HotSpot runs on x86-64, interpreted or compiled, which is an
+  ulp off the correctly rounded value on about one kick angle in 400
+  (`tnt_kicks` hits two). The oracle workflow's `kick-trig` job
+  (`harness/kick-trig.sh`) compares the two on a million kick angles: on
+  2026-10-14, with Temurin 25.0.4.1 on an Intel Xeon Platinum 8573C, all
+  matched. Check it again when the oracle's Java changes. HotSpot on arm64
+  differs on about one kick angle in six, so a server on an arm64 machine
+  throws TNT a little differently from the captures.
 - **Check the capture:** make sure a new fixture really does what its
   description says. It's easy to aim an arrow or drop an item that never
   touches the block under test.
