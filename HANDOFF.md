@@ -35,7 +35,12 @@ picking the work up.
     `isSameItemSameComponents` decides. The engine models no component
     itself; one that changes behaviour it simulates (`max_stack_size`,
     `damage_resistant`) marks the build unsupported, by name, as does an
-    item `tag` from a file saved before 1.20.5.
+    item `tag` from a file saved before 1.20.5. Two limits: patches
+    compare as canonical text, not by value, so equivalent spellings
+    (`custom_name:"A"` and `custom_name:{text:"A"}`) differ, and so does
+    a component set to its default value, which the game drops from the
+    patch. Saves the game writes are canonical, so only hand-written data
+    shows either.
   - **Rails:** plain, powered, activator and detector rails.
   - **Fluids:** water.
   - **Entities (phase 4):**
