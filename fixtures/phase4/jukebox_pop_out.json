@@ -20,7 +20,8 @@
     "J": "jukebox[has_record=false]",
     "w": "hopper[enabled=true,facing=west]",
     "L": "redstone_lamp[lit=false]",
-    "c": "comparator[facing=north,mode=compare,powered=false]"
+    "c": "comparator[facing=north,mode=compare,powered=false]",
+    "R": "jukebox[has_record=true]"
   },
   "layers": [
     [
@@ -32,7 +33,7 @@
     ],
     [
       ".......",
-      ".Jw.JL.",
+      ".Jw.RL.",
       ".c..c..",
       ".L..L..",
       "......."

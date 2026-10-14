@@ -32,6 +32,11 @@ pub const DATA_VERSION_26_3: i32 = 5023;
 /// smaller; this stops a stress-test file from exhausting memory.
 pub const MAX_VOLUME: u64 = 64 << 20;
 
+const JUKEBOX: &str = "minecraft:jukebox";
+/// Where a jukebox keeps its disc, and how far its song has played.
+const RECORD_ITEM: &str = "RecordItem";
+const SONG_TICKS: &str = "ticks_since_song_started";
+
 /// Refuse a box larger than [`MAX_VOLUME`].
 fn check_volume(size: [i32; 3]) -> Result<()> {
     let v = size.iter().map(|&n| n.unsigned_abs() as u64).product::<u64>();
@@ -199,25 +204,26 @@ impl Schematic {
             .map_or_else(|_| BlockState::air(), |i| self.blocks[i].1.clone())
     }
 
-    /// Container contents from the block entities' `Items`.
+    /// Container contents from the block entities' `Items`, and a jukebox's
+    /// disc from its `RecordItem`, as slot 0.
     pub fn containers(&self) -> Vec<Container> {
         let mut out = Vec::new();
         for be in &self.block_entities {
-            let Some(items) = be.data.get("Items") else { continue };
-            let slots: Vec<ItemSlot> = items
-                .list()
-                .iter()
-                .filter_map(|i| {
-                    let id = i.get("id")?.as_str()?;
-                    let count = i.get("count").or_else(|| i.get("Count"))?.as_i64()?;
-                    let slot = i.get("Slot")?.as_i64()?;
-                    (count > 0).then(|| ItemSlot {
-                        slot: slot as u32,
-                        id: id.strip_prefix("minecraft:").unwrap_or(id).to_string(),
-                        count: count as u32,
-                    })
+            let stack = |i: &Tag, slot: Option<i64>| {
+                let id = i.get("id")?.as_str()?;
+                let count = i.get("count").or_else(|| i.get("Count"))?.as_i64()?;
+                let slot = slot.or_else(|| i.get("Slot")?.as_i64())?;
+                (count > 0).then(|| ItemSlot {
+                    slot: slot as u32,
+                    id: id.strip_prefix("minecraft:").unwrap_or(id).to_string(),
+                    count: count as u32,
                 })
-                .collect();
+            };
+            let slots: Vec<ItemSlot> = match (be.data.get("Items"), be.data.get(RECORD_ITEM)) {
+                (Some(items), _) => items.list().iter().filter_map(|i| stack(i, None)).collect(),
+                (None, Some(record)) => stack(record, Some(0)).into_iter().collect(),
+                (None, None) => continue,
+            };
             if !slots.is_empty() {
                 out.push(Container { pos: be.pos, items: slots });
             }
@@ -237,8 +243,34 @@ impl Schematic {
             .collect()
     }
 
+    /// A jukebox whose disc a fixture can't carry as the game would load it.
+    /// A fixture puts a disc in with `setItem`, which starts its song from
+    /// the beginning; the game loads a saved jukebox part way through its
+    /// song (`ticks_since_song_started`), or not playing at all when that
+    /// is missing, as after its song ended.
+    fn check_jukeboxes(&self, name: &str) -> Result<()> {
+        for be in &self.block_entities {
+            if be.data.get(RECORD_ITEM).is_none() {
+                continue;
+            }
+            match be.data.get(SONG_TICKS).and_then(Tag::as_i64) {
+                Some(0) => {}
+                Some(t) => bail!(
+                    "{name}: a jukebox at {:?} part way through its song ({SONG_TICKS} {t}) is not supported yet",
+                    be.pos
+                ),
+                None => {
+                    bail!("{name}: a jukebox at {:?} holding a disc it is not playing is not supported yet", be.pos)
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// A fixture that places this schematic and records `ticks` ticks.
+    /// A jukebox the fixture can't start as the game would is refused.
     pub fn to_fixture(&self, name: &str, ticks: u32) -> Result<FixtureSource> {
+        self.check_jukeboxes(name)?;
         const KEYS: &str = "#ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@$%&*+=?!<>^~";
         let mut keys: BTreeMap<String, char> = BTreeMap::new();
         let mut extra = (0x3B1u32..0x3CA).chain(0x391..0x3AA).chain(0x400..0x4FF).filter_map(char::from_u32);
@@ -296,25 +328,38 @@ impl Schematic {
         for (x, y, z, s) in &f.blocks {
             blocks.push(([*x, *y, *z], BlockState::parse(s).with_context(|| format!("{}: {s}", f.id))?));
         }
+        // A jukebox given a disc plays it, and its `has_record` is set, as the
+        // harness's `setItem` leaves it.
+        for c in &f.containers {
+            if let Some((_, state)) = blocks.iter_mut().find(|(p, st)| *p == c.pos && st.id == JUKEBOX) {
+                state.props.insert("has_record".into(), "true".into());
+            }
+        }
         let mut s = Schematic::from_blocks(f.size, blocks);
         for c in &f.containers {
-            let items = c
-                .items
-                .iter()
-                .map(|i| {
-                    let id = if i.id.contains(':') { i.id.clone() } else { format!("minecraft:{}", i.id) };
-                    nbt::compound(vec![
-                        ("Slot", Tag::Byte(i.slot as i8)),
-                        ("id", Tag::String(id)),
-                        ("count", Tag::Int(i.count as i32)),
-                    ])
-                })
-                .collect();
+            let stack = |i: &ItemSlot, slot: bool| {
+                let id = if i.id.contains(':') { i.id.clone() } else { format!("minecraft:{}", i.id) };
+                let mut tags = vec![("id", Tag::String(id)), ("count", Tag::Int(i.count as i32))];
+                if slot {
+                    tags.insert(0, ("Slot", Tag::Byte(i.slot as i8)));
+                }
+                nbt::compound(tags)
+            };
             let id = s.block(c.pos).id;
-            s.block_entities.push(BlockEntity {
-                pos: c.pos,
-                data: nbt::compound(vec![("id", Tag::String(id)), ("Items", Tag::List(10, items))]),
-            });
+            let data = if id == JUKEBOX {
+                // `JukeboxBlockEntity.saveAdditional`: the disc, and how far
+                // its song has played.
+                let disc = c.items.iter().find(|i| i.slot == 0).context("a jukebox holds its disc in slot 0")?;
+                nbt::compound(vec![
+                    ("id", Tag::String(id)),
+                    (RECORD_ITEM, stack(disc, false)),
+                    (SONG_TICKS, Tag::Long(0)),
+                ])
+            } else {
+                let items = c.items.iter().map(|i| stack(i, true)).collect();
+                nbt::compound(vec![("id", Tag::String(id)), ("Items", Tag::List(10, items))])
+            };
+            s.block_entities.push(BlockEntity { pos: c.pos, data });
         }
         for c in &f.comparators {
             s.block_entities.push(BlockEntity {
@@ -470,6 +515,73 @@ mod tests {
         let resolved = FixtureSource::from_json(&text).unwrap().resolve("r0".parse().unwrap()).unwrap();
         let back = Schematic::from_fixture(&resolved).unwrap();
         assert_eq!(back.entities, s.entities);
+    }
+
+    fn b(s: &str) -> BlockState {
+        BlockState::parse(s).unwrap()
+    }
+
+    /// A jukebox as 26.3 saves it (`JukeboxBlockEntity.saveAdditional`):
+    /// its disc as `RecordItem`, and while it plays, `ticks_since_song_started`.
+    fn jukebox(ticks: Option<i64>) -> Schematic {
+        let mut data = vec![
+            ("id", Tag::String("minecraft:jukebox".into())),
+            (
+                "RecordItem",
+                nbt::compound(vec![("id", Tag::String("minecraft:music_disc_pigstep".into())), ("count", Tag::Int(1))]),
+            ),
+        ];
+        if let Some(t) = ticks {
+            data.push(("ticks_since_song_started", Tag::Long(t)));
+        }
+        Schematic {
+            size: [1, 1, 1],
+            blocks: vec![([0, 0, 0], b("jukebox[has_record=true]"))],
+            block_entities: vec![BlockEntity { pos: [0, 0, 0], data: nbt::compound(data) }],
+            data_version: Some(DATA_VERSION_26_3),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn a_jukebox_disc_comes_in_from_record_item() {
+        let f = jukebox(Some(0)).to_fixture("t", 10).unwrap();
+        assert_eq!(
+            f.containers,
+            vec![Container {
+                pos: [0, 0, 0],
+                items: vec![ItemSlot { slot: 0, id: "music_disc_pigstep".into(), count: 1 }]
+            }]
+        );
+        // A song part way through, or one that has ended, can't be started
+        // as the game would load it.
+        let err = jukebox(Some(1234)).to_fixture("t", 10).unwrap_err().to_string();
+        assert_eq!(
+            err,
+            "t: a jukebox at [0, 0, 0] part way through its song (ticks_since_song_started 1234) is not supported yet"
+        );
+        let err = jukebox(None).to_fixture("t", 10).unwrap_err().to_string();
+        assert_eq!(err, "t: a jukebox at [0, 0, 0] holding a disc it is not playing is not supported yet");
+    }
+
+    #[test]
+    fn a_jukebox_disc_goes_out_as_record_item() {
+        let text = serde_json::to_string(&jukebox(Some(0)).to_fixture("t", 10).unwrap()).unwrap();
+        let mut source = FixtureSource::from_json(&text).unwrap();
+        // A fixture can give a jukebox its disc with has_record unset.
+        source.palette.values_mut().for_each(|s| *s = s.replace("has_record=true", "has_record=false"));
+        let resolved = source.resolve("r0".parse().unwrap()).unwrap();
+        let s = Schematic::from_fixture(&resolved).unwrap();
+        assert_eq!(s.blocks[0].1, b("jukebox[has_record=true]"));
+        let data = &s.block_entities[0].data;
+        assert!(data.get("Items").is_none());
+        assert_eq!(data.get("RecordItem").and_then(|r| r.get("id")?.as_str()), Some("minecraft:music_disc_pigstep"));
+        assert_eq!(data.get("ticks_since_song_started").and_then(Tag::as_i64), Some(0));
+        for f in [Format::Litematic, Format::Sponge, Format::Structure] {
+            let back = Schematic::read(&s.write(f)).unwrap();
+            assert_eq!(back.containers(), jukebox(Some(0)).containers(), "{f:?}");
+            assert_eq!(back.blocks, s.blocks, "{f:?}");
+        }
     }
 
     #[test]

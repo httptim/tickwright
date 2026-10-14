@@ -207,8 +207,7 @@ pub fn set_item(level: &mut Level, inv: impl Into<Inv>, slot: usize, mut stack: 
 /// `Container.removeItem` (`ContainerHelper.removeItem`).
 fn remove_item(level: &mut Level, inv: Inv, slot: usize, amount: i32) -> Stack {
     if let Some(pos) = jukebox_at(level, inv) {
-        let empty = get_item(level, inv, slot).is_empty();
-        return if slot != 0 || empty { Stack::default() } else { super::jukebox::split_the_item(level, pos) };
+        return if slot != 0 { Stack::default() } else { super::jukebox::split_the_item(level, pos) };
     }
     let stack = {
         let s = &mut items_mut(level, inv)[slot];
@@ -244,6 +243,19 @@ pub fn set_changed(level: &mut Level, inv: impl Into<Inv>) {
         level.record_items(pos, detail);
     }
     set_changed_static(level, Inv::Block(pos));
+}
+
+/// `BlockEntity.setChanged` for a block entity that still knows its block
+/// as `state`, as one does while `preRemoveSideEffects` runs with its block
+/// already replaced.
+pub(super) fn set_changed_as(level: &mut Level, pos: Pos, state: StateId) {
+    if let Some(items) = items(level, pos) {
+        let detail = describe(items);
+        level.record_items(pos, detail);
+    }
+    if !level.is_air(state) {
+        level.update_neighbour_for_output_signal(pos, level.block(state));
+    }
 }
 
 /// The static `BlockEntity.setChanged(level, pos, state)`.

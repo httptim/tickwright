@@ -9,9 +9,9 @@
 //! of them it draws from the level's random source for the note particle's
 //! colour. A song stops a second after its length.
 //!
-//! Removing a jukebox that holds a disc is refused: the game pops the disc
-//! out and updates the jukebox's neighbours while its block is already gone,
-//! which the engine does not do.
+//! A jukebox removed with a disc in it pops the disc out while its block is
+//! already gone (`preRemoveSideEffects`), unless it goes the way `/setblock`
+//! removes it.
 
 use crate::game_event::GameEvent;
 use crate::items::{self, JukeboxSong};
@@ -98,11 +98,12 @@ pub fn set_the_item(level: &mut Level, pos: Pos, stack: Stack) {
     level.game_event(GameEvent::BlockChange, pos);
     match song {
         Some(song) => play(level, pos, song),
-        None => stop(level, pos),
+        None => stop(level, pos, level.get(pos)),
     }
 }
 
-/// `splitTheItem`: the whole disc comes out, whatever was asked for.
+/// `splitTheItem`: the whole disc comes out, whatever was asked for, and
+/// `setTheItem(EMPTY)` runs even when there is none.
 pub fn split_the_item(level: &mut Level, pos: Pos) -> Stack {
     let item = jukebox(level, pos).map(|j| j.items[0].clone()).unwrap_or_default();
     set_the_item(level, pos, Stack::default());
@@ -114,25 +115,26 @@ fn play(level: &mut Level, pos: Pos, song: JukeboxSong) {
     let Some(j) = jukebox_mut(level, pos) else { return };
     j.song = Some(song);
     j.ticks_since_song_started = 0;
-    on_song_changed(level, pos);
+    on_song_changed(level, pos, level.get(pos));
 }
 
-/// `JukeboxSongPlayer.stop`. Only allays hear `jukebox_stop_play`, and the
-/// stop event (1011) is only sound.
-fn stop(level: &mut Level, pos: Pos) {
+/// `JukeboxSongPlayer.stop`, for a block entity that knows its block as
+/// `state`. Only allays hear `jukebox_stop_play`, and the stop event (1011)
+/// is only sound.
+fn stop(level: &mut Level, pos: Pos, state: StateId) {
     let Some(j) = jukebox_mut(level, pos) else { return };
     if j.song.take().is_none() {
         return;
     }
     j.ticks_since_song_started = 0;
-    on_song_changed(level, pos);
+    on_song_changed(level, pos, state);
 }
 
-/// `onSongChanged`: the signal changed, and so did the block entity.
-fn on_song_changed(level: &mut Level, pos: Pos) {
-    let block = level.block(level.get(pos));
-    level.update_neighbors_at(pos, block);
-    container::set_changed(level, pos);
+/// `onSongChanged`: the signal changed, and so did the block entity. Both
+/// name the block the block entity knows, `state`.
+fn on_song_changed(level: &mut Level, pos: Pos, state: StateId) {
+    level.update_neighbors_at(pos, level.block(state));
+    container::set_changed_as(level, pos, state);
 }
 
 /// The block entity's ticker, `JukeboxSongPlayer.tick`, which runs while
@@ -141,7 +143,7 @@ pub fn tick_entity(level: &mut Level, pos: Pos) {
     let Some(j) = jukebox_mut(level, pos) else { return };
     let Some(song) = j.song else { return };
     if song.has_finished(j.ticks_since_song_started) {
-        stop(level, pos);
+        stop(level, pos, level.get(pos));
         return;
     }
     // `jukebox_play` reaches only allays; `spawnMusicParticles` picks the
@@ -160,24 +162,45 @@ pub fn use_without_item(level: &mut Level, pos: Pos, state: StateId) {
     }
 }
 
-/// `popOutTheItem`: the disc comes out on top of the jukebox, as an item
-/// entity in levels that simulate entities.
+/// `popOutTheItem`: the disc comes out on top of the jukebox.
 fn pop_out_the_item(level: &mut Level, pos: Pos) {
     if !has_item(level, pos) {
         return;
     }
     let item = split_the_item(level, pos);
+    eject(level, pos, item);
+    on_song_changed(level, pos, level.get(pos));
+}
+
+/// `JukeboxBlockEntity.preRemoveSideEffects`, which is `popOutTheItem` run
+/// while the jukebox's block is already replaced: the block entity still
+/// knows its block as `old`. `setTheItem(EMPTY)` leaves the block alone,
+/// as the level no longer holds the jukebox's state, and posts nothing; the
+/// song stops, and the neighbour and comparator updates name the jukebox.
+pub fn pre_remove_side_effects(level: &mut Level, pos: Pos, old: StateId) {
+    if !has_item(level, pos) {
+        return;
+    }
+    let Some(j) = jukebox_mut(level, pos) else { return };
+    let item = std::mem::take(&mut j.items[0]);
+    stop(level, pos, old);
+    eject(level, pos, item);
+    on_song_changed(level, pos, old);
+}
+
+/// The disc a jukebox gives up, at `Vec3.atLowerCornerWithOffset(pos, 0.5,
+/// 1.01, 0.5).offsetRandomXZ(random, 0.7F)` with the level's random source,
+/// as an item entity with the default pickup delay in levels that simulate
+/// entities.
+fn eject(level: &mut Level, pos: Pos, item: Stack) {
+    let r = &mut level.random;
+    let dx = (r.next_float() - 0.5) * 0.7;
+    let dz = (r.next_float() - 0.5) * 0.7;
     if level.simulate_entities {
-        // `Vec3.atLowerCornerWithOffset(pos, 0.5, 1.01, 0.5)
-        //     .offsetRandomXZ(random, 0.7F)`.
-        let r = &mut level.random;
-        let dx = (r.next_float() - 0.5) * 0.7;
-        let dz = (r.next_float() - 0.5) * 0.7;
         let at = Vec3::new(pos.x as f64 + 0.5 + dx as f64, pos.y as f64 + 1.01, pos.z as f64 + 0.5 + dz as f64);
         // `new ItemEntity` and `setDefaultPickUpDelay`, as `spawnAtLocation`.
         crate::entity::item::spawn_at_location(level, at, item);
     }
-    on_song_changed(level, pos);
 }
 
 #[cfg(test)]
@@ -195,24 +218,23 @@ mod tests {
     }
 
     #[test]
-    fn removing_a_jukebox_with_a_disc_is_refused() {
+    fn a_jukebox_removed_with_a_disc_pops_it_out() {
         use tickwright_trace::{FixtureSource, Transform};
-        let json = |items: &str| {
-            format!(
-                r###"{{"name": "t", "ticks": 4,
-                    "palette": {{"#": "stone", "j": "jukebox[has_record=false]"}},
-                    "layers": [["##"], ["j."]],
-                    "stimuli": [{{"tick": 2, "action": "set", "pos": [0, 1, 0], "state": "air"}}],
-                    "containers": [{{"pos": [0, 1, 0], "items": [{items}]}}]}}"###
-            )
+        let run = |entities: bool, discard: bool| {
+            let json = format!(
+                r###"{{"name": "t", "ticks": 4, "entities": {entities},
+                    "palette": {{"o": "stone", "j": "jukebox[has_record=false]"}},
+                    "layers": [["oo"], ["j."]],
+                    "stimuli": [{{"tick": 2, "action": "set", "pos": [0, 1, 0], "state": "air",
+                        "discard_contents": {discard}}}],
+                    "containers": [{{"pos": [0, 1, 0], "items": [{{"slot": 0, "id": "music_disc_cat", "count": 1}}]}}]}}"###
+            );
+            let fixture = FixtureSource::from_json(&json).unwrap().resolve(Transform::IDENTITY).unwrap();
+            let trace = crate::run::run(&fixture, "26.3").unwrap();
+            trace.entities.iter().filter(|e| e.detail.as_deref() == Some("minecraft:music_disc_cat*1")).count()
         };
-        let source = FixtureSource::from_json(&json(r#"{"slot": 0, "id": "music_disc_cat", "count": 1}"#)).unwrap();
-        let trace = crate::run::run_partial(&source.resolve(Transform::IDENTITY).unwrap(), "26.3").unwrap();
-        let u = trace.unsupported.as_ref().unwrap();
-        assert_eq!(u.tick, 2);
-        assert_eq!(u.message, "removing a jukebox with a disc in it is not simulated by the engine yet");
-        // An empty jukebox goes quietly.
-        let source = FixtureSource::from_json(&json("")).unwrap();
-        assert!(crate::run::run(&source.resolve(Transform::IDENTITY).unwrap(), "26.3").is_ok());
+        assert!(run(true, false) > 0, "the disc pops out");
+        assert_eq!(run(false, false), 0, "only entity runs make items");
+        assert_eq!(run(true, true), 0, "removed as /setblock does, the disc goes with it");
     }
 }
