@@ -209,6 +209,7 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
                 | Kind::Crafter
                 | Kind::Shelf
                 | Kind::ShulkerBox
+                | Kind::Jukebox
         ) {
             bail!("{}: no container at {:?}", fixture.id, c.pos);
         }

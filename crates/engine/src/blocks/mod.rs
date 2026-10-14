@@ -21,6 +21,7 @@ pub mod dispenser;
 mod door;
 mod falling;
 pub(crate) mod fire;
+pub mod jukebox;
 mod lamp;
 pub mod lectern;
 pub mod plate;
@@ -149,8 +150,8 @@ pub enum BlockEntity {
     Bell,
     /// A shulker box's 27 slots. Its ticker only animates the lid.
     ShulkerBox(Vec<container::Stack>),
-    /// An empty jukebox, which has no ticker.
-    Jukebox,
+    /// `JukeboxBlockEntity`, which ticks only while `has_record` is set.
+    Jukebox(jukebox::Jukebox),
     /// `PistonMovingBlockEntity`.
     Piston(piston::Moving),
     Crafter(crafter::Crafter),
@@ -167,7 +168,6 @@ impl BlockEntity {
             BlockEntity::Chest(_)
             | BlockEntity::Dropper(_)
             | BlockEntity::Comparator(_)
-            | BlockEntity::Jukebox
             | BlockEntity::Lectern(_)
             | BlockEntity::Shelf(_) => false,
             BlockEntity::Piston(_)
@@ -177,6 +177,8 @@ impl BlockEntity {
             | BlockEntity::Crafter(_)
             | BlockEntity::DaylightDetector
             | BlockEntity::Sculk(_) => true,
+            // Its ticker follows `has_record`; see [`has_ticker`].
+            BlockEntity::Jukebox(_) => false,
         }
     }
 }
@@ -215,7 +217,7 @@ pub fn new_block_entity(_level: &Level, _pos: Pos, state: StateId) -> Option<Blo
         Kind::Dropper | Kind::Dispenser => Some(container::new_dropper()),
         Kind::Bell => Some(BlockEntity::Bell),
         Kind::ShulkerBox => Some(BlockEntity::ShulkerBox(vec![container::Stack::default(); 27])),
-        Kind::Jukebox => Some(BlockEntity::Jukebox),
+        Kind::Jukebox => Some(BlockEntity::Jukebox(jukebox::Jukebox::new())),
         Kind::Comparator => Some(BlockEntity::Comparator(0)),
         Kind::Crafter => Some(BlockEntity::Crafter(crafter::Crafter::new())),
         Kind::Lectern => Some(BlockEntity::Lectern(lectern::Lectern::default())),
@@ -234,12 +236,26 @@ pub fn new_block_entity(_level: &Level, _pos: Pos, state: StateId) -> Option<Blo
 pub fn pre_remove_side_effects(level: &mut Level, pos: Pos, state: StateId) {
     match level.kind(state) {
         Kind::ShulkerBox => {}
+        Kind::Jukebox => {
+            if jukebox::has_item(level, pos) {
+                level.unsupported("removing a jukebox with a disc in it");
+            }
+        }
         Kind::Lectern => {
             if level.simulate_entities && level.flag(state, "has_book") {
                 level.unsupported("removing a lectern with its book");
             }
         }
         _ => container::drop_contents(level, pos),
+    }
+}
+
+/// Whether the block entity at `pos`, of the block `state`, has a ticker
+/// (`getTicker` is not null). Only the jukebox's depends on its state.
+pub fn has_ticker(level: &Level, state: StateId, be: &BlockEntity) -> bool {
+    match be {
+        BlockEntity::Jukebox(_) => level.kind(state) == Kind::Jukebox && level.flag(state, "has_record"),
+        _ => be.ticks(),
     }
 }
 
@@ -250,6 +266,7 @@ pub fn tick_block_entity(level: &mut Level, pos: Pos) {
         Some(BlockEntity::Crafter(_)) => crafter::tick_entity(level, pos),
         Some(BlockEntity::DaylightDetector) => daylight::tick_entity(level, pos),
         Some(BlockEntity::Sculk(_)) => sculk::tick_entity(level, pos),
+        Some(BlockEntity::Jukebox(_)) => jukebox::tick_entity(level, pos),
         _ => {}
     }
 }
@@ -287,6 +304,7 @@ pub fn analog_output(level: &Level, pos: Pos, state: StateId) -> i32 {
         Kind::Crafter => crafter::analog_output(level, pos),
         Kind::Lectern => lectern::analog_output(level, pos, state),
         Kind::Shelf => shelf::analog_output(level, pos),
+        Kind::Jukebox => jukebox::analog_output(level, pos),
         Kind::SculkSensor | Kind::CalibratedSculkSensor => sculk::analog_output(level, pos, state),
         Kind::Composter => level.int(state, "level"),
         Kind::Cake => (7 - level.int(state, "bites")) * 2,
@@ -398,6 +416,7 @@ pub fn get_signal(level: &Level, pos: Pos, state: StateId, dir: Dir) -> i32 {
         Kind::Lever | Kind::Button => lever::get_signal(level, pos, state, dir),
         Kind::RedstoneBlock => 15,
         Kind::Target => plain::target_signal(level, state),
+        Kind::Jukebox => jukebox::signal(level, pos),
         Kind::TripwireHook => plain::hook_signal(level, state),
         Kind::Lectern => lectern::get_signal(level, state),
         Kind::PressurePlate | Kind::WeightedPlate => plate::signal(level, state),
@@ -669,6 +688,7 @@ pub fn use_without_item(level: &mut Level, pos: Pos, state: StateId) {
         Kind::Trapdoor => door::trapdoor_use(level, pos, state),
         Kind::Door => door::door_use(level, pos, state),
         Kind::DaylightDetector => daylight::use_without_item(level, pos, state),
+        Kind::Jukebox => jukebox::use_without_item(level, pos, state),
         _ => {}
     }
 }

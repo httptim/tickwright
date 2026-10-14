@@ -2,7 +2,8 @@
 //!
 //! Follows `HopperBlockEntity`, `DropperBlock` and the containers they
 //! work on: container blocks, and chest and hopper minecarts where no
-//! container block is. Composters are not simulated yet, and a double
+//! container block is. A jukebox is a one-slot container with rules of its
+//! own (`blocks::jukebox`). Composters are not simulated yet, and a double
 //! chest acts as two single chests.
 //!
 //! `BlockEntity.setChanged` is what the trace records for items, with the
@@ -121,6 +122,7 @@ pub fn items(level: &Level, inv: impl Into<Inv>) -> Option<&Vec<Stack>> {
         BlockEntity::Hopper(h) => Some(&h.items),
         BlockEntity::Crafter(c) => Some(&c.items),
         BlockEntity::Shelf(items) => Some(items),
+        BlockEntity::Jukebox(j) => Some(&j.items),
         _ => None,
     }
 }
@@ -138,7 +140,16 @@ fn items_mut(level: &mut Level, inv: Inv) -> &mut Vec<Stack> {
         Some(BlockEntity::Hopper(h)) => &mut h.items,
         Some(BlockEntity::Crafter(c)) => &mut c.items,
         Some(BlockEntity::Shelf(items)) => items,
+        Some(BlockEntity::Jukebox(j)) => &mut j.items,
         _ => panic!("no container at {pos:?}"),
+    }
+}
+
+/// The jukebox's position, if `inv` is one.
+fn jukebox_at(level: &Level, inv: Inv) -> Option<Pos> {
+    match inv {
+        Inv::Block(pos) if matches!(level.block_entities.get(&pos), Some(BlockEntity::Jukebox(_))) => Some(pos),
+        _ => None,
     }
 }
 
@@ -175,6 +186,13 @@ fn is_empty(level: &Level, inv: Inv) -> bool {
 /// `Container.setItem`.
 pub fn set_item(level: &mut Level, inv: impl Into<Inv>, slot: usize, mut stack: Stack) {
     let inv = inv.into();
+    // `ContainerSingleItem.setItem`: only slot 0, through `setTheItem`.
+    if let Some(pos) = jukebox_at(level, inv) {
+        if slot == 0 {
+            super::jukebox::set_the_item(level, pos, stack);
+        }
+        return;
+    }
     let max = stack.max_stack_size();
     stack.count = stack.count.min(max);
     if stack.is_empty() {
@@ -188,6 +206,10 @@ pub fn set_item(level: &mut Level, inv: impl Into<Inv>, slot: usize, mut stack: 
 
 /// `Container.removeItem` (`ContainerHelper.removeItem`).
 fn remove_item(level: &mut Level, inv: Inv, slot: usize, amount: i32) -> Stack {
+    if let Some(pos) = jukebox_at(level, inv) {
+        let empty = get_item(level, inv, slot).is_empty();
+        return if slot != 0 || empty { Stack::default() } else { super::jukebox::split_the_item(level, pos) };
+    }
     let stack = {
         let s = &mut items_mut(level, inv)[slot];
         if s.is_empty() || amount <= 0 { Stack::default() } else { s.split(amount) }
@@ -271,7 +293,14 @@ fn block_container(level: &Level, pos: Pos) -> Option<Inv> {
     let kind = level.kind_at(pos);
     let ok = matches!(
         kind,
-        Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser | Kind::ShulkerBox | Kind::Crafter
+        Kind::Chest
+            | Kind::Barrel
+            | Kind::Hopper
+            | Kind::Dropper
+            | Kind::Dispenser
+            | Kind::ShulkerBox
+            | Kind::Crafter
+            | Kind::Jukebox
     );
     (ok && items(level, pos).is_some()).then_some(Inv::Block(pos))
 }
@@ -354,13 +383,15 @@ fn is_shulker_box(id: &str) -> bool {
 
 /// `HopperBlockEntity.tryMoveInItem`.
 fn try_move_in_item(level: &mut Level, source: Option<Inv>, dest: Inv, mut stack: Stack, slot: usize) -> Stack {
-    // `canPlaceItemInContainer`: a crafter spreads items over its slots, and
-    // a shulker box refuses shulker boxes
-    // (`ShulkerBoxBlockEntity.canPlaceItemThroughFace`).
+    // `canPlaceItemInContainer`: a crafter spreads items over its slots, a
+    // shulker box refuses shulker boxes
+    // (`ShulkerBoxBlockEntity.canPlaceItemThroughFace`), and a jukebox takes
+    // only a disc, when empty.
     if let Inv::Block(d) = dest {
         let refused = match level.kind_at(d) {
             Kind::Crafter => !super::crafter::can_place_item(level, d, slot, &stack),
             Kind::ShulkerBox => is_shulker_box(&stack.id),
+            Kind::Jukebox => !super::jukebox::can_place_item(level, d, slot, &stack),
             _ => false,
         };
         if refused {
@@ -539,7 +570,9 @@ fn suck_in_items(level: &mut Level, hopper: Inv) -> bool {
     };
     for slot in 0..size(level, source) {
         let stack = get_item(level, source, slot);
-        if stack.is_empty() {
+        // `canTakeItemFromContainer`: a jukebox gives its disc only to a
+        // hopper with an empty slot.
+        if stack.is_empty() || (jukebox_at(level, source).is_some() && !super::jukebox::can_take_item(level, hopper)) {
             continue;
         }
         let count = stack.count;

@@ -1,0 +1,118 @@
+{
+  "name": "jukebox_hopper_loop",
+  "description": "Two jukebox stacks, each a hopper above feeding a jukebox and a hopper below it, with a comparator reading the jukebox into a lamp and a lamp beside it. Each top hopper puts music disc 11 in at once; while it plays (71 seconds and one more, 1440 ticks) the jukebox gives 15 to every side, which lights the lamp beside it and locks both hoppers, and every 20 ticks it draws from the level's random source for its note particle. When the song ends both hoppers unlock. On the left the bottom hopper takes the disc and the top one puts in the next (far); on the right the bottom hopper has no empty slot, so the jukebox keeps the disc (canTakeItem) and its comparator still reads 11.",
+  "ticks": 1480,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "jukebox",
+    "hopper",
+    "comparator",
+    "rng"
+  ],
+  "palette": {
+    "#": "stone",
+    "J": "jukebox[has_record=false]",
+    "d": "hopper[enabled=true,facing=down]",
+    "e": "hopper[enabled=true,facing=east]",
+    "c": "comparator[facing=north,mode=compare,powered=false]",
+    "L": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "e#.e#",
+      "#..#.",
+      "....."
+    ],
+    [
+      "JLLJ.",
+      "c..c.",
+      "L..L."
+    ],
+    [
+      "d..d.",
+      ".....",
+      "....."
+    ]
+  ],
+  "stimuli": [],
+  "containers": [
+    {
+      "pos": [
+        0,
+        2,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "music_disc_11",
+          "count": 1
+        },
+        {
+          "slot": 1,
+          "id": "music_disc_far",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "pos": [
+        3,
+        2,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "music_disc_11",
+          "count": 1
+        },
+        {
+          "slot": 1,
+          "id": "music_disc_cat",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "pos": [
+        3,
+        0,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "cobblestone",
+          "count": 1
+        },
+        {
+          "slot": 1,
+          "id": "cobblestone",
+          "count": 1
+        },
+        {
+          "slot": 2,
+          "id": "cobblestone",
+          "count": 1
+        },
+        {
+          "slot": 3,
+          "id": "cobblestone",
+          "count": 1
+        },
+        {
+          "slot": 4,
+          "id": "cobblestone",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "entities": true
+}

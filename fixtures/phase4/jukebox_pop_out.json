@@ -1,0 +1,101 @@
+{
+  "name": "jukebox_pop_out",
+  "description": "A hopper feeds music disc far into one jukebox; the other starts with music disc strad, put in as the build is placed, so it is already playing and its lamp is lit before the first tick. Right-clicking each pops its disc out as an item a little above it, offset with the level's random source, to land on the jukebox, the floor or a comparator. In some orientations the far disc lands on the hopper, which takes it and puts it back in the jukebox, so the third click pops it out again; in the others that click finds the jukebox empty and does nothing.",
+  "ticks": 80,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "jukebox",
+    "hopper",
+    "item",
+    "comparator",
+    "rng"
+  ],
+  "palette": {
+    "#": "stone",
+    "J": "jukebox[has_record=false]",
+    "w": "hopper[enabled=true,facing=west]",
+    "L": "redstone_lamp[lit=false]",
+    "c": "comparator[facing=north,mode=compare,powered=false]"
+  },
+  "layers": [
+    [
+      "#######",
+      "#######",
+      "#######",
+      "#######",
+      "#######"
+    ],
+    [
+      ".......",
+      ".Jw.JL.",
+      ".c..c..",
+      ".L..L..",
+      "......."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 30,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "tick": 40,
+      "action": "use",
+      "pos": [
+        4,
+        1,
+        1
+      ]
+    },
+    {
+      "tick": 50,
+      "action": "use",
+      "pos": [
+        1,
+        1,
+        1
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        2,
+        1,
+        1
+      ],
+      "items": [
+        {
+          "slot": 2,
+          "id": "music_disc_far",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "pos": [
+        4,
+        1,
+        1
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "music_disc_strad",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "entities": true
+}
