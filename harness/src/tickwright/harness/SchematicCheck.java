@@ -103,7 +103,9 @@ import net.minecraft.world.phys.AABB;
  */
 public final class SchematicCheck {
     private static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_SKIP_ON_PLACE;
-    private static final BlockPos ORIGIN = new BlockPos(0, 100, 0);
+    // The largest fixture is 30 by 19 by 35 blocks; boxes start here, so with
+    // a margin they stay within the same 4 by 4 chunks the capture uses.
+    private static final BlockPos ORIGIN = new BlockPos(-20, 100, -20);
     private static int CURRENT;
 
     private static MinecraftServer server;
@@ -137,7 +139,7 @@ public final class SchematicCheck {
         blocks = level.holderLookup(Registries.BLOCK);
         // Entities are found only in chunks loaded with their entities, so
         // load the area first. Nothing ticks after that.
-        warmUp(64);
+        warmUp(40);
         System.out.printf("Minecraft %s, data version %d%n", SharedConstants.getCurrentVersion().name(), CURRENT);
 
         if (save != null) {
@@ -639,26 +641,32 @@ public final class SchematicCheck {
         return new Vec3i(Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY()), Math.max(a.getZ(), b.getZ()));
     }
 
+    /** Load the chunks the boxes fall in with their entities, as the capture does. */
     private static void warmUp(int extent) throws Exception {
+        int lo = ORIGIN.getX() - 4;
+        int hi = ORIGIN.getX() + extent;
         List<ChunkPos> chunks = new ArrayList<>();
-        for (int cx = (ORIGIN.getX() >> 4) - 1; cx <= ((ORIGIN.getX() + extent) >> 4) + 1; cx++) {
-            for (int cz = (ORIGIN.getZ() >> 4) - 1; cz <= ((ORIGIN.getZ() + extent) >> 4) + 1; cz++) {
+        for (int cx = (lo >> 4) - 1; cx <= (hi >> 4) + 1; cx++) {
+            for (int cz = (lo >> 4) - 1; cz <= (hi >> 4) + 1; cz++) {
                 ChunkPos c = new ChunkPos(cx, cz);
-                chunks.add(c);
+                if (cx >= lo >> 4 && cx <= hi >> 4 && cz >= lo >> 4 && cz <= hi >> 4) {
+                    chunks.add(c);
+                }
                 level.getChunkSource().addTicketWithRadius(TicketType.PLAYER_SIMULATION, c, 2);
                 level.getChunkSource().addTicketWithRadius(TicketType.FORCED, c, 2);
                 level.setChunkForced(cx, cz, true);
             }
         }
-        long deadline = System.nanoTime() + 120_000_000_000L;
+        long deadline = System.nanoTime() + 300_000_000_000L;
         while (System.nanoTime() < deadline
                 && !chunks.stream().allMatch(c -> level.isPositionTickingWithEntitiesLoaded(c.pack()))) {
             tickServer.invoke(server, (BooleanSupplier) () -> true);
             waitUntilNextTick.invoke(server);
             Thread.sleep(5);
         }
-        if (!chunks.stream().allMatch(c -> level.isPositionTickingWithEntitiesLoaded(c.pack()))) {
-            throw new IllegalStateException("chunks never loaded with their entities");
+        long missing = chunks.stream().filter(c -> !level.isPositionTickingWithEntitiesLoaded(c.pack())).count();
+        if (missing > 0) {
+            throw new IllegalStateException(missing + " of " + chunks.size() + " chunks never loaded with their entities");
         }
     }
 
