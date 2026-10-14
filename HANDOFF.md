@@ -42,6 +42,9 @@ picking the work up.
     - small fireballs, and the fire they light
   - **Known duplication glitches:** the TNT dupe and the rail and carpet
     dupes behave as they do in 26.3.
+  - **Update skipping:** a chain of neighbor and shape updates drops what
+    it queues past `max-chained-neighbor-updates` (1,000,000 unless a
+    fixture lowers it), as the game's `CollectingNeighborUpdater` does.
 - Mechanics the engine can't simulate yet are refused by name rather than
   guessed. A run stops with an "unsupported" message, or with
   `run --partial` it records the ticks it could simulate.

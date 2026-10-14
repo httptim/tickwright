@@ -575,17 +575,23 @@ impl Level {
         }
     }
 
-    /// `CollectingNeighborUpdater.addAndRun`.
+    /// `CollectingNeighborUpdater.addAndRun`. Every update a chain queues
+    /// counts, run or not; once `max_chained_updates` have been counted the
+    /// rest are dropped ("Too many chained neighbor updates. Skipping the
+    /// rest."), which is update skipping. The count starts again with the
+    /// next chain.
     fn add_and_run(&mut self, update: Update) {
-        let nested = self.update_count > 0;
+        let running_already = self.update_count > 0;
         let too_many = self.update_count >= self.max_chained_updates;
         self.update_count += 1;
-        if too_many {
-            // "Too many chained neighbor updates. Skipping the rest."
-        } else if nested {
-            self.added_this_layer.push(update);
-        } else {
-            self.stack.push(update);
+        if !too_many {
+            if running_already {
+                self.added_this_layer.push(update);
+            } else {
+                self.stack.push(update);
+            }
+        }
+        if !running_already {
             self.run_updates();
         }
     }
@@ -942,5 +948,99 @@ fn next_step(u: &mut Update) -> (Option<Step>, bool) {
             }),
             false,
         ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const RAIL: &str = "powered_rail[powered=true,shape=east_west,waterlogged=false]";
+
+    /// A line of `len` powered rails along x, each left powered with nothing
+    /// powering it: a line of budded rails, as players use to drive an
+    /// update skipper. Updating the first rail turns them off one after
+    /// another, all in one chain. Each rail that turns off queues ten
+    /// updates: around itself and the block below it, as any rail does when
+    /// its state changes (`affectNeighborsAfterRemoval`), then around itself
+    /// again, six shape updates and around the block below as it turns off.
+    /// The next rail turns off during the first of these.
+    fn stale_rails(len: i32) -> Level {
+        let mut level = Level::new(Rules::for_version("26.3").unwrap());
+        let stone = level.reg.parse("stone").unwrap();
+        let rail = level.reg.parse(RAIL).unwrap();
+        for x in 0..len {
+            level.set_block(Pos::new(x, 99, 0), stone, flags::CLIENTS | flags::KNOWN_SHAPE);
+            // Without `onPlace`, which would find the rail unpowered.
+            level.set_block(Pos::new(x, 100, 0), rail, flags::CLIENTS | flags::KNOWN_SHAPE | flags::SKIP_ON_PLACE);
+        }
+        level
+    }
+
+    /// Update the rail at `x`, starting a chain.
+    fn poke(level: &mut Level, x: i32) {
+        let stone = level.block_id("stone");
+        level.neighbor_changed(Pos::new(x, 100, 0), stone);
+    }
+
+    /// How many rails from the start of the line are off.
+    fn rails_off(level: &Level, len: i32) -> i32 {
+        let off = (0..len).take_while(|&x| !level.flag(level.get(Pos::new(x, 100, 0)), "powered")).count() as i32;
+        let still_on = (off..len).all(|x| level.flag(level.get(Pos::new(x, 100, 0)), "powered"));
+        assert!(still_on, "the rails left powered should be the rest of the line");
+        off
+    }
+
+    /// The first rail turns off on the chain's first update, and rail
+    /// `j + 1` while the first update rail `j` queued runs, which is the
+    /// chain's update `2 + 10 * j`. So a chain that may queue `cap` updates
+    /// turns off every rail `j + 1` with `2 + 10 * j <= cap`.
+    fn rails_turned_off_by_one_chain(cap: i32) -> i32 {
+        (cap - 2) / 10 + 2
+    }
+
+    #[test]
+    fn a_chain_stops_after_the_capped_number_of_updates() {
+        for cap in [10, 24, 25, 100, 1001] {
+            let mut level = stale_rails(400);
+            level.max_chained_updates = cap as usize;
+            poke(&mut level, 0);
+            assert_eq!(rails_off(&level, 400), rails_turned_off_by_one_chain(cap), "cap {cap}");
+        }
+    }
+
+    #[test]
+    fn update_skipping_at_the_default_cap() {
+        // About 100,000 rails turn off before a chain reaches the default
+        // 1,000,000 updates, so the line is longer than that.
+        let len = 120_000;
+        let mut level = stale_rails(len);
+        assert_eq!(level.max_chained_updates, 1_000_000);
+        poke(&mut level, 0);
+        let first = rails_off(&level, len);
+        assert_eq!(first, rails_turned_off_by_one_chain(1_000_000));
+        assert_eq!(first, 100_001);
+
+        // The next chain counts from zero, so it finishes the line.
+        poke(&mut level, first);
+        assert_eq!(rails_off(&level, len), len);
+
+        // Without the cap, one chain turns off the whole line.
+        let mut level = stale_rails(len);
+        level.max_chained_updates = usize::MAX;
+        poke(&mut level, 0);
+        assert_eq!(rails_off(&level, len), len);
+    }
+
+    #[test]
+    fn a_cap_of_zero_drops_every_update_and_still_ends_the_chain() {
+        let mut level = stale_rails(20);
+        level.max_chained_updates = 0;
+        poke(&mut level, 0);
+        assert_eq!(rails_off(&level, 20), 0);
+        assert_eq!(level.update_count, 0);
+        level.max_chained_updates = DEFAULT_MAX_CHAINED_UPDATES;
+        poke(&mut level, 0);
+        assert_eq!(rails_off(&level, 20), 20);
     }
 }
