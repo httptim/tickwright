@@ -134,8 +134,8 @@ pub fn hook_update_shape(level: &Level, pos: Pos, state: StateId, dir: Dir) -> S
 /// living entity's gravity and drag whatever the entity. Minecarts and
 /// primed TNT draw twice from the level random for the slide's sound and
 /// particles.
-pub fn honey_entity_inside(level: &mut Level, pos: Pos) {
-    let e = level.entities.last_mut().expect("the entity inside");
+pub fn honey_entity_inside(level: &mut Level, k: usize, pos: Pos) {
+    let e = &mut level.entities[k];
     if !honey_sliding_down(pos, e) {
         return;
     }

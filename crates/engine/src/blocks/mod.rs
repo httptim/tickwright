@@ -610,22 +610,23 @@ pub fn trigger_event(level: &mut Level, pos: Pos, state: StateId, a: i32, b: i32
     }
 }
 
-/// `entityInside`: an entity's box is inside the block's space. `precise`
-/// (`isPrecise`) says the block is in the box where its move ended, or the
-/// move was a long one.
-pub fn entity_inside(level: &mut Level, pos: Pos, state: StateId, precise: bool) {
+/// `entityInside`: an entity's box is inside the block's space. `k` is the
+/// entity's index in the level's list, where it stays while blocks see it,
+/// even when one spawns another entity. `precise` (`isPrecise`) says the
+/// block is in the box where its move ended, or the move was a long one.
+pub fn entity_inside(level: &mut Level, k: usize, pos: Pos, state: StateId, precise: bool) {
     match level.kind(state) {
         Kind::PressurePlate | Kind::WeightedPlate => plate::entity_inside(level, pos, state),
         Kind::DetectorRail => rail::detector_entity_inside(level, pos, state),
         Kind::Tripwire => tripwire::entity_inside(level, pos, state),
-        Kind::Hopper => container::hopper_entity_inside(level, pos),
+        Kind::Hopper => container::hopper_entity_inside(level, k, pos),
         // `isPrecise`: only a column the entity ends up in, or one it
         // passed on a long move, lifts or drags it.
-        Kind::BubbleColumn if precise => bubble::column_entity_inside(level, pos, state),
-        Kind::Cobweb => bubble::web_entity_inside(level),
+        Kind::BubbleColumn if precise => bubble::column_entity_inside(level, k, pos, state),
+        Kind::Cobweb => bubble::web_entity_inside(level, k),
         Kind::Button => button::entity_inside(level, pos, state),
-        Kind::Fire => fire::entity_inside(level),
-        Kind::Honey => plain::honey_entity_inside(level, pos),
+        Kind::Fire => fire::entity_inside(level, k),
+        Kind::Honey => plain::honey_entity_inside(level, k, pos),
         _ => {}
     }
 }

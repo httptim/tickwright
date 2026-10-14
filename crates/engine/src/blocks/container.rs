@@ -385,9 +385,9 @@ pub fn push_items_tick(level: &mut Level, pos: Pos) {
 enum Intake {
     /// `suckInItems`: from the container or the items above.
     Above,
-    /// `addItem(hopper, itemEntity)` for the item that just entered it: the
-    /// last entity in the level's list while blocks see it.
-    Entity,
+    /// `addItem(hopper, itemEntity)` for the item that just entered it, at
+    /// this index in the level's list.
+    Entity(usize),
 }
 
 /// `tryMoveItems`.
@@ -404,10 +404,7 @@ fn try_move_items(level: &mut Level, pos: Pos, intake: Intake) -> bool {
     if !is_full_container(level, inv) {
         changed |= match intake {
             Intake::Above => suck_in_items(level, inv),
-            Intake::Entity => {
-                let k = level.entities.len() - 1;
-                add_item_entity(level, inv, k)
-            }
+            Intake::Entity(k) => add_item_entity(level, inv, k),
         };
     }
     if changed {
@@ -425,13 +422,13 @@ fn suck_box(pos: Pos) -> Aabb {
 
 /// `HopperBlockEntity.entityInside`: an item that touches the suck box
 /// goes in at once.
-pub fn hopper_entity_inside(level: &mut Level, pos: Pos) {
-    let Some(e) = level.entities.last() else { return };
+pub fn hopper_entity_inside(level: &mut Level, k: usize, pos: Pos) {
+    let e = &level.entities[k];
     let crate::entity::Data::Item(item) = &e.data else { return };
     if item.stack.is_empty() || !e.bounding_box().intersects(&suck_box(pos)) {
         return;
     }
-    try_move_items(level, pos, Intake::Entity);
+    try_move_items(level, pos, Intake::Entity(k));
 }
 
 /// `addItem(container, itemEntity)`: as much of the stack as fits.

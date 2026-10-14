@@ -9,7 +9,7 @@ picking the work up.
 
 - The engine targets Java Edition 26.3. Every behaviour is checked against
   traces captured from the real 26.3 server (`traces/26.3`).
-- There are 242 fixtures (`fixtures/`) and 2022 traces: one per fixture
+- There are 245 fixtures (`fixtures/`) and 2046 traces: one per fixture
   and orientation, and 100 more seeds of `phase4/tnt_cannon`. Every trace
   matches at the strictest level ("order"), and no fixture is refused.
   The fixtures listed in `crates/engine/tests/expected.txt` must keep
@@ -169,5 +169,15 @@ differs from the committed traces. That keeps them honest.
   item without physics past the 0.51 limit, a moving piston that fills
   its block counting as full for an item stuck next to it, and block
   effects on a piston push the limit cut to nothing.
+- **The entity blocks see:** an entity is out of the level's list while
+  it ticks or a piston moves it. Take it out with `Level::take_entity`
+  and put it back with `Level::put_entity`. Its slot meanwhile holds an
+  empty entity that counts as removed, so no query finds it (a plain
+  `std::mem::take` leaves one at the origin that plates and tripwire
+  would feel). `Level::with_listed` puts the entity back in its own slot
+  while blocks and containers look at it, and block handlers get that
+  index. Entities a block spawns meanwhile, such as TNT a pressure plate
+  lights, go on the end of the list. Don't read `entities.last()` for
+  the entity a block feels.
 - **Some refused cases are close to supported:** an arrow is refused once
   the block it is stuck in goes. The full list is in the code.

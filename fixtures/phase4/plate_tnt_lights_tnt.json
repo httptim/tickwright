@@ -1,0 +1,46 @@
+{
+  "name": "plate_tnt_lights_tnt",
+  "description": "Primed TNT summoned above an oak pressure plate falls onto it and, in its own tick, lights the TNT beside the plate. Each keeps its own fuse, and neither goes off within the run.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "pressure_plate",
+    "tnt"
+  ],
+  "palette": {
+    "#": "obsidian",
+    "p": "oak_pressure_plate[powered=false]",
+    "T": "tnt[unstable=false]"
+  },
+  "layers": [
+    [
+      "###",
+      "###",
+      "###"
+    ],
+    [
+      "...",
+      ".pT",
+      "..."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        1.5,
+        2.5,
+        1.5
+      ],
+      "nbt": "{fuse:80}"
+    }
+  ],
+  "entities": true
+}

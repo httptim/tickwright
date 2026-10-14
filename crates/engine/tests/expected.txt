@@ -241,3 +241,6 @@ etho_hopper_clock order
 grizdale_tff order
 ilmango_shulker_sorter order
 firewolf_flying_machine order
+plate_item_lights_tnt order
+plate_item_lights_tnt_above order
+plate_tnt_lights_tnt order

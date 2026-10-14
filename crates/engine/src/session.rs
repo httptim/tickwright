@@ -535,7 +535,7 @@ impl Session {
         self.level
             .entities
             .iter()
-            .filter(|e| !e.removed && !matches!(e.data, crate::entity::Data::Gone))
+            .filter(|e| !e.removed)
             .map(|e| EntityView {
                 id: e.id,
                 kind: e.type_name().to_string(),
@@ -659,6 +659,143 @@ mod tests {
         s.rewind(0).unwrap();
         assert!(s.entities().is_empty(), "the summon was input to tick 1");
         assert!(s.summon("zombie", [0.5, 1.0, 0.5], None, None).is_err());
+    }
+
+    #[test]
+    fn an_item_that_primes_tnt_from_a_plate_stays_an_item() {
+        let mut s = Session::new("26.3").unwrap();
+        s.set_block(Pos::new(0, 0, 0), "stone", Placement::Quiet).unwrap();
+        s.set_block(Pos::new(1, 0, 0), "stone", Placement::Quiet).unwrap();
+        s.set_block(Pos::new(0, 1, 0), "oak_pressure_plate[powered=false]", Placement::Quiet).unwrap();
+        s.set_block(Pos::new(1, 1, 0), "tnt[unstable=false]", Placement::Quiet).unwrap();
+        s.summon("item", [0.5, 2.0, 0.5], None, Some(r#"{Item:{id:"minecraft:stone",count:1}}"#)).unwrap();
+        for _ in 0..20 {
+            s.step();
+        }
+        assert_eq!(s.block(Pos::new(0, 1, 0)), "minecraft:oak_pressure_plate[powered=true]");
+        assert_eq!(s.block(Pos::new(1, 1, 0)), "minecraft:air");
+        let e = s.entities();
+        let kinds: Vec<(i32, &str)> = e.iter().map(|e| (e.id, e.kind.as_str())).collect();
+        assert_eq!(
+            kinds,
+            [(1, "minecraft:item"), (2, "minecraft:tnt")],
+            "the item stays first, the TNT it lit after it"
+        );
+        assert_eq!(e[0].detail.as_deref(), Some("minecraft:stone*1"));
+        assert_eq!(e[0].pos[1], 1.0, "the item lies on the plate");
+    }
+
+    /// The entities' ids and types in the order they tick, which must be
+    /// the order they were added.
+    fn tick_order(s: &Session) -> Vec<(i32, String)> {
+        let e: Vec<(i32, String)> = s.entities().into_iter().map(|e| (e.id, e.kind)).collect();
+        assert!(e.windows(2).all(|w| w[0].0 < w[1].0), "entities tick in the order they were added: {e:?}");
+        e
+    }
+
+    fn stone_under(s: &mut Session, blocks: &[Pos]) {
+        for p in blocks {
+            s.set_block(p.below(), "stone", Placement::Quiet).unwrap();
+        }
+    }
+
+    #[test]
+    fn a_minecart_that_primes_tnt_from_a_detector_rail_stays_a_minecart() {
+        let mut s = Session::new("26.3").unwrap();
+        stone_under(&mut s, &[Pos::new(0, 1, 0), Pos::new(0, 1, 1)]);
+        s.set_block(Pos::new(0, 1, 0), "detector_rail[powered=false,shape=east_west]", Placement::Quiet).unwrap();
+        s.set_block(Pos::new(0, 1, 1), "tnt[unstable=false]", Placement::Quiet).unwrap();
+        s.summon("minecart", [0.5, 1.0625, 0.5], None, None).unwrap();
+        for _ in 0..5 {
+            s.step();
+        }
+        assert_eq!(s.block(Pos::new(0, 1, 1)), "minecraft:air", "the rail lit the TNT");
+        assert_eq!(tick_order(&s), [(1, "minecraft:minecart".into()), (2, "minecraft:tnt".into())]);
+    }
+
+    #[test]
+    fn an_item_a_piston_pushes_onto_a_plate_by_tnt_keeps_its_place() {
+        let mut s = Session::new("26.3").unwrap();
+        let row: Vec<Pos> = (0..5).flat_map(|x| [Pos::new(x, 1, 0), Pos::new(x, 1, 1)]).collect();
+        stone_under(&mut s, &row);
+        s.set_block(Pos::new(1, 1, 0), "piston[extended=false,facing=east]", Placement::Quiet).unwrap();
+        s.set_block(Pos::new(3, 1, 0), "oak_pressure_plate[powered=false]", Placement::Quiet).unwrap();
+        s.set_block(Pos::new(3, 1, 1), "tnt[unstable=false]", Placement::Quiet).unwrap();
+        s.summon("item", [2.5, 1.0, 0.5], None, Some(r#"{Item:{id:"minecraft:stone",count:1},PickupDelay:40}"#))
+            .unwrap();
+        for _ in 0..5 {
+            s.step();
+        }
+        assert_eq!(s.block(Pos::new(3, 1, 0)), "minecraft:oak_pressure_plate[powered=false]");
+        s.set_block(Pos::new(0, 1, 0), "redstone_block", Placement::Updates).unwrap();
+        for _ in 0..5 {
+            s.step();
+        }
+        assert_eq!(s.block(Pos::new(3, 1, 0)), "minecraft:oak_pressure_plate[powered=true]");
+        assert_eq!(s.block(Pos::new(3, 1, 1)), "minecraft:air", "the plate lit the TNT");
+        assert_eq!(tick_order(&s), [(1, "minecraft:item".into()), (2, "minecraft:tnt".into())]);
+    }
+
+    #[test]
+    fn an_arrow_that_primes_tnt_from_a_button_stays_an_arrow() {
+        let mut s = Session::new("26.3").unwrap();
+        stone_under(&mut s, &[Pos::new(7, 1, 1)]);
+        s.set_block(Pos::new(8, 1, 0), "stone", Placement::Quiet).unwrap();
+        s.set_block(Pos::new(7, 1, 0), "oak_button[face=wall,facing=west,powered=false]", Placement::Quiet).unwrap();
+        s.set_block(Pos::new(7, 1, 1), "tnt[unstable=false]", Placement::Quiet).unwrap();
+        s.summon("arrow", [1.5, 1.75, 0.5], Some([1.5, 0.0, 0.0]), None).unwrap();
+        for _ in 0..10 {
+            s.step();
+        }
+        assert_eq!(s.block(Pos::new(7, 1, 0)), "minecraft:oak_button[face=wall,facing=west,powered=true]");
+        assert_eq!(s.block(Pos::new(7, 1, 1)), "minecraft:air", "the button lit the TNT");
+        assert_eq!(tick_order(&s), [(1, "minecraft:arrow".into()), (2, "minecraft:tnt".into())]);
+    }
+
+    /// Each change to the block at `at`, on stone, as an item summoned
+    /// `drop` above its base falls in, over 20 ticks.
+    fn changes_under_a_falling_item(at: Pos, block: &str, drop: f64) -> Vec<(u32, String)> {
+        let mut s = Session::new("26.3").unwrap();
+        s.set_block(at.below(), "stone", Placement::Quiet).unwrap();
+        s.set_block(at, block, Placement::Quiet).unwrap();
+        let item = Some(r#"{Item:{id:"minecraft:stone",count:1}}"#);
+        s.summon("item", [at.x as f64 + 0.5, at.y as f64 + drop, at.z as f64 + 0.5], None, item).unwrap();
+        let mut changes = Vec::new();
+        let mut last = s.block(at);
+        for _ in 0..20 {
+            s.step();
+            let now = s.block(at);
+            if now != last {
+                changes.push((s.tick(), now.clone()));
+                last = now;
+            }
+        }
+        changes
+    }
+
+    // While an entity ticks, its slot in the list is empty, and the empty
+    // entity there sits at the origin. Blocks there must not feel it.
+
+    #[test]
+    fn a_weighted_plate_at_the_origin_feels_only_real_entities() {
+        let plate = "light_weighted_pressure_plate[power=0]";
+        let origin = changes_under_a_falling_item(Pos::new(0, 0, 0), plate, 0.5);
+        let elsewhere = changes_under_a_falling_item(Pos::new(3, 0, 3), plate, 0.5);
+        assert!(!elsewhere.is_empty() && elsewhere[0].0 > 1, "the item lands after a few ticks: {elsewhere:?}");
+        assert_eq!(origin, elsewhere);
+    }
+
+    #[test]
+    fn a_tripwire_at_the_origin_feels_only_real_entities() {
+        let string =
+            "tripwire[attached=false,disarmed=false,east=false,north=false,powered=false,south=false,west=false]";
+        let origin = changes_under_a_falling_item(Pos::new(0, 0, 0), string, 0.9);
+        let elsewhere = changes_under_a_falling_item(Pos::new(3, 0, 3), string, 0.9);
+        assert!(
+            !elsewhere.is_empty() && elsewhere[0].0 > 1,
+            "the item reaches the string after a few ticks: {elsewhere:?}"
+        );
+        assert_eq!(origin, elsewhere);
     }
 
     #[test]

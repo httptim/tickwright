@@ -173,10 +173,7 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
     // level's list while it takes items, as containers are found there.
     let m = cart(e);
     if m.hopper && m.enabled && !e.removed {
-        level.entities.push(std::mem::take(e));
-        let k = level.entities.len() - 1;
-        container::hopper_cart_suck(level, k);
-        *e = level.entities.pop().unwrap();
+        level.with_listed(e, container::hopper_cart_suck);
     }
 }
 

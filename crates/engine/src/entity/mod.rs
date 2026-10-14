@@ -39,7 +39,8 @@ pub enum Data {
     Minecart(minecart::Minecart),
     SmallFireball,
     Arrow(arrow::Arrow),
-    /// A slot whose entity is being ticked, or one that was removed.
+    /// The empty slot an entity leaves while it is out of the list
+    /// (`Level::take_entity`).
     #[default]
     Gone,
 }
@@ -79,6 +80,9 @@ pub struct Entity {
     /// (`finalMovementsThisTick`).
     movements: Vec<Movement>,
     final_movements: Vec<Movement>,
+    /// While the entity is out of the level's list, the index of the slot
+    /// it left (`Level::take_entity`).
+    slot: Option<usize>,
 }
 
 impl Entity {
@@ -227,13 +231,47 @@ impl Level {
             if self.entities[i].removed {
                 continue;
             }
-            let mut e = std::mem::take(&mut self.entities[i]);
+            let mut e = self.take_entity(i);
             e.old_pos = e.pos;
             e.tick_count += 1;
             tick(self, &mut e);
-            self.entities[i] = e;
+            self.put_entity(e);
         }
         self.entities.retain(|e| !e.removed);
+    }
+
+    /// Takes the entity at `i` out of the list to tick or move it, until
+    /// `put_entity` puts it back. Its slot holds an empty entity that counts
+    /// as removed, so nothing that looks for entities finds it: the empty
+    /// entity sits at the origin with a TNT-sized box, where a pressure
+    /// plate or tripwire would otherwise feel it.
+    pub(crate) fn take_entity(&mut self, i: usize) -> Entity {
+        let mut e = std::mem::replace(&mut self.entities[i], Entity { removed: true, ..Default::default() });
+        e.slot = Some(i);
+        e
+    }
+
+    /// Puts an entity taken out with `take_entity` back in its slot.
+    pub(crate) fn put_entity(&mut self, mut e: Entity) {
+        let i = e.slot.take().expect("an entity out of the level's list");
+        self.entities[i] = e;
+    }
+
+    /// Puts `e`, an entity out of the list (`take_entity`) to tick or to be
+    /// moved by a piston, back in its own slot while `f` runs, so blocks
+    /// and containers looking for entities find it where it belongs, then
+    /// takes it out again. `f` gets its index in the list. Entities spawned
+    /// meanwhile, such as TNT a pressure plate lights, go on the end of the
+    /// list: the game adds them to `EntityTickList` at once, to tick from
+    /// the next tick.
+    pub(crate) fn with_listed<R>(&mut self, e: &mut Entity, f: impl FnOnce(&mut Level, usize) -> R) -> R {
+        let k = e.slot.expect("an entity out of the level's list");
+        let id = e.id;
+        std::mem::swap(&mut self.entities[k], e);
+        let r = f(self, k);
+        debug_assert_eq!(self.entities[k].id, id, "the entity in slot {k} changed while blocks saw it");
+        std::mem::swap(&mut self.entities[k], e);
+        r
     }
 
     pub fn physics(&self) -> &'static Physics {
@@ -408,7 +446,7 @@ fn clamp_loaded_motion(m: Vec3) -> Vec3 {
 /// feel it (`applyEffectsFromBlocks`), every time, even when the push came
 /// to nothing.
 pub fn move_by_piston(level: &mut Level, index: usize, noclip: crate::pos::Dir, movement: Vec3) {
-    let mut e = std::mem::take(&mut level.entities[index]);
+    let mut e = level.take_entity(index);
     let from = e.pos;
     level.piston_noclip = Some(noclip);
     if e.no_physics {
@@ -429,7 +467,7 @@ pub fn move_by_piston(level: &mut Level, index: usize, noclip: crate::pos::Dir, 
     apply_effects_between(level, &mut e, from, to);
     remove_latest_movement(&mut e);
     level.piston_noclip = None;
-    level.entities[index] = e;
+    level.put_entity(e);
 }
 
 /// `Entity.limitPistonMovement`: pistons move an entity at most 0.51 along
@@ -553,9 +591,9 @@ fn apply_movements(level: &mut Level, e: &mut Entity, moves: &[Movement]) {
 /// `Entity.checkInsideBlocks(from, to, ...)`: each block the box passes
 /// moving from `from` to `to` feels the entity, once per
 /// `applyEffectsFromBlocks`, up to `max_iterations` steps of the walk.
-/// The entity being ticked is out of the level's list, so it goes back on
-/// the end while blocks see it, and comes back changed. Returns how many
-/// steps the walk took.
+/// The entity is out of the level's list, so it goes back in its slot
+/// while blocks see it (`Level::with_listed`), and comes back changed.
+/// Returns how many steps the walk took.
 fn check_inside_blocks(
     level: &mut Level,
     e: &mut Entity,
@@ -579,9 +617,7 @@ fn check_inside_blocks(
         visited.push(p);
         let cell = Aabb::new(p.x as f64, p.y as f64, p.z as f64, p.x as f64 + 1.0, p.y as f64 + 1.0, p.z as f64 + 1.0);
         let precise = moved_far || target.intersects(&cell);
-        level.entities.push(std::mem::take(e));
-        crate::blocks::entity_inside(level, p, state, precise);
-        *e = level.entities.pop().unwrap();
+        level.with_listed(e, |level, k| crate::blocks::entity_inside(level, k, p, state, precise));
     }
     iterations + 1
 }
