@@ -878,7 +878,7 @@ mod tests {
             start_entities: vec![
                 summon("armor_stand", Some("{Rotation:[90.0f,0.0f]}")),
                 summon("item", Some(r#"{Item:{id:"minecraft:stone",count:1},UUID:[I;1,2,3,4],OnGround:1b}"#)),
-                summon("falling_block", Some(r#"{BlockState:{Name:"minecraft:gravel"},Time:1}"#)),
+                summon("falling_block", Some(r#"{BlockState:{id:"minecraft:gravel"},Time:1}"#)),
             ],
         };
         let s = Session::from_fixture(&fixture, "26.3").unwrap();

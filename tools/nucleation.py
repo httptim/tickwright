@@ -138,8 +138,13 @@ def snbt(v):
 
 
 def state_string(entry):
-    name = entry["Name"].removeprefix("minecraft:")
-    props = entry.get("Properties") or {}
+    # Structures from data version 5006 on say `id` and `properties`.
+    if "id" in entry:
+        name, props = entry["id"], entry.get("properties")
+    else:
+        name, props = entry["Name"], entry.get("Properties")
+    name = name.removeprefix("minecraft:")
+    props = props or {}
     if not props:
         return name
     return name + "[" + ",".join(f"{k}={v}" for k, v in sorted(props.items())) + "]"

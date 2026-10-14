@@ -1,0 +1,111 @@
+{
+  "name": "falling_block_state_forms",
+  "description": "Falling blocks summoned with each form of BlockState data, falling two blocks onto a stone floor. 26.3 reads BlockState with BlockState.CODEC: id with properties (gravel, an unknown property ignored), or a block id alone (red sand). Since data version 5006 it no longer reads Name, so that one is sand, as is an unknown block; with both keys, id wins.",
+  "ticks": 15,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "falling_block"
+  ],
+  "palette": {
+    "#": "stone"
+  },
+  "layers": [
+    [
+      "#######"
+    ],
+    [
+      "......."
+    ],
+    [
+      "......."
+    ],
+    [
+      "......."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "falling_block",
+      "at": [
+        0.5,
+        3.0,
+        0.5
+      ],
+      "nbt": "{BlockState:{id:\"minecraft:gravel\"}}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "falling_block",
+      "at": [
+        1.5,
+        3.0,
+        0.5
+      ],
+      "nbt": "{BlockState:\"minecraft:red_sand\"}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "falling_block",
+      "at": [
+        2.5,
+        3.0,
+        0.5
+      ],
+      "nbt": "{BlockState:{Name:\"minecraft:gravel\"}}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "falling_block",
+      "at": [
+        3.5,
+        3.0,
+        0.5
+      ],
+      "nbt": "{BlockState:{id:\"red_sand\"}}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "falling_block",
+      "at": [
+        4.5,
+        3.0,
+        0.5
+      ],
+      "nbt": "{BlockState:{id:\"minecraft:gravel\",properties:{bogus:\"x\"}}}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "falling_block",
+      "at": [
+        5.5,
+        3.0,
+        0.5
+      ],
+      "nbt": "{BlockState:{id:\"minecraft:no_such_block\"}}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "falling_block",
+      "at": [
+        6.5,
+        3.0,
+        0.5
+      ],
+      "nbt": "{BlockState:{Name:\"minecraft:red_sand\",id:\"minecraft:gravel\"}}"
+    }
+  ],
+  "entities": true
+}

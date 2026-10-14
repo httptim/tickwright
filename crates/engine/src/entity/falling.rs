@@ -1,6 +1,6 @@
 //! `FallingBlockEntity`: sand, gravel and other blocks that fall.
 
-use super::{DRAG, Data, Entity, apply_gravity, is_free, item, move_entity, replaceable};
+use super::{DRAG, Data, Entity, apply_gravity, is_free, item, move_entity, replaceable, snbt};
 use crate::level::{Level, flags};
 use crate::physics::Vec3;
 use crate::pos::Pos;
@@ -87,4 +87,71 @@ fn drop_self(level: &mut Level, e: &Entity, state: StateId) {
     }
     let name = level.reg.name(state).to_string();
     item::spawn_at_location(level, e.pos, item::Stack::new(name.strip_prefix("minecraft:").unwrap_or(&name), 1));
+}
+
+/// The block a falling block's saved `BlockState` names, as
+/// `FallingBlockEntity.readAdditionalSaveData` reads it with
+/// `BlockState.CODEC`: a block's id alone (`"minecraft:gravel"`) for its
+/// default state, or a compound of `id` and `properties`. A property the
+/// block has, given as one of its values in a string, is set; any other is
+/// left at its default. What the codec can't read (no `id`, a block that
+/// doesn't exist, or the `Name` and `Properties` that 26.3 no longer reads,
+/// since data version 5006) leaves the entity sand.
+pub(crate) fn saved_state(level: &Level, tag: Option<&snbt::Tag>) -> StateId {
+    let sand = level.default_state(level.block_id("sand"));
+    let (id, properties) = match tag {
+        Some(snbt::Tag::String(id)) => (id.as_str(), None),
+        Some(t @ snbt::Tag::Compound(_)) => match t.get("id").and_then(snbt::Tag::string) {
+            Some(id) => (id, t.get("properties")),
+            None => return sand,
+        },
+        _ => return sand,
+    };
+    let Some(block) = level.reg.block_id(id) else { return sand };
+    let info = level.reg.block(block);
+    let mut state = info.default;
+    if let Some(given) = properties {
+        for p in &info.properties {
+            if let Some(v) = given.get(&p.name).and_then(snbt::Tag::string)
+                && p.values.iter().any(|value| value == v)
+            {
+                state = level.reg.with(state, &p.name, v);
+            }
+        }
+    }
+    state
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rules::Rules;
+
+    #[test]
+    fn saved_states_read_as_block_state_codec_reads_them() {
+        let level = Level::new(Rules::for_version("26.3").unwrap());
+        let read = |text: &str| {
+            let tag = snbt::parse(text).unwrap();
+            level.reg.format(saved_state(&level, tag.get("BlockState")))
+        };
+        assert_eq!(read(r#"{BlockState:{id:"minecraft:gravel"}}"#), "minecraft:gravel");
+        assert_eq!(read(r#"{BlockState:{id:"red_sand"}}"#), "minecraft:red_sand");
+        assert_eq!(read(r#"{BlockState:"minecraft:red_sand"}"#), "minecraft:red_sand");
+        assert_eq!(
+            read(r#"{BlockState:{id:"minecraft:anvil",properties:{facing:"east",bogus:"x"}}}"#),
+            "minecraft:anvil[facing=east]"
+        );
+        // A value the property doesn't have stays the default.
+        assert_eq!(
+            read(r#"{BlockState:{id:"minecraft:anvil",properties:{facing:"up"}}}"#),
+            "minecraft:anvil[facing=north]"
+        );
+        // 26.3 no longer reads `Name` and `Properties`: the entity is sand.
+        assert_eq!(read(r#"{BlockState:{Name:"minecraft:gravel"}}"#), "minecraft:sand");
+        assert_eq!(read(r#"{BlockState:{Name:"minecraft:gravel",id:"minecraft:red_sand"}}"#), "minecraft:red_sand");
+        assert_eq!(read(r#"{BlockState:{id:"minecraft:no_such_block"}}"#), "minecraft:sand");
+        assert_eq!(read(r#"{BlockState:{}}"#), "minecraft:sand");
+        assert_eq!(read(r#"{BlockState:[]}"#), "minecraft:sand");
+        assert_eq!(read("{}"), "minecraft:sand");
+    }
 }

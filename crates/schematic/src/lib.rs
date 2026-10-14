@@ -13,6 +13,7 @@ pub mod litematic;
 pub mod nbt;
 pub mod snbt;
 pub mod sponge;
+mod states;
 pub mod structure;
 
 use std::collections::BTreeMap;
@@ -22,6 +23,7 @@ use tickwright_trace::fixture::{ComparatorOutput, Container, ItemSlot, SummonInp
 use tickwright_trace::{BlockState, FixtureSource, Level, ResolvedFixture};
 
 use nbt::Tag;
+pub use states::STATE_ID_DATA_VERSION;
 
 /// The data version 26.3 saves files with (`world_version` in the server
 /// jar's `version.json`, recorded in `data/26.3/version.json`), written into
@@ -157,7 +159,9 @@ pub struct Schematic {
     pub blocks: Vec<([i32; 3], BlockState)>,
     pub block_entities: Vec<BlockEntity>,
     pub entities: Vec<Entity>,
-    /// The data version the file was saved in, if it said.
+    /// The data version the file was saved in, if it said. Block states in
+    /// `entities` and `block_entities` data are always in the keys 26.3
+    /// reads (`id` and `properties`), whatever the file's version.
     pub data_version: Option<i32>,
 }
 
@@ -165,7 +169,7 @@ impl Schematic {
     /// Read a file in whichever format its contents are.
     pub fn read(bytes: &[u8]) -> Result<Schematic> {
         let (_, root) = nbt::read(bytes)?;
-        if root.get("Regions").is_some() {
+        let mut s = if root.get("Regions").is_some() {
             litematic::from_nbt(&root)
         } else if root.get("Schematic").is_some() || root.get("BlockData").is_some() {
             sponge::from_nbt(&root)
@@ -173,14 +177,19 @@ impl Schematic {
             structure::from_nbt(&root)
         } else {
             bail!("not a schematic this reader knows: no Regions, Schematic or palette")
-        }
+        }?;
+        s.read_states();
+        Ok(s)
     }
 
+    /// The file in `format`. Block states are saved in the keys of the
+    /// data version it says it is (see [`STATE_ID_DATA_VERSION`]).
     pub fn write(&self, format: Format) -> Vec<u8> {
+        let s = self.states_for_writing();
         match format {
-            Format::Litematic => litematic::write(self),
-            Format::Sponge => sponge::write(self),
-            Format::Structure => structure::write(self),
+            Format::Litematic => litematic::write(&s),
+            Format::Sponge => sponge::write(&s),
+            Format::Structure => structure::write(&s),
         }
     }
 
@@ -336,28 +345,6 @@ impl Schematic {
     pub fn from_blocks(size: [i32; 3], blocks: impl IntoIterator<Item = ([i32; 3], BlockState)>) -> Schematic {
         Schematic { size, blocks: blocks.into_iter().collect(), ..Default::default() }.finish()
     }
-}
-
-/// `Name` plus `Properties`, as palettes store states.
-fn state_from_nbt(tag: &Tag) -> Result<BlockState> {
-    let name = tag.req("Name")?.as_str().context("`Name` is not a string")?;
-    let id = if name.contains(':') { name.to_string() } else { format!("minecraft:{name}") };
-    let mut props = BTreeMap::new();
-    if let Some(p) = tag.get("Properties") {
-        for (k, v) in p.entries() {
-            props.insert(k.clone(), v.as_str().context("a property is not a string")?.to_string());
-        }
-    }
-    Ok(BlockState { id, props })
-}
-
-fn state_to_nbt(state: &BlockState) -> Tag {
-    let mut entries = vec![("Name".to_string(), Tag::String(state.id.clone()))];
-    if !state.props.is_empty() {
-        let props = state.props.iter().map(|(k, v)| (k.clone(), Tag::String(v.clone()))).collect();
-        entries.push(("Properties".to_string(), Tag::Compound(props)));
-    }
-    Tag::Compound(entries)
 }
 
 /// A block entity compound without the position keys a format adds.
