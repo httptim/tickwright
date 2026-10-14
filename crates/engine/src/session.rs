@@ -662,6 +662,30 @@ mod tests {
     }
 
     #[test]
+    fn an_item_that_primes_tnt_from_a_plate_stays_an_item() {
+        let mut s = Session::new("26.3").unwrap();
+        s.set_block(Pos::new(0, 0, 0), "stone", Placement::Quiet).unwrap();
+        s.set_block(Pos::new(1, 0, 0), "stone", Placement::Quiet).unwrap();
+        s.set_block(Pos::new(0, 1, 0), "oak_pressure_plate[powered=false]", Placement::Quiet).unwrap();
+        s.set_block(Pos::new(1, 1, 0), "tnt[unstable=false]", Placement::Quiet).unwrap();
+        s.summon("item", [0.5, 2.0, 0.5], None, Some(r#"{Item:{id:"minecraft:stone",count:1}}"#)).unwrap();
+        for _ in 0..20 {
+            s.step();
+        }
+        assert_eq!(s.block(Pos::new(0, 1, 0)), "minecraft:oak_pressure_plate[powered=true]");
+        assert_eq!(s.block(Pos::new(1, 1, 0)), "minecraft:air");
+        let e = s.entities();
+        let kinds: Vec<(i32, &str)> = e.iter().map(|e| (e.id, e.kind.as_str())).collect();
+        assert_eq!(
+            kinds,
+            [(1, "minecraft:item"), (2, "minecraft:tnt")],
+            "the item stays first, the TNT it lit after it"
+        );
+        assert_eq!(e[0].detail.as_deref(), Some("minecraft:stone*1"));
+        assert_eq!(e[0].pos[1], 1.0, "the item lies on the plate");
+    }
+
+    #[test]
     fn a_build_starts_with_its_simulated_entities() {
         use tickwright_trace::fixture::SummonInput;
         let summon = |entity: &str, nbt: Option<&str>| SummonInput {

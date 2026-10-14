@@ -236,6 +236,20 @@ impl Level {
         self.entities.retain(|e| !e.removed);
     }
 
+    /// Puts `e`, the entity being ticked, back on the end of the list while
+    /// `f` runs, so blocks and containers looking for entities find it, then
+    /// takes that same entity back. `f` gets its index in the list.
+    /// Entities spawned meanwhile, such as TNT a pressure plate lights, stay
+    /// on the list after it in the order they came: the game adds them to
+    /// `EntityTickList` at once, to tick from the next tick.
+    pub(crate) fn with_listed<R>(&mut self, e: &mut Entity, f: impl FnOnce(&mut Level, usize) -> R) -> R {
+        let k = self.entities.len();
+        self.entities.push(std::mem::take(e));
+        let r = f(self, k);
+        *e = self.entities.remove(k);
+        r
+    }
+
     pub fn physics(&self) -> &'static Physics {
         Physics::get(self.reg.version).expect("block physics for this version")
     }
@@ -554,8 +568,8 @@ fn apply_movements(level: &mut Level, e: &mut Entity, moves: &[Movement]) {
 /// moving from `from` to `to` feels the entity, once per
 /// `applyEffectsFromBlocks`, up to `max_iterations` steps of the walk.
 /// The entity being ticked is out of the level's list, so it goes back on
-/// the end while blocks see it, and comes back changed. Returns how many
-/// steps the walk took.
+/// it while blocks see it ([`Level::with_listed`]), and comes back changed.
+/// Returns how many steps the walk took.
 fn check_inside_blocks(
     level: &mut Level,
     e: &mut Entity,
@@ -579,9 +593,7 @@ fn check_inside_blocks(
         visited.push(p);
         let cell = Aabb::new(p.x as f64, p.y as f64, p.z as f64, p.x as f64 + 1.0, p.y as f64 + 1.0, p.z as f64 + 1.0);
         let precise = moved_far || target.intersects(&cell);
-        level.entities.push(std::mem::take(e));
-        crate::blocks::entity_inside(level, p, state, precise);
-        *e = level.entities.pop().unwrap();
+        level.with_listed(e, |level, k| crate::blocks::entity_inside(level, k, p, state, precise));
     }
     iterations + 1
 }

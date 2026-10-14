@@ -60,11 +60,8 @@ pub fn update_shape(level: &mut Level, pos: Pos, state: StateId) -> StateId {
 
 /// `BaseFireBlock.entityInside`: things catch fire and burn, which isn't
 /// simulated; arrows and fireballs aren't harmed.
-pub fn entity_inside(level: &mut Level) {
-    let burning = level
-        .entities
-        .last()
-        .is_some_and(|e| !matches!(e.data, crate::entity::Data::Arrow(_) | crate::entity::Data::SmallFireball));
+pub fn entity_inside(level: &mut Level, k: usize) {
+    let burning = !matches!(level.entities[k].data, crate::entity::Data::Arrow(_) | crate::entity::Data::SmallFireball);
     if burning {
         level.unsupported("an entity in fire");
     }

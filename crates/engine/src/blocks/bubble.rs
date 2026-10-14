@@ -91,11 +91,11 @@ pub fn column_tick(level: &mut Level, pos: Pos, state: StateId) {
 }
 
 /// `BubbleColumnBlock.entityInside`: lift or drag, harder at the open top.
-pub fn column_entity_inside(level: &mut Level, pos: Pos, state: StateId) {
+pub fn column_entity_inside(level: &mut Level, k: usize, pos: Pos, state: StateId) {
     let drag = level.flag(state, "drag");
     let above = level.get(pos.above());
     let open = level.physics().shape(above).is_empty() && water::fluid_state(level, above).is_empty();
-    let e = level.entities.last_mut().expect("the entity inside");
+    let e = &mut level.entities[k];
     let m = e.motion;
     if open {
         // `Entity.onAboveBubbleColumn`.
@@ -116,7 +116,6 @@ pub fn column_entity_inside(level: &mut Level, pos: Pos, state: StateId) {
 
 /// `WebBlock.entityInside`: `makeStuckInBlock` at a quarter speed
 /// sideways and a twentieth vertically.
-pub fn web_entity_inside(level: &mut Level) {
-    let e = level.entities.last_mut().expect("the entity inside");
-    e.stuck_speed_multiplier = Vec3::new(0.25, 0.05f32 as f64, 0.25);
+pub fn web_entity_inside(level: &mut Level, k: usize) {
+    level.entities[k].stuck_speed_multiplier = Vec3::new(0.25, 0.05f32 as f64, 0.25);
 }
