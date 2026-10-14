@@ -179,3 +179,40 @@ fn pop_out_the_item(level: &mut Level, pos: Pos) {
     }
     on_song_changed(level, pos);
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::items;
+
+    #[test]
+    fn songs_come_from_the_game_data() {
+        let eleven = items::jukebox_song("minecraft:music_disc_11").unwrap();
+        assert_eq!(eleven.comparator_output, 11);
+        assert_eq!(eleven.length_in_ticks(), 1420);
+        assert!(!eleven.has_finished(1439) && eleven.has_finished(1440));
+        assert_eq!(items::jukebox_song("music_disc_cat").map(|s| s.comparator_output), Some(2));
+        assert_eq!(items::jukebox_song("minecraft:cobblestone"), None);
+    }
+
+    #[test]
+    fn removing_a_jukebox_with_a_disc_is_refused() {
+        use tickwright_trace::{FixtureSource, Transform};
+        let json = |items: &str| {
+            format!(
+                r###"{{"name": "t", "ticks": 4,
+                    "palette": {{"#": "stone", "j": "jukebox[has_record=false]"}},
+                    "layers": [["##"], ["j."]],
+                    "stimuli": [{{"tick": 2, "action": "set", "pos": [0, 1, 0], "state": "air"}}],
+                    "containers": [{{"pos": [0, 1, 0], "items": [{items}]}}]}}"###
+            )
+        };
+        let source = FixtureSource::from_json(&json(r#"{"slot": 0, "id": "music_disc_cat", "count": 1}"#)).unwrap();
+        let trace = crate::run::run_partial(&source.resolve(Transform::IDENTITY).unwrap(), "26.3").unwrap();
+        let u = trace.unsupported.as_ref().unwrap();
+        assert_eq!(u.tick, 2);
+        assert_eq!(u.message, "removing a jukebox with a disc in it is not simulated by the engine yet");
+        // An empty jukebox goes quietly.
+        let source = FixtureSource::from_json(&json("")).unwrap();
+        assert!(crate::run::run(&source.resolve(Transform::IDENTITY).unwrap(), "26.3").is_ok());
+    }
+}

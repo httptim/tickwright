@@ -268,3 +268,6 @@ tnt_fast_walk_limit_rising order
 piston_moves_waterlogged_blocks order
 tnt_breaks_double_slabs order
 tnt_breaks_empty_shulker_boxes order
+jukebox_hopper_loop order
+jukebox_dropper_sculk order
+jukebox_pop_out order
