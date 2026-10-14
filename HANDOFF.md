@@ -166,12 +166,18 @@ differs from the committed traces. That keeps them honest.
   again with the logged edits, which panics on such an edit. The session
   tests also check every fixture against a session that keeps every tick.
 - **Blocks an entity passes** feel it by the game's own walk
-  (`entity::blocks_between`, a port of `forEachBlockIntersectedBetween`),
-  one axis at a time for the entity's own moves. Three paths follow the
-  game's code but no capture tells them apart yet: a piston pushing an
-  item without physics past the 0.51 limit, a moving piston that fills
-  its block counting as full for an item stuck next to it, and block
-  effects on a piston push the limit cut to nothing.
+  (`entity::for_each_block_between`, a port of
+  `forEachBlockIntersectedBetween`), one axis at a time for the entity's
+  own moves. Three paths follow the game's code but no capture tells them
+  apart yet: a piston pushing an item without physics past the 0.51
+  limit, a moving piston that fills its block counting as full for an
+  item stuck next to it, and block effects on a piston push the limit cut
+  to nothing.
+- **Entity moves allocate nothing:** walks and collisions visit blocks
+  through callbacks, and the lists they need are buffers kept on the
+  level (`entity::Scratch`) or on the entity. A build of 576 items runs
+  1.8 times as fast for it. Keep new per-tick entity code free of
+  allocations too.
 - **The entity blocks see:** an entity is out of the level's list while
   it ticks or a piston moves it. Take it out with `Level::take_entity`
   and put it back with `Level::put_entity`. Its slot meanwhile holds an

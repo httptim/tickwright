@@ -440,6 +440,27 @@ fn clamp_loaded_motion(m: Vec3) -> Vec3 {
 
 // --- movement --------------------------------------------------------------
 
+/// Buffers that moves and block walks reuse, so that once they have grown
+/// moving an entity allocates nothing. Each use clears what it takes, and
+/// they hold no state between uses: a copy of the level starts with empty
+/// ones.
+#[derive(Default)]
+pub(crate) struct Scratch {
+    /// `Entity.visitedBlocks`: the blocks that felt the entity in this
+    /// `applyEffectsFromBlocks`.
+    visited: Vec<Pos>,
+    /// The blocks one walk (`forEachBlockIntersectedBetween`) has visited.
+    seen: Vec<Pos>,
+    /// The boxes a move might hit.
+    shapes: Shapes,
+}
+
+impl Clone for Scratch {
+    fn clone(&self) -> Scratch {
+        Scratch::default()
+    }
+}
+
 /// `PistonMovingBlockEntity.moveEntityByPiston` for the entity at `index`
 /// in the level's list: `Entity.move(MoverType.PISTON, ...)` with blocks
 /// moving toward `noclip` passing through it, then the blocks it is in
@@ -529,23 +550,30 @@ fn remove_latest_movement(e: &mut Entity) {
 /// and where it is if it made none. The moves are kept for
 /// [`apply_effects_for_last_movements`].
 pub fn apply_effects_from_blocks(level: &mut Level, e: &mut Entity) {
-    let mut moves = std::mem::take(&mut e.movements);
-    match moves.last() {
-        None => moves.push(Movement { from: e.old_pos, to: e.pos, asked: None }),
-        Some(last) if last.to.distance_to_sqr(e.pos) > 9.9999994E-11f32 as f64 => {
-            moves.push(Movement { from: last.to, to: e.pos, asked: None })
+    // The moves become the last moves, and the list of moves this tick
+    // takes over the last moves' buffer, so nothing is copied.
+    std::mem::swap(&mut e.movements, &mut e.final_movements);
+    e.movements.clear();
+    let pos = e.pos;
+    match e.final_movements.last() {
+        None => e.final_movements.push(Movement { from: e.old_pos, to: pos, asked: None }),
+        Some(last) if last.to.distance_to_sqr(pos) > 9.9999994E-11f32 as f64 => {
+            let from = last.to;
+            e.final_movements.push(Movement { from, to: pos, asked: None })
         }
         _ => {}
     }
-    e.final_movements = moves.clone();
-    apply_movements(level, e, &moves);
+    apply_effects_for_last_movements(level, e);
 }
 
 /// `Entity.applyEffectsFromBlocksForLastMovements`: an entity that didn't
 /// move this tick feels the blocks of its last moves again.
 pub fn apply_effects_for_last_movements(level: &mut Level, e: &mut Entity) {
-    let moves = e.final_movements.clone();
+    // Out of the entity while it is borrowed, and back after: no block
+    // reads an entity's moves.
+    let moves = std::mem::take(&mut e.final_movements);
     apply_movements(level, e, &moves);
+    e.final_movements = moves;
 }
 
 /// `Entity.applyEffectsFromBlocks(from, to)`.
@@ -563,7 +591,8 @@ fn apply_movements(level: &mut Level, e: &mut Entity, moves: &[Movement]) {
     if e.on_ground {
         step_on(level, e);
     }
-    let mut visited: Vec<Pos> = Vec::new();
+    let mut visited = std::mem::take(&mut level.entity_scratch.visited);
+    visited.clear();
     for m in moves {
         let delta = m.to - m.from;
         let mut left = 16;
@@ -586,6 +615,7 @@ fn apply_movements(level: &mut Level, e: &mut Entity, moves: &[Movement]) {
             check_inside_blocks(level, e, m.to, m.to, &mut visited, 1);
         }
     }
+    level.entity_scratch.visited = visited;
 }
 
 /// `Entity.checkInsideBlocks(from, to, ...)`: each block the box passes
@@ -605,20 +635,23 @@ fn check_inside_blocks(
     let target = e.box_at(to).deflate(1.0E-5f32 as f64);
     let moved_far = from.distance_to_sqr(to) > 0.9999900000002526f64 * 0.9999900000002526;
     let mut iterations = 0;
-    for (p, iteration) in blocks_between(from, to, target) {
+    let mut seen = std::mem::take(&mut level.entity_scratch.seen);
+    for_each_block_between(from, to, target, &mut seen, |p, iteration| {
         if e.removed || iteration >= max_iterations {
-            break;
+            return false;
         }
         iterations = iteration;
         let state = level.get(p);
         if level.is_air(state) || visited.contains(&p) {
-            continue;
+            return true;
         }
         visited.push(p);
         let cell = Aabb::new(p.x as f64, p.y as f64, p.z as f64, p.x as f64 + 1.0, p.y as f64 + 1.0, p.z as f64 + 1.0);
         let precise = moved_far || target.intersects(&cell);
         level.with_listed(e, |level, k| crate::blocks::entity_inside(level, k, p, state, precise));
-    }
+        true
+    });
+    level.entity_scratch.seen = seen;
     iterations + 1
 }
 
@@ -627,103 +660,119 @@ fn axis_step_order(v: Vec3) -> [u8; 3] {
     if v.x.abs() < v.z.abs() { [1, 2, 0] } else { [1, 0, 2] }
 }
 
-/// `BlockGetter.forEachBlockIntersectedBetween`: the blocks a box passes
-/// moving from `from` to `to` (`target` is the box at `to`), in the order
-/// the game visits them, each with the step of the walk it came in. The
-/// box's blocks where it started come first, then those its leading corner
-/// sweeps through, then the rest of the blocks it ends in.
-fn blocks_between(from: Vec3, to: Vec3, target: Aabb) -> Vec<(Pos, i32)> {
+/// `BlockGetter.forEachBlockIntersectedBetween`: visits the blocks a box
+/// passes moving from `from` to `to` (`target` is the box at `to`), in the
+/// order the game visits them, each with the step of the walk it came in,
+/// until `visit` returns false. The box's blocks where it started come
+/// first, then those its leading corner sweeps through, then the rest of
+/// the blocks it ends in. `seen` is a buffer for the blocks visited so
+/// far. Returns whether the walk got to its end.
+fn for_each_block_between(
+    from: Vec3,
+    to: Vec3,
+    target: Aabb,
+    seen: &mut Vec<Pos>,
+    mut visit: impl FnMut(Pos, i32) -> bool,
+) -> bool {
     let travel = to - from;
-    let mut out = Vec::new();
     if travel.length_sqr() < (1.0E-5f32 * 1.0E-5f32) as f64 {
         // `BlockPos.betweenClosed`: x fastest, then y, then z.
         let (lo, hi) = (floor_corner(target.min), floor_corner(target.max));
         for z in lo[2]..=hi[2] {
             for y in lo[1]..=hi[1] {
                 for x in lo[0]..=hi[0] {
-                    out.push((Pos::new(x, y, z), 0));
+                    if !visit(Pos::new(x, y, z), 0) {
+                        return false;
+                    }
                 }
             }
         }
-        return out;
+        return true;
     }
+    seen.clear();
     let start = target.offset(-travel.x, -travel.y, -travel.z);
-    let mut seen: Vec<Pos> = Vec::new();
-    for p in corners_in_direction(floor_corner(start.min), floor_corner(start.max), travel) {
-        out.push((p, 0));
+    let started = for_each_corner_in_direction(floor_corner(start.min), floor_corner(start.max), travel, |p| {
         seen.push(p);
+        visit(p, 0)
+    });
+    if !started {
+        return false;
     }
-    let iterations = collisions_along_travel(&mut seen, &mut out, travel, target);
-    for p in corners_in_direction(floor_corner(target.min), floor_corner(target.max), travel) {
-        if !seen.contains(&p) {
-            seen.push(p);
-            out.push((p, iterations + 1));
+    let Some(iterations) = collisions_along_travel(seen, travel, target, &mut visit) else {
+        return false;
+    };
+    for_each_corner_in_direction(floor_corner(target.min), floor_corner(target.max), travel, |p| {
+        if seen.contains(&p) {
+            return true;
         }
-    }
-    out
+        seen.push(p);
+        visit(p, iterations + 1)
+    })
 }
 
 fn floor_corner(c: [f64; 3]) -> [i32; 3] {
     [floor(c[0]), floor(c[1]), floor(c[2])]
 }
 
-/// `BlockPos.betweenCornersInDirection`: the blocks between two corners,
-/// starting from the corner the direction comes from, the axes walked in
-/// `axisStepOrder` with the last fastest.
-fn corners_in_direction(a: [i32; 3], b: [i32; 3], dir: Vec3) -> Vec<Pos> {
+/// `BlockPos.betweenCornersInDirection`: visits the blocks between two
+/// corners, starting from the corner the direction comes from, the axes
+/// walked in `axisStepOrder` with the last fastest, until `visit` returns
+/// false. Returns whether it visited them all.
+fn for_each_corner_in_direction(a: [i32; 3], b: [i32; 3], dir: Vec3, mut visit: impl FnMut(Pos) -> bool) -> bool {
     let min = [a[0].min(b[0]), a[1].min(b[1]), a[2].min(b[2])];
     let max = [a[0].max(b[0]), a[1].max(b[1]), a[2].max(b[2])];
-    let start: Vec<i32> = (0..3).map(|i| if dir.get(i as u8) >= 0.0 { min[i] } else { max[i] }).collect();
+    let start: [i32; 3] = std::array::from_fn(|i| if dir.get(i as u8) >= 0.0 { min[i] } else { max[i] });
     let axes = axis_step_order(dir);
     let step = |axis: u8| if dir.get(axis) >= 0.0 { 1 } else { -1 };
     let span = |axis: u8| max[axis as usize] - min[axis as usize];
-    let mut out = Vec::new();
     for i in 0..=span(axes[0]) {
         for j in 0..=span(axes[1]) {
             for k in 0..=span(axes[2]) {
-                let mut c = [start[0], start[1], start[2]];
+                let mut c = start;
                 c[axes[0] as usize] += step(axes[0]) * i;
                 c[axes[1] as usize] += step(axes[1]) * j;
                 c[axes[2] as usize] += step(axes[2]) * k;
-                out.push(Pos::new(c[0], c[1], c[2]));
+                if !visit(Pos::new(c[0], c[1], c[2])) {
+                    return false;
+                }
             }
         }
     }
-    out
+    true
 }
 
 /// `BlockGetter.addCollisionsAlongTravel`: the walk of one corner of the
-/// box through the blocks it crosses, adding at each step the blocks of
-/// the box there. Returns the number of steps.
-fn collisions_along_travel(seen: &mut Vec<Pos>, out: &mut Vec<(Pos, i32)>, delta: Vec3, target: Aabb) -> i32 {
-    let size = [target.max[0] - target.min[0], target.max[1] - target.min[1], target.max[2] - target.min[2]];
+/// box through the blocks it crosses, visiting at each step the blocks of
+/// the box there that `seen` doesn't hold yet. Returns the number of
+/// steps, or `None` if `visit` stopped the walk.
+fn collisions_along_travel(
+    seen: &mut Vec<Pos>,
+    delta: Vec3,
+    target: Aabb,
+    visit: &mut impl FnMut(Pos, i32) -> bool,
+) -> Option<i32> {
+    let size: [f64; 3] = std::array::from_fn(|a| target.max[a] - target.min[a]);
     let corner_dir = furthest_corner(delta);
     // `AABB.getCenter`, by `Mth.lerp`.
-    let center: Vec<f64> = (0..3).map(|a| target.min[a] + 0.5 * (target.max[a] - target.min[a])).collect();
-    let to_corner: Vec<f64> = (0..3).map(|a| center[a] + size[a] * 0.5 * corner_dir[a] as f64).collect();
+    let center: [f64; 3] = std::array::from_fn(|a| target.min[a] + 0.5 * (target.max[a] - target.min[a]));
+    let to_corner: [f64; 3] = std::array::from_fn(|a| center[a] + size[a] * 0.5 * corner_dir[a] as f64);
     let d = [delta.x, delta.y, delta.z];
     let from_corner = [to_corner[0] - d[0], to_corner[1] - d[1], to_corner[2] - d[2]];
     let mut cell = floor_corner(from_corner);
-    let sign: Vec<i32> = d
-        .iter()
-        .map(|&v| {
-            if v == 0.0 {
-                0
-            } else if v > 0.0 {
-                1
-            } else {
-                -1
-            }
-        })
-        .collect();
-    let t_delta: Vec<f64> = (0..3).map(|a| if sign[a] == 0 { f64::MAX } else { sign[a] as f64 / d[a] }).collect();
-    let mut t: Vec<f64> = (0..3)
-        .map(|a| {
-            let frac = from_corner[a] - floor(from_corner[a]) as f64;
-            t_delta[a] * if sign[a] > 0 { 1.0 - frac } else { frac }
-        })
-        .collect();
-    let to = [to_corner[0], to_corner[1], to_corner[2]];
+    let sign: [i32; 3] = d.map(|v| {
+        if v == 0.0 {
+            0
+        } else if v > 0.0 {
+            1
+        } else {
+            -1
+        }
+    });
+    let t_delta: [f64; 3] = std::array::from_fn(|a| if sign[a] == 0 { f64::MAX } else { sign[a] as f64 / d[a] });
+    let mut t: [f64; 3] = std::array::from_fn(|a| {
+        let frac = from_corner[a] - floor(from_corner[a]) as f64;
+        t_delta[a] * if sign[a] > 0 { 1.0 - frac } else { frac }
+    });
     let mut iterations = 0;
     while t[0] <= 1.0 || t[1] <= 1.0 || t[2] <= 1.0 {
         let a = if t[0] < t[1] {
@@ -743,7 +792,7 @@ fn collisions_along_travel(seen: &mut Vec<Pos>, out: &mut Vec<(Pos, i32)>, delta
             cell[1] as f64 + 1.0,
             cell[2] as f64 + 1.0,
         );
-        if let Some(hit) = cell_box.clip(from_corner, to) {
+        if let Some(hit) = cell_box.clip(from_corner, to_corner) {
             iterations += 1;
             let e = 1.0E-5f32 as f64;
             let mut opposite = [0; 3];
@@ -751,15 +800,20 @@ fn collisions_along_travel(seen: &mut Vec<Pos>, out: &mut Vec<(Pos, i32)>, delta
                 let h = hit[k].clamp(cell[k] as f64 + e, cell[k] as f64 + 1.0 - e);
                 opposite[k] = floor(h - size[k] * corner_dir[k] as f64);
             }
-            for p in corners_in_direction(cell, opposite, delta) {
-                if !seen.contains(&p) {
-                    seen.push(p);
-                    out.push((p, iterations));
+            let step = iterations;
+            let walked = for_each_corner_in_direction(cell, opposite, delta, |p| {
+                if seen.contains(&p) {
+                    return true;
                 }
+                seen.push(p);
+                visit(p, step)
+            });
+            if !walked {
+                return None;
             }
         }
     }
-    iterations
+    Some(iterations)
 }
 
 /// `BlockGetter.getFurthestCorner`, as 26.3 has it.
@@ -807,7 +861,9 @@ pub fn move_entity(level: &mut Level, e: &mut Entity, mut movement: Vec3) {
         e.stuck_speed_multiplier = Vec3::ZERO;
         e.motion = Vec3::ZERO;
     }
-    let moved = collide(level, e, movement);
+    let mut shapes = std::mem::take(&mut level.entity_scratch.shapes);
+    let moved = collide(level, e, movement, &mut shapes);
+    level.entity_scratch.shapes = shapes;
     let d = moved.length_sqr();
     if d > 1.0E-7 || movement.length_sqr() - d < 1.0E-7 {
         let from = e.pos;
@@ -923,7 +979,7 @@ fn check_supporting_block(level: &Level, e: &mut Entity, on_ground: bool, moveme
 fn find_supporting_block(level: &Level, e: &Entity, b: Aabb) -> Option<Pos> {
     let mut best: Option<Pos> = None;
     let mut d = f64::MAX;
-    for (p, _) in block_collisions(level, b) {
+    for_each_block_collision(level, b, |p, _| {
         let c = Vec3::new(p.x as f64 + 0.5, p.y as f64 + 0.5, p.z as f64 + 0.5);
         let dist = c.distance_to_sqr(e.pos);
         let greater = |q: Pos| (p.y, p.z, p.x) > (q.y, q.z, q.x);
@@ -931,13 +987,15 @@ fn find_supporting_block(level: &Level, e: &Entity, b: Aabb) -> Option<Pos> {
             best = Some(p);
             d = dist;
         }
-    }
+        true
+    });
     best
 }
 
-/// `BlockCollisions`: the collision boxes, in world coordinates, of each
-/// block whose shape touches `b`, in the game's search order.
-pub fn block_collisions(level: &Level, b: Aabb) -> Vec<(Pos, Vec<Aabb>)> {
+/// `BlockCollisions`: visits each block whose collision shape touches `b`,
+/// in the game's search order, with its collision boxes relative to the
+/// block, until `visit` returns false. Returns whether it visited them all.
+fn for_each_block_collision(level: &Level, b: Aabb, mut visit: impl FnMut(Pos, &[Aabb]) -> bool) -> bool {
     let physics = level.physics();
     let x0 = floor(b.min[0] - 1.0E-7) - 1;
     let x1 = floor(b.max[0] + 1.0E-7) + 1;
@@ -945,11 +1003,10 @@ pub fn block_collisions(level: &Level, b: Aabb) -> Vec<(Pos, Vec<Aabb>)> {
     let y1 = floor(b.max[1] + 1.0E-7) + 1;
     let z0 = floor(b.min[2] - 1.0E-7) - 1;
     let z1 = floor(b.max[2] + 1.0E-7) + 1;
-    let mut out = Vec::new();
     for z in z0..=z1 {
         for y in y0..=y1 {
             for x in x0..=x1 {
-                let edges = [x == x0 || x == x1, y == y0 || y == y1, z == z0 || z == z1].iter().filter(|e| **e).count();
+                let edges = (x == x0 || x == x1) as u8 + (y == y0 || y == y1) as u8 + (z == z0 || z == z1) as u8;
                 if edges == 3 {
                     continue;
                 }
@@ -961,18 +1018,22 @@ pub fn block_collisions(level: &Level, b: Aabb) -> Vec<(Pos, Vec<Aabb>)> {
                 if edges == 1 && !(moving || physics.has_large_shape(state)) || edges == 2 && !moving {
                     continue;
                 }
-                let shape = collision_shape(level, p, state);
-                if shape.is_empty() {
-                    continue;
-                }
-                let moved: Vec<Aabb> = shape.iter().map(|s| s.offset(x as f64, y as f64, z as f64)).collect();
-                if moved.iter().any(|s| s.intersects(&b)) {
-                    out.push((p, moved));
+                let touches =
+                    |shape: &[Aabb]| shape.iter().any(|s| s.offset(x as f64, y as f64, z as f64).intersects(&b));
+                let go_on = if moving {
+                    let shape = moving_collision_shape(level, p);
+                    !touches(&shape) || visit(p, &shape)
+                } else {
+                    let shape = physics.shape(state);
+                    !touches(shape) || visit(p, shape)
+                };
+                if !go_on {
+                    return false;
                 }
             }
         }
     }
-    out
+    true
 }
 
 /// `getCollisionShape` for the state at `p`.
@@ -1087,18 +1148,54 @@ fn collision_shape_full_block(level: &Level, p: Pos) -> bool {
 
 /// `noCollision(entity, box)` against blocks.
 pub fn no_block_collision(level: &Level, b: Aabb) -> bool {
-    block_collisions(level, b).is_empty()
+    for_each_block_collision(level, b, |_, _| false)
 }
 
-/// `Entity.collide`, for entities that can't step up.
-fn collide(level: &Level, e: &Entity, movement: Vec3) -> Vec3 {
+/// The boxes a move collides with, in world coordinates: each entity's or
+/// block's boxes together, in the order the game collects them.
+#[derive(Default)]
+struct Shapes {
+    boxes: Vec<Aabb>,
+    /// Where each entity's or block's boxes end in `boxes`.
+    ends: Vec<usize>,
+}
+
+impl Shapes {
+    fn clear(&mut self) {
+        self.boxes.clear();
+        self.ends.clear();
+    }
+
+    fn push(&mut self, boxes: impl IntoIterator<Item = Aabb>) {
+        self.boxes.extend(boxes);
+        self.ends.push(self.boxes.len());
+    }
+
+    fn is_empty(&self) -> bool {
+        self.ends.is_empty()
+    }
+
+    /// Each entity's or block's boxes.
+    fn iter(&self) -> impl Iterator<Item = &[Aabb]> {
+        let starts = std::iter::once(0).chain(self.ends.iter().copied());
+        starts.zip(self.ends.iter().copied()).map(|(s, e)| &self.boxes[s..e])
+    }
+}
+
+/// `Entity.collide`, for entities that can't step up. `shapes` is a buffer
+/// for the boxes the move might hit.
+fn collide(level: &Level, e: &Entity, movement: Vec3, shapes: &mut Shapes) -> Vec3 {
     if movement.length_sqr() == 0.0 {
         return movement;
     }
     let b = e.bounding_box();
     let area = b.expand_towards(movement);
-    let mut shapes = entity_collisions(level, e, area);
-    shapes.extend(block_collisions(level, area));
+    shapes.clear();
+    entity_collisions(level, e, area, shapes);
+    for_each_block_collision(level, area, |p, shape| {
+        shapes.push(shape.iter().map(|s| s.offset(p.x as f64, p.y as f64, p.z as f64)));
+        true
+    });
     if shapes.is_empty() {
         return movement;
     }
@@ -1107,7 +1204,7 @@ fn collide(level: &Level, e: &Entity, movement: Vec3) -> Vec3 {
     for axis in order {
         let d = movement.get(axis);
         if d != 0.0 {
-            let v = shapes_collide(axis, b.moved(result), &shapes, d);
+            let v = shapes_collide(axis, b.moved(result), shapes, d);
             result = result.with(axis, v);
         }
     }
@@ -1115,29 +1212,30 @@ fn collide(level: &Level, e: &Entity, movement: Vec3) -> Vec3 {
 }
 
 /// `Level.getEntityCollisions`: the boxes of entities `e` can't pass
-/// through (`canCollideWith`). They come before the blocks. Of the
-/// engine's entities only a minecart collides with others, and only with
-/// pushable ones, which are minecarts (`AbstractBoat.canVehicleCollide`);
-/// nothing collides with a minecart otherwise, so an item falls through one.
-fn entity_collisions(level: &Level, e: &Entity, area: Aabb) -> Vec<(Pos, Vec<Aabb>)> {
+/// through (`canCollideWith`), added to `shapes`. They come before the
+/// blocks. Of the engine's entities only a minecart collides with others,
+/// and only with pushable ones, which are minecarts
+/// (`AbstractBoat.canVehicleCollide`); nothing collides with a minecart
+/// otherwise, so an item falls through one.
+fn entity_collisions(level: &Level, e: &Entity, area: Aabb, shapes: &mut Shapes) {
     let size = (0..3).map(|a| area.max[a] - area.min[a]).sum::<f64>() / 3.0;
     if size < 1.0E-7 || !matches!(e.data, Data::Minecart(_)) {
-        return Vec::new();
+        return;
     }
     let area = area.inflate(1.0E-7, 1.0E-7, 1.0E-7);
-    level
-        .entities
-        .iter()
-        .filter(|o| !o.removed && o.id != e.id && matches!(o.data, Data::Minecart(_)))
-        .map(|o| o.bounding_box())
-        .filter(|ob| ob.intersects(&area))
-        .map(|ob| (Pos::new(0, 0, 0), vec![ob]))
-        .collect()
+    for o in &level.entities {
+        if !o.removed && o.id != e.id && matches!(o.data, Data::Minecart(_)) {
+            let ob = o.bounding_box();
+            if ob.intersects(&area) {
+                shapes.push([ob]);
+            }
+        }
+    }
 }
 
 /// `Shapes.collide`.
-fn shapes_collide(axis: u8, b: Aabb, shapes: &[(Pos, Vec<Aabb>)], mut dist: f64) -> f64 {
-    for (_, shape) in shapes {
+fn shapes_collide(axis: u8, b: Aabb, shapes: &Shapes, mut dist: f64) -> f64 {
+    for shape in shapes.iter() {
         if dist.abs() < 1.0E-7 {
             return 0.0;
         }
@@ -1151,7 +1249,11 @@ fn shape_collide(axis: u8, b: Aabb, shape: &[Aabb], mut dist: f64) -> f64 {
     if dist.abs() < 1.0E-7 {
         return 0.0;
     }
-    let others: Vec<usize> = (0..3).filter(|a| *a != axis as usize).collect();
+    let others = match axis {
+        0 => [1, 2],
+        1 => [0, 2],
+        _ => [0, 1],
+    };
     let a = axis as usize;
     for s in shape {
         let overlaps = others.iter().all(|&o| s.max[o] > b.min[o] + 1.0E-7 && s.min[o] <= b.max[o] - 1.0E-7);
