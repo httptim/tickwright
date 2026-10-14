@@ -9,7 +9,7 @@ picking the work up.
 
 - The engine targets Java Edition 26.3. Every behaviour is checked against
   traces captured from the real 26.3 server (`traces/26.3`).
-- There are 245 fixtures (`fixtures/`) and 2046 traces: one per fixture
+- There are 246 fixtures (`fixtures/`) and 2054 traces: one per fixture
   and orientation, and 100 more seeds of `phase4/tnt_cannon`. Every trace
   matches at the strictest level ("order"), and no fixture is refused.
   The fixtures listed in `crates/engine/tests/expected.txt` must keep
@@ -158,10 +158,10 @@ differs from the committed traces. That keeps them honest.
   ulp off the correctly rounded value on about one kick angle in 400
   (`tnt_kicks` hits two). The oracle workflow's `kick-trig` job
   (`harness/kick-trig.sh`) compares the two on a million kick angles: on
-  2026-10-14, with Temurin 25.0.4.1 on an Intel Xeon Platinum 8573C, all
-  matched. Check it again when the oracle's Java changes. HotSpot on arm64
-  differs on about one kick angle in six, so a server on an arm64 machine
-  throws TNT a little differently from the captures.
+  2026-10-14, with Temurin 25.0.4.1 on Intel Xeon Platinum 8370C and 8573C
+  runners, all matched. Check it again when the oracle's Java changes.
+  HotSpot on arm64 differs on about one kick angle in six, so a server on
+  an arm64 machine throws TNT a little differently from the captures.
 - **Check the capture:** make sure a new fixture really does what its
   description says. It's easy to aim an arrow or drop an item that never
   touches the block under test.
