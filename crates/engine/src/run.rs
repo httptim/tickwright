@@ -254,6 +254,11 @@ pub fn click(pos: Pos, p: &tickwright_trace::fixture::PlaceInput) -> Result<bloc
     })
 }
 
+/// The update flag a stimulus that discards contents adds.
+fn discard(s: &tickwright_trace::fixture::Stimulus) -> i32 {
+    if s.discard_contents { flags::SKIP_BLOCK_ENTITY_SIDEEFFECTS } else { 0 }
+}
+
 /// Apply the stimuli for game tick `t`, before the world tick runs.
 pub(crate) fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result<()> {
     let [ox, oy, oz] = fixture.origin;
@@ -271,10 +276,10 @@ pub(crate) fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32
             Action::Set => {
                 let text = s.state.as_deref().context("set stimulus without a state")?;
                 let how = if s.quiet { flags::CLIENTS | flags::KNOWN_SHAPE } else { flags::ALL };
-                level.set_block(pos, level.reg.parse(text)?, how);
+                level.set_block(pos, level.reg.parse(text)?, how | discard(s));
             }
             Action::Destroy => {
-                level.destroy_block(pos, false, crate::level::MAX_RECURSION);
+                level.destroy_block_with(pos, false, discard(s), crate::level::MAX_RECURSION);
             }
             Action::Place => {
                 let p = s.place.as_ref().context("place stimulus without item, face and look")?;
@@ -336,5 +341,75 @@ mod tests {
         // A full run refuses the same fixture with the same sentence.
         let err = super::run(&fixture, "26.3").unwrap_err().to_string();
         assert_eq!(err, format!("{}: {}", fixture.id, u.message));
+    }
+
+    #[test]
+    fn a_container_removed_among_entities_spills_what_it_holds() {
+        // `preRemoveSideEffects` (`Containers.dropContents`): a filled chest
+        // spills its items as entities when it goes, an empty one only draws
+        // from the level's random source, and one removed as `/setblock`
+        // removes it does neither.
+        let run = |items: &str, discard: bool| {
+            let json = format!(
+                r###"{{"name": "t", "ticks": 4, "entities": true,
+                    "palette": {{"o": "stone", "c": "chest[facing=north,type=single,waterlogged=false]"}},
+                    "layers": [["oo"], ["c."]],
+                    "stimuli": [{{"tick": 2, "action": "set", "pos": [0, 1, 0], "state": "air",
+                        "discard_contents": {discard}}}],
+                    "containers": [{{"pos": [0, 1, 0], "items": [{items}]}}]}}"###
+            );
+            let fixture = FixtureSource::from_json(&json).unwrap().resolve(Transform::IDENTITY).unwrap();
+            super::run(&fixture, "26.3").unwrap()
+        };
+        let stone = r#"{"slot": 0, "id": "stone", "count": 64}"#;
+        let spilled = run(stone, false);
+        let counts: Vec<&str> =
+            spilled.entities.iter().filter(|e| e.tick == 2).filter_map(|e| e.detail.as_deref()).collect();
+        let total: i32 = counts.iter().map(|d| d.rsplit('*').next().unwrap().parse::<i32>().unwrap()).sum();
+        assert_eq!(total, 64, "{counts:?}");
+        assert!(counts.len() >= 3, "64 stone fly out in stacks of 10 to 30: {counts:?}");
+        let empty = run("", false);
+        assert!(empty.entities.is_empty());
+        let quiet = run("", true);
+        assert!(quiet.entities.is_empty());
+        let draws = |t: &tickwright_trace::Trace| t.rng.iter().find(|r| r.0 == 2).unwrap().1;
+        assert_ne!(draws(&empty), draws(&quiet), "an empty chest still draws a spot for each slot");
+        assert!(run(stone, true).entities.is_empty());
+    }
+
+    #[test]
+    fn a_lectern_removed_with_its_book_among_entities_is_refused() {
+        let source = FixtureSource::from_json(
+            r###"{"name": "t", "ticks": 4, "entities": true,
+                "palette": {"o": "stone", "l": "lectern[facing=north,has_book=true,powered=false]"},
+                "layers": [["oo"], ["l."]],
+                "stimuli": [{"tick": 2, "action": "destroy", "pos": [0, 1, 0]}],
+                "lecterns": [{"pos": [0, 1, 0], "pages": 3}]}"###,
+        )
+        .unwrap();
+        let trace = super::run_partial(&source.resolve(Transform::IDENTITY).unwrap(), "26.3").unwrap();
+        let u = trace.unsupported.as_ref().unwrap();
+        assert_eq!(
+            (u.tick, u.message.as_str()),
+            (2, "removing a lectern with its book is not simulated by the engine yet")
+        );
+    }
+
+    #[test]
+    fn an_item_a_dispenser_cannot_dispense_is_refused_when_fired() {
+        // A hopper brings TNT into the dispenser; firing it would prime TNT.
+        let source = FixtureSource::from_json(
+            r###"{"name": "t", "ticks": 30,
+                "palette": {"#": "stone", "h": "hopper[enabled=true,facing=down]",
+                    "d": "dispenser[facing=east,triggered=false]"},
+                "layers": [["#."], ["d."], ["h."]],
+                "stimuli": [{"tick": 20, "action": "set", "pos": [1, 1, 0], "state": "redstone_block"}],
+                "containers": [{"pos": [0, 2, 0], "items": [{"slot": 0, "id": "tnt", "count": 1}]}]}"###,
+        )
+        .unwrap();
+        let trace = super::run_partial(&source.resolve(Transform::IDENTITY).unwrap(), "26.3").unwrap();
+        let u = trace.unsupported.as_ref().unwrap();
+        assert_eq!(u.tick, 23);
+        assert_eq!(u.message, "dispensing minecraft:tnt is not simulated by the engine yet");
     }
 }

@@ -9,7 +9,7 @@ picking the work up.
 
 - The engine targets Java Edition 26.3. Every behaviour is checked against
   traces captured from the real 26.3 server (`traces/26.3`).
-- There are 245 fixtures (`fixtures/`) and 2046 traces: one per fixture
+- There are 254 fixtures (`fixtures/`) and 2118 traces: one per fixture
   and orientation, and 100 more seeds of `phase4/tnt_cannon`. Every trace
   matches at the strictest level ("order"), and no fixture is refused.
   The fixtures listed in `crates/engine/tests/expected.txt` must keep
@@ -22,11 +22,12 @@ picking the work up.
     daylight detectors, lecterns, tripwire, and sculk and calibrated
     sculk sensors.
   - **Containers:** chests, barrels, hoppers, droppers, dispensers,
-    crafters and shelves.
+    crafters and shelves. Droppers and dispensers pick a filled slot with
+    the level's random source, as the game does.
   - **Rails:** plain, powered, activator and detector rails.
   - **Fluids:** water.
   - **Entities (phase 4):**
-    - items
+    - items, including those droppers, dispensers and crafters throw out
     - falling blocks
     - primed TNT and explosions
     - minecarts (plain, furnace, chest and hopper)
@@ -188,5 +189,24 @@ differs from the committed traces. That keeps them honest.
   index. Entities a block spawns meanwhile, such as TNT a pressure plate
   lights, go on the end of the list. Don't read `entities.last()` for
   the entity a block feels.
+- **Item entities only exist where entities are simulated:** a fixture
+  with `"entities": true` (or a session built from one). Elsewhere a
+  dropper firing into the air, or a block broken with drops, loses the
+  item, as before. A dropper or dispenser picks its slot with the level's
+  random source in both, but the harness seeds that source only for
+  entity fixtures, so a build that fires one with several filled slots
+  can only be captured as an entity fixture.
+- **Editor edits remove block entities as `/setblock` does:** session
+  edits add `flags::SKIP_BLOCK_ENTITY_SIDEEFFECTS` (`set_block` logs it
+  with the edit; a break uses `Level::destroy_block_with`), so a
+  container's items and a lectern's book go with the block. A fixture
+  stimulus says the same with `"discard_contents": true`, which the
+  harness maps to the same flag. Without it, a removed container spills
+  what it holds (`blocks::pre_remove_side_effects`, a port of
+  `Containers.dropContents`): every slot, even an empty one, draws from
+  the level's random source, and a lectern removed with its book in an
+  entity run is refused.
 - **Some refused cases are close to supported:** an arrow is refused once
-  the block it is stuck in goes. The full list is in the code.
+  the block it is stuck in goes, a lectern once it is removed with its
+  book, and a dispenser firing an item whose own behaviour the engine
+  lacks (TNT a hopper brought in, say). The full list is in the code.

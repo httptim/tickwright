@@ -45,7 +45,11 @@ pub const CHECKPOINT_TICKS: u32 = 32;
 /// single tick is copied after every tick, as sessions once did for all.
 pub const CHECKPOINT_BYTES: usize = 256 * 1024;
 
-/// How a block is written.
+/// How a block is written. Either way a block entity it replaces goes the
+/// way `/setblock` removes one, without its side effects: a container's
+/// items, a lectern's book and a jukebox's disc go with it instead of
+/// spilling out (`Block.UPDATE_SKIP_BLOCK_ENTITY_SIDEEFFECTS`). A fixture
+/// stimulus does the same with `"discard_contents": true`.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Placement {
     /// As the capture harness places fixture blocks: no neighbor updates,
@@ -89,14 +93,43 @@ pub struct Power {
 /// An edit, kept so the ticks after it can be run again.
 #[derive(Clone, Debug)]
 enum Input {
-    Set { pos: Pos, state: StateId, flags: i32 },
-    Place { item: String, click: blocks::placement::Click },
-    Destroy(Pos),
+    Set {
+        pos: Pos,
+        state: StateId,
+        flags: i32,
+    },
+    Place {
+        item: String,
+        click: blocks::placement::Click,
+    },
+    /// A break, with the flags it adds to the write.
+    Destroy {
+        pos: Pos,
+        extra: i32,
+    },
     Use(Pos),
-    Page { pos: Pos, page: i32 },
+    Page {
+        pos: Pos,
+        page: i32,
+    },
     Time(i64),
-    Item { pos: Pos, slot: usize, id: String, count: i32 },
-    Summon { entity: String, at: Vec3, motion: Option<Vec3>, nbt: Option<String> },
+    Item {
+        pos: Pos,
+        slot: usize,
+        id: String,
+        count: i32,
+    },
+    Summon {
+        entity: String,
+        at: Vec3,
+        motion: Option<Vec3>,
+        nbt: Option<String>,
+    },
+}
+
+/// The flag a write that removes block entities as `/setblock` does adds.
+fn discard(discard_contents: bool) -> i32 {
+    if discard_contents { flags::SKIP_BLOCK_ENTITY_SIDEEFFECTS } else { 0 }
 }
 
 /// Make an edit. Run again, it changes the world exactly as it did the
@@ -110,8 +143,8 @@ fn apply(level: &mut Level, input: &Input) -> Result<bool> {
             level.new_clicking_player();
             return blocks::placement::place(level, item, *click);
         }
-        Input::Destroy(pos) => {
-            level.destroy_block(*pos, false, MAX_RECURSION);
+        Input::Destroy { pos, extra } => {
+            level.destroy_block_with(*pos, false, *extra, MAX_RECURSION);
         }
         Input::Use(pos) => {
             level.new_clicking_player();
@@ -322,6 +355,13 @@ impl Session {
     /// Write `state` (such as `repeater[delay=2,facing=north]`) at `pos`.
     /// Blocks the engine does not simulate are refused by name.
     pub fn set_block(&mut self, pos: Pos, state: &str, placement: Placement) -> Result<()> {
+        self.set_block_as(pos, state, placement, true)
+    }
+
+    /// [`Session::set_block`], choosing whether a block entity it replaces
+    /// goes as `/setblock` removes it (`discard_contents`), or spills what
+    /// it holds as breaking it in the game does, as a fixture stimulus can.
+    pub fn set_block_as(&mut self, pos: Pos, state: &str, placement: Placement, discard_contents: bool) -> Result<()> {
         let id = self.level.reg.parse(state)?;
         if self.level.kind(id) == Kind::Other {
             bail!("{} is not supported by the engine yet", self.level.reg.name(id));
@@ -329,7 +369,7 @@ impl Session {
         let flags = match placement {
             Placement::Quiet => flags::CLIENTS | flags::KNOWN_SHAPE,
             Placement::Updates => flags::ALL,
-        };
+        } | discard(discard_contents);
         self.edit(Input::Set { pos, state: id, flags })?;
         Ok(())
     }
@@ -349,9 +389,15 @@ impl Session {
         Ok(planned.map(|(pos, state)| (pos, self.level.reg.format(state))))
     }
 
-    /// Break the block at `pos` without drops, with normal updates.
+    /// Break the block at `pos` without drops, with normal updates. A block
+    /// entity goes without its side effects, as with [`Session::set_block`].
     pub fn destroy(&mut self, pos: Pos) {
-        let _ = self.edit(Input::Destroy(pos));
+        self.destroy_as(pos, true);
+    }
+
+    /// [`Session::destroy`], choosing as [`Session::set_block_as`] does.
+    pub fn destroy_as(&mut self, pos: Pos, discard_contents: bool) {
+        let _ = self.edit(Input::Destroy { pos, extra: discard(discard_contents) });
     }
 
     /// Right-click the block at `pos` with an empty hand.
@@ -379,6 +425,9 @@ impl Session {
             bail!("slot {slot} is past the container's {size} slots");
         }
         let id = if id.contains(':') { id.to_string() } else { format!("minecraft:{id}") };
+        if self.level.kind_at(pos) == Kind::Dispenser && !blocks::dispenser::supported_item(&id) {
+            bail!("dispensing {id} is not supported by the engine yet");
+        }
         self.edit(Input::Item { pos, slot, id, count })?;
         Ok(())
     }
@@ -846,6 +895,7 @@ mod tests {
             pos: [0, 1, 0],
             state: None,
             quiet: false,
+            discard_contents: false,
             page: None,
             time: None,
             place: None,
@@ -1024,7 +1074,7 @@ mod tests {
                 s.set_block(pos, state, how).unwrap();
                 let f = if how == Placement::Quiet { flags::CLIENTS | flags::KNOWN_SHAPE } else { flags::ALL };
                 let id = level.reg.parse(state).unwrap();
-                level.set_block(pos, id, f);
+                level.set_block(pos, id, f | flags::SKIP_BLOCK_ENTITY_SIDEEFFECTS);
             }
             Edit::Use(pos) => {
                 s.use_block(pos);
@@ -1034,7 +1084,7 @@ mod tests {
             }
             Edit::Destroy(pos) => {
                 s.destroy(pos);
-                level.destroy_block(pos, false, MAX_RECURSION);
+                level.destroy_block_with(pos, false, flags::SKIP_BLOCK_ENTITY_SIDEEFFECTS, MAX_RECURSION);
             }
             Edit::Place(item, click) => {
                 let a = s.place(item, click).ok();
@@ -1298,6 +1348,91 @@ mod tests {
     /// Every fixture, played through a session that keeps a checkpoint
     /// every three ticks and through the reference, gives the same events,
     /// and every tick read back or rewound to is the same.
+    /// A build of every block entity that holds things, each filled, in a
+    /// session that simulates entities as the editor's do.
+    fn filled_block_entities() -> Session {
+        let source = FixtureSource::from_json(
+            r###"{"name": "upload", "ticks": 1, "entities": true,
+                "palette": {"o": "stone", "c": "chest[facing=north,type=single,waterlogged=false]",
+                    "b": "barrel[facing=up,open=false]", "h": "hopper[enabled=true,facing=down]",
+                    "d": "dropper[facing=up,triggered=false]", "D": "dispenser[facing=up,triggered=false]",
+                    "C": "crafter[crafting=false,orientation=north_up,triggered=false]",
+                    "s": "oak_shelf[facing=south,powered=false,side_chain=unconnected,waterlogged=false]",
+                    "l": "lectern[facing=north,has_book=true,powered=false]"},
+                "layers": [["oooooooo"], ["cbhdDCsl"]],
+                "stimuli": [],
+                "containers": [
+                    {"pos": [0, 1, 0], "items": [{"slot": 0, "id": "stone", "count": 5}]},
+                    {"pos": [1, 1, 0], "items": [{"slot": 3, "id": "stone", "count": 5}]},
+                    {"pos": [2, 1, 0], "items": [{"slot": 1, "id": "stone", "count": 5}]},
+                    {"pos": [3, 1, 0], "items": [{"slot": 2, "id": "stone", "count": 5}]},
+                    {"pos": [4, 1, 0], "items": [{"slot": 4, "id": "stone", "count": 5}]},
+                    {"pos": [5, 1, 0], "items": [{"slot": 0, "id": "oak_log", "count": 5}]},
+                    {"pos": [6, 1, 0], "items": [{"slot": 1, "id": "stone", "count": 5}]}
+                ],
+                "lecterns": [{"pos": [7, 1, 0], "pages": 3}]}"###,
+        )
+        .unwrap();
+        let mut s = Session::from_fixture(&source.resolve(Transform::IDENTITY).unwrap(), "26.3").unwrap();
+        s.every = 3;
+        s
+    }
+
+    #[test]
+    fn editing_away_filled_block_entities_spills_nothing() {
+        // The editor's edits remove a block entity as `/setblock` does, so
+        // what it holds goes with it: nothing to refuse, in any edit, made
+        // before the first tick or after some have run.
+        type Change = fn(&mut Session, Pos);
+        let edits: [(&str, Change); 4] = [
+            ("set air with updates", |s, p| s.set_block(p, "air", Placement::Updates).unwrap()),
+            ("set air quietly", |s, p| s.set_block(p, "air", Placement::Quiet).unwrap()),
+            ("paste stone over it", |s, p| s.set_block(p, "stone", Placement::Quiet).unwrap()),
+            ("break it", |s, p| s.destroy(p)),
+        ];
+        for (what, edit) in edits {
+            for at in [0, 5] {
+                let mut s = filled_block_entities();
+                for _ in 0..at {
+                    s.step();
+                }
+                for x in 0..8 {
+                    edit(&mut s, Pos::new(x, 101, 0));
+                }
+                s.step();
+                let next = s.blocks();
+                for _ in 0..9 {
+                    s.step();
+                }
+                assert_eq!(s.unsupported(), None, "{what} at tick {at}");
+                assert!(s.entities().is_empty(), "{what} at tick {at}: nothing spills");
+                assert!(s.containers().is_empty(), "{what} at tick {at}");
+                // Rebuilt from its checkpoints (every third tick, each
+                // checked against a replay of the edits), the past is the
+                // same, and so is the future run again.
+                let after = s.blocks();
+                assert_eq!(s.blocks_at(at + 1), Some(next.clone()), "{what} at tick {at}");
+                s.rewind(at + 1).unwrap();
+                assert_eq!(s.blocks(), next, "{what} at tick {at}: rewound");
+                for _ in 0..9 {
+                    s.step();
+                }
+                assert_eq!(s.blocks(), after, "{what} at tick {at}: run again");
+                assert_eq!(s.unsupported(), None, "{what} at tick {at}: run again");
+            }
+        }
+    }
+
+    #[test]
+    fn a_dispenser_takes_only_items_it_can_dispense() {
+        let mut s = filled_block_entities();
+        let err = s.set_item(Pos::new(4, 101, 0), 0, "tnt", 1).unwrap_err().to_string();
+        assert_eq!(err, "dispensing minecraft:tnt is not supported by the engine yet");
+        s.set_item(Pos::new(4, 101, 0), 0, "cobblestone", 1).unwrap();
+        // A dropper throws anything.
+        s.set_item(Pos::new(3, 101, 0), 0, "tnt", 1).unwrap();
+    }
+
     #[test]
     fn every_fixture_rewinds_as_a_session_that_kept_every_tick() {
         let mut dirs = vec![std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures")];
@@ -1337,9 +1472,9 @@ mod tests {
                     Action::Use => s.use_block(pos),
                     Action::Set => {
                         let how = if st.quiet { Placement::Quiet } else { Placement::Updates };
-                        s.set_block(pos, st.state.as_deref().unwrap(), how).unwrap()
+                        s.set_block_as(pos, st.state.as_deref().unwrap(), how, st.discard_contents).unwrap()
                     }
-                    Action::Destroy => s.destroy(pos),
+                    Action::Destroy => s.destroy_as(pos, st.discard_contents),
                     Action::Place => {
                         let p = st.place.as_ref().unwrap();
                         s.place(&p.item, crate::run::click(pos, p).unwrap()).unwrap();

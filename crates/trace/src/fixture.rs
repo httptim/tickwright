@@ -126,6 +126,12 @@ pub struct Stimulus {
     /// the way fixture blocks are placed (and the editor pastes).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub quiet: bool,
+    /// A `set` or `destroy` that removes a block entity without its side
+    /// effects (`Block.UPDATE_SKIP_BLOCK_ENTITY_SIDEEFFECTS`), as `/setblock`
+    /// and the editor's edits do: a container's items, a lectern's book and
+    /// a jukebox's disc go with the block instead of spilling out as items.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub discard_contents: bool,
     /// The page a `page` stimulus turns to.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub page: Option<u32>,
@@ -448,6 +454,11 @@ impl FixtureSource {
                 _ => {}
             }
             ensure!(!s.quiet || s.action == Action::Set, "{}: only set stimuli can be quiet", self.name);
+            ensure!(
+                !s.discard_contents || matches!(s.action, Action::Set | Action::Destroy),
+                "{}: only set and destroy stimuli can discard contents",
+                self.name
+            );
         }
         for e in &self.start_entities {
             ensure!(
@@ -559,6 +570,7 @@ impl FixtureSource {
                     .transpose()
                     .unwrap(),
                 quiet: s.quiet,
+                discard_contents: s.discard_contents,
                 place: s.place.as_ref().map(|p| p.transform(t)),
                 summon: s.summon.as_ref().map(|m| m.transform(t, size)),
                 page: s.page,

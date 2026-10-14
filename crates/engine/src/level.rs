@@ -353,6 +353,9 @@ impl Level {
         let block_changed = self.block(old) != self.block(state);
         let moved_by_piston = flags & flags::MOVE_BY_PISTON != 0;
         if block_changed && blocks::has_block_entity(self.kind(old)) {
+            if flags & flags::SKIP_BLOCK_ENTITY_SIDEEFFECTS == 0 {
+                blocks::pre_remove_side_effects(self, pos, old);
+            }
             self.remove_block_entity(pos);
         }
         if block_changed && (flags & flags::NEIGHBORS != 0 || moved_by_piston) {
@@ -376,6 +379,13 @@ impl Level {
     /// `Level.destroyBlock(pos, drop)`. Drops only happen in levels that
     /// simulate entities.
     pub fn destroy_block(&mut self, pos: Pos, drop: bool, recursion: i32) -> bool {
+        self.destroy_block_with(pos, drop, 0, recursion)
+    }
+
+    /// `destroyBlock` with `extra` added to its update flags: with
+    /// [`flags::SKIP_BLOCK_ENTITY_SIDEEFFECTS`] it removes a block the way
+    /// `/setblock` does, without `preRemoveSideEffects`.
+    pub fn destroy_block_with(&mut self, pos: Pos, drop: bool, extra: i32, recursion: i32) -> bool {
         let state = self.get(pos);
         if self.is_air(state) {
             return false;
@@ -383,7 +393,7 @@ impl Level {
         if drop && self.simulate_entities {
             self.drop_resources(pos, state);
         }
-        let ok = self.set_block_rec(pos, self.air, flags::ALL, recursion);
+        let ok = self.set_block_rec(pos, self.air, flags::ALL | extra, recursion);
         if ok {
             self.game_event(GameEvent::BlockDestroy, pos);
         }

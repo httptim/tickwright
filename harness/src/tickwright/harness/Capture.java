@@ -65,6 +65,7 @@ import net.minecraft.world.level.redstone.CollectingNeighborUpdater;
 import net.minecraft.world.level.redstone.NeighborUpdater;
 import net.minecraft.world.level.BlockEventData;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.ticks.ScheduledTick;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.storage.LevelStorageSource;
@@ -87,6 +88,9 @@ import tickwright.harness.agent.Hooks;
 public final class Capture {
     private static final int QUIET = 2 | 16; // UPDATE_CLIENTS | UPDATE_KNOWN_SHAPE
     private static final int NORMAL = 3; // UPDATE_NEIGHBORS | UPDATE_CLIENTS
+    // UPDATE_SKIP_BLOCK_ENTITY_SIDEEFFECTS: a block entity goes without
+    // spilling what it holds, as /setblock removes it.
+    private static final int DISCARD_CONTENTS = 256;
     /** Idle ticks after clearing a box, so ticks scheduled by the previous fixture expire. */
     private static final int SETTLE_TICKS = 40;
 
@@ -634,8 +638,14 @@ public final class Capture {
         switch (s.get("action").getAsString()) {
             case "use" -> useBlock(p);
             case "set" -> level.setBlock(p, parse(blocks, s.get("state").getAsString()),
-                    s.has("quiet") && s.get("quiet").getAsBoolean() ? QUIET : NORMAL);
-            case "destroy" -> level.destroyBlock(p, false);
+                    (flag(s, "quiet") ? QUIET : NORMAL) | (flag(s, "discard_contents") ? DISCARD_CONTENTS : 0));
+            case "destroy" -> {
+                if (flag(s, "discard_contents")) {
+                    destroyDiscarding(p);
+                } else {
+                    level.destroyBlock(p, false);
+                }
+            }
             case "place" -> place(p, s);
             case "page" -> {
                 if (!(level.getBlockEntity(p) instanceof LecternBlockEntity lectern)) {
@@ -646,6 +656,26 @@ public final class Capture {
             case "time" -> command("time set " + s.get("time").getAsLong());
             case "summon" -> summon(s, origin);
             default -> throw new IllegalArgumentException("unknown action " + s.get("action"));
+        }
+    }
+
+    private static boolean flag(JsonObject s, String name) {
+        return s.has(name) && s.get(name).getAsBoolean();
+    }
+
+    /**
+     * {@code Level.destroyBlock(pos, false)} with {@link #DISCARD_CONTENTS}
+     * added to its flags, which the method itself can't take.
+     */
+    private static void destroyDiscarding(BlockPos p) {
+        BlockState old = level.getBlockState(p);
+        if (old.isAir()) {
+            return;
+        }
+        old.getBlock().spawnDestroyParticles(level, p, old);
+        BlockState after = level.getFluidState(p).createLegacyBlock();
+        if (level.setBlock(p, after, NORMAL | DISCARD_CONTENTS, 512)) {
+            level.gameEvent(GameEvent.BLOCK_DESTROY, p, GameEvent.Context.of((Entity) null, old));
         }
     }
 

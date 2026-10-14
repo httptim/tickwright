@@ -1,0 +1,243 @@
+{
+  "name": "dropper_into_air",
+  "description": "A lever fires a dropper 10 times into open air over a stone floor: 7 cobblestone and 3 stone, from slots picked at random. Each item flies out with a speed and spread drawn from the level's random source (DefaultDispenseItemBehavior.spawnItem), lands, and either merges with the same item beside it or is taken by the hopper set into the floor.",
+  "ticks": 140,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "dropper",
+    "item",
+    "hopper"
+  ],
+  "palette": {
+    "#": "stone",
+    "l": "lever[face=floor,facing=north,powered=false]",
+    "D": "dropper[facing=east,triggered=false]",
+    "h": "hopper[enabled=true,facing=east]",
+    "C": "chest[facing=north,type=single,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "########",
+      "########",
+      "####h###",
+      "########",
+      "########"
+    ],
+    [
+      ".......#",
+      ".......#",
+      "lD.....#",
+      ".......#",
+      ".......#"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 4,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 6,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 8,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 12,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 14,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 16,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 18,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 20,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 22,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 24,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 26,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 28,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 30,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 32,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 34,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 36,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 38,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "tick": 40,
+      "action": "use",
+      "pos": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        1,
+        1,
+        2
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "cobblestone",
+          "count": 7
+        },
+        {
+          "slot": 3,
+          "id": "stone",
+          "count": 3
+        }
+      ]
+    }
+  ],
+  "entities": true
+}

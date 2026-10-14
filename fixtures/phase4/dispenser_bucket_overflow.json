@@ -1,0 +1,248 @@
+{
+  "name": "dispenser_bucket_overflow",
+  "description": "A dispenser with a stack of 2 buckets in every slot fires 8 times down into the middle of three water sources, which fills again after each pickup. Taking water from a stack of 2 leaves 1 and the water bucket has nowhere to go, so it flies out as an item and floats (addToInventoryOrDispense); taking it with the last bucket of a stack puts the water bucket in that slot, and a water bucket picked later empties into the water and turns back into a bucket. Slots are picked with the level's random source.",
+  "ticks": 120,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "dispenser",
+    "item",
+    "water",
+    "rng"
+  ],
+  "palette": {
+    "#": "stone",
+    "w": "water[level=0]",
+    "D": "dispenser[facing=down,triggered=false]",
+    "l": "lever[face=floor,facing=north,powered=false]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      "#####",
+      "#www#",
+      "#####"
+    ],
+    [
+      ".....",
+      "..D..",
+      "....."
+    ],
+    [
+      ".....",
+      "..l..",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "tick": 7,
+      "action": "use",
+      "pos": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "tick": 12,
+      "action": "use",
+      "pos": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "tick": 17,
+      "action": "use",
+      "pos": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "tick": 22,
+      "action": "use",
+      "pos": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "tick": 27,
+      "action": "use",
+      "pos": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "tick": 32,
+      "action": "use",
+      "pos": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "tick": 37,
+      "action": "use",
+      "pos": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "tick": 42,
+      "action": "use",
+      "pos": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "tick": 47,
+      "action": "use",
+      "pos": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "tick": 52,
+      "action": "use",
+      "pos": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "tick": 57,
+      "action": "use",
+      "pos": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "tick": 62,
+      "action": "use",
+      "pos": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "tick": 67,
+      "action": "use",
+      "pos": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "tick": 72,
+      "action": "use",
+      "pos": [
+        2,
+        3,
+        1
+      ]
+    },
+    {
+      "tick": 77,
+      "action": "use",
+      "pos": [
+        2,
+        3,
+        1
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        2,
+        2,
+        1
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "bucket",
+          "count": 2
+        },
+        {
+          "slot": 1,
+          "id": "bucket",
+          "count": 2
+        },
+        {
+          "slot": 2,
+          "id": "bucket",
+          "count": 2
+        },
+        {
+          "slot": 3,
+          "id": "bucket",
+          "count": 2
+        },
+        {
+          "slot": 4,
+          "id": "bucket",
+          "count": 2
+        },
+        {
+          "slot": 5,
+          "id": "bucket",
+          "count": 2
+        },
+        {
+          "slot": 6,
+          "id": "bucket",
+          "count": 2
+        },
+        {
+          "slot": 7,
+          "id": "bucket",
+          "count": 2
+        },
+        {
+          "slot": 8,
+          "id": "bucket",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "entities": true
+}

@@ -1,0 +1,101 @@
+{
+  "name": "dispenser_powder_snow_vibrations",
+  "description": "A sculk sensor, read by a comparator, hears a dispenser empty a powder snow bucket into a walled pocket (SolidBucketItem.emptyContents posts fluid_place, frequency 13) and then, past its cooldown, another take the powder snow back up with a bucket (fluid_pickup, 12).",
+  "ticks": 140,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "dispenser",
+    "sculk",
+    "comparator",
+    "water"
+  ],
+  "palette": {
+    "#": "stone",
+    "S": "sculk_sensor[power=0,sculk_sensor_phase=inactive,waterlogged=false]",
+    "c": "comparator[facing=north,mode=compare,powered=false]",
+    "-": "redstone_wire[east=none,north=side,power=0,south=side,west=none]",
+    "E": "dispenser[facing=west,triggered=false]",
+    "D": "dispenser[facing=north,triggered=false]",
+    "d": "dispenser[facing=south,triggered=false]"
+  },
+  "layers": [
+    [
+      "#########",
+      "#########",
+      "#########",
+      "#########",
+      "#########",
+      "#########",
+      "#########",
+      "#########",
+      "#########"
+    ],
+    [
+      ".........",
+      ".........",
+      ".......d.",
+      "......#.#",
+      "....S..D.",
+      "....c....",
+      "....-....",
+      "....-....",
+      "........."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 5,
+      "action": "set",
+      "pos": [
+        8,
+        1,
+        4
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 65,
+      "action": "set",
+      "pos": [
+        7,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        7,
+        1,
+        4
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "powder_snow_bucket",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "pos": [
+        7,
+        1,
+        2
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "bucket",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

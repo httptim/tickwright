@@ -11,7 +11,7 @@
 //! why a hopper marks itself changed once per transfer.
 
 use crate::level::{Level, flags};
-use crate::physics::Aabb;
+use crate::physics::{Aabb, Vec3};
 use crate::pos::Pos;
 use crate::registry::StateId;
 
@@ -292,6 +292,39 @@ fn entity_container(level: &mut Level, x: f64, y: f64, z: f64) -> Option<Inv> {
     }
     let i = level.random.next_int_bounded(found.len() as i32) as usize;
     Some(Inv::Cart(found[i]))
+}
+
+/// `Containers.dropContents` for the container block entity at `pos`, as
+/// it is removed: each slot, filled or not, takes a spot from the level's
+/// random source, and a filled one flies out from there in stacks of 10 to
+/// 30, as item entities in levels that simulate entities.
+pub fn drop_contents(level: &mut Level, pos: Pos) {
+    let Some(stacks) = items(level, pos).cloned() else { return };
+    for stack in stacks {
+        drop_item_stack(level, pos, stack);
+    }
+}
+
+/// `Containers.dropItemStack` at the block `pos`.
+fn drop_item_stack(level: &mut Level, pos: Pos, mut stack: Stack) {
+    // `EntityTypes.ITEM.getWidth()`: an item is a quarter of a block wide.
+    let (range, half) = (1.0 - 0.25, 0.25 / 2.0);
+    let r = &mut level.random;
+    let x = pos.x as f64 + r.next_double() * range + half;
+    let y = pos.y as f64 + r.next_double() * range;
+    let z = pos.z as f64 + r.next_double() * range + half;
+    while !stack.is_empty() {
+        let n = level.random.next_int_bounded(21) + 10;
+        let part = stack.split(n);
+        let made = level.simulate_entities.then(|| crate::entity::item::new_tossed(level, Vec3::new(x, y, z), part));
+        let r = &mut level.random;
+        let spread = 0.11485000171139836;
+        let motion = Vec3::new(r.triangle(0.0, spread), r.triangle(0.2, spread), r.triangle(0.0, spread));
+        if let Some(mut e) = made {
+            e.motion = motion;
+            level.add_entity(e);
+        }
+    }
 }
 
 /// `isFullContainer`.
@@ -577,17 +610,17 @@ pub fn dropper_neighbor_changed(level: &mut Level, pos: Pos, state: StateId) {
     }
 }
 
-/// `DropperBlock.dispenseFrom`. With several filled slots the game picks
-/// one at random; this takes the first, so fixtures fill only one.
+/// `DropperBlock.dispenseFrom`: one item from a slot picked at random, into
+/// the container in front, or else out into the world.
 pub fn dropper_tick(level: &mut Level, pos: Pos, state: StateId) {
-    let Some(slot) = items(level, pos).and_then(|i| i.iter().position(|s| !s.is_empty())) else {
+    // An empty dropper only clicks.
+    let Some(slot) = super::dispenser::random_slot(level, pos) else {
         return;
     };
     let stack = get_item(level, pos, slot);
     let facing = level.dir(state, "facing");
     let remaining = match container_at(level, pos.offset(facing)) {
-        // Dropped as an item entity, which is not simulated.
-        None => Stack { count: stack.count - 1, ..stack.clone() },
+        None => super::dispenser::eject(level, pos, state, stack),
         Some(dest) => {
             let result = add_item(level, Some(Inv::Block(pos)), dest, Stack { count: 1, ..stack.clone() });
             if result.is_empty() { Stack { count: stack.count - 1, ..stack.clone() } } else { stack.clone() }

@@ -245,3 +245,12 @@ firewolf_flying_machine order
 plate_item_lights_tnt order
 plate_item_lights_tnt_above order
 plate_tnt_lights_tnt order
+dropper_random_slot order
+dropper_into_air order
+dispenser_mixed_items order
+crafter_into_air order
+dispenser_vibrations order
+discard_contents order
+dispenser_bucket_overflow order
+dispenser_powder_snow_vibrations order
+containers_spill order

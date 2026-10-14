@@ -1,0 +1,166 @@
+{
+  "name": "crafter_into_air",
+  "description": "A lever powers two crafters, each turning an oak log into 4 planks, three times and twice. The crafter facing north faces open air, so each craft's planks fly out as one item of 4 (DefaultDispenseItemBehavior.spawnItem) and land on the floor, merging with planks already there. The one facing south has a hopper in front with room for only 2 planks: the rest of its first craft, and all of its second, fly out from inside the hopper's space and work their way out of it.",
+  "ticks": 80,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "crafter",
+    "item",
+    "hopper"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "crafter[crafting=false,orientation=north_up,triggered=false]",
+    "B": "crafter[crafting=false,orientation=south_up,triggered=false]",
+    "l": "lever[face=floor,facing=north,powered=false]",
+    "h": "hopper[enabled=true,facing=down]"
+  },
+  "layers": [
+    [
+      "#######",
+      "#######",
+      "#######",
+      "#######",
+      "#######",
+      "#######",
+      "#######",
+      "#######"
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "..AlB..",
+      "....h..",
+      "......."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        3,
+        1,
+        5
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "use",
+      "pos": [
+        3,
+        1,
+        5
+      ]
+    },
+    {
+      "tick": 20,
+      "action": "use",
+      "pos": [
+        3,
+        1,
+        5
+      ]
+    },
+    {
+      "tick": 30,
+      "action": "use",
+      "pos": [
+        3,
+        1,
+        5
+      ]
+    },
+    {
+      "tick": 40,
+      "action": "use",
+      "pos": [
+        3,
+        1,
+        5
+      ]
+    },
+    {
+      "tick": 50,
+      "action": "use",
+      "pos": [
+        3,
+        1,
+        5
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        2,
+        1,
+        5
+      ],
+      "items": [
+        {
+          "slot": 4,
+          "id": "oak_log",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "pos": [
+        4,
+        1,
+        5
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "oak_log",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "pos": [
+        4,
+        1,
+        6
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "cobblestone",
+          "count": 64
+        },
+        {
+          "slot": 1,
+          "id": "cobblestone",
+          "count": 64
+        },
+        {
+          "slot": 2,
+          "id": "oak_planks",
+          "count": 62
+        },
+        {
+          "slot": 3,
+          "id": "cobblestone",
+          "count": 64
+        },
+        {
+          "slot": 4,
+          "id": "cobblestone",
+          "count": 64
+        }
+      ]
+    }
+  ],
+  "entities": true
+}

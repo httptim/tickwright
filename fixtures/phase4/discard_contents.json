@@ -1,0 +1,147 @@
+{
+  "name": "discard_contents",
+  "description": "Four filled block entities are removed the way /setblock removes them (discard_contents, Block.UPDATE_SKIP_BLOCK_ENTITY_SIDEEFFECTS), as the editor's edits do: a chest set to air, a hopper destroyed, a barrel quietly replaced by stone, and a lectern holding a book destroyed. Nothing spills out as an item entity. The comparators reading the chest and the lectern turn off with them; the barrel's, replaced without updates, stays on.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "container",
+    "comparator"
+  ],
+  "palette": {
+    "#": "stone",
+    "c": "chest[facing=north,type=single,waterlogged=false]",
+    "h": "hopper[enabled=true,facing=down]",
+    "b": "barrel[facing=up,open=false]",
+    "t": "lectern[facing=north,has_book=true,powered=false]",
+    "C": "comparator[facing=north,mode=compare,powered=false]",
+    "L": "redstone_lamp[lit=false]"
+  },
+  "layers": [
+    [
+      "#########",
+      "#########",
+      "#########"
+    ],
+    [
+      ".c.h.b.t.",
+      ".C.C.C.C.",
+      ".L.L.L.L."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 5,
+      "action": "set",
+      "pos": [
+        1,
+        1,
+        0
+      ],
+      "state": "air",
+      "discard_contents": true
+    },
+    {
+      "tick": 10,
+      "action": "destroy",
+      "pos": [
+        3,
+        1,
+        0
+      ],
+      "discard_contents": true
+    },
+    {
+      "tick": 15,
+      "action": "set",
+      "pos": [
+        5,
+        1,
+        0
+      ],
+      "state": "stone",
+      "discard_contents": true,
+      "quiet": true
+    },
+    {
+      "tick": 20,
+      "action": "destroy",
+      "pos": [
+        7,
+        1,
+        0
+      ],
+      "discard_contents": true
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        1,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "cobblestone",
+          "count": 64
+        },
+        {
+          "slot": 5,
+          "id": "stone",
+          "count": 20
+        }
+      ]
+    },
+    {
+      "pos": [
+        3,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "cobblestone",
+          "count": 64
+        },
+        {
+          "slot": 1,
+          "id": "dirt",
+          "count": 10
+        }
+      ]
+    },
+    {
+      "pos": [
+        5,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 13,
+          "id": "oak_planks",
+          "count": 64
+        }
+      ]
+    }
+  ],
+  "lecterns": [
+    {
+      "pos": [
+        7,
+        1,
+        0
+      ],
+      "pages": 5,
+      "page": 2
+    }
+  ],
+  "entities": true
+}

@@ -221,6 +221,23 @@ pub fn new_block_entity(_level: &Level, _pos: Pos, state: StateId) -> Option<Blo
     }
 }
 
+/// `BlockEntity.preRemoveSideEffects` for the block entity at `pos`, whose
+/// block `state` has already been replaced: a container spills what it
+/// holds (`Containers.dropContents`; a shulker box keeps its items), and a
+/// lectern drops its book, which is refused in levels that simulate
+/// entities.
+pub fn pre_remove_side_effects(level: &mut Level, pos: Pos, state: StateId) {
+    match level.kind(state) {
+        Kind::ShulkerBox => {}
+        Kind::Lectern => {
+            if level.simulate_entities && level.flag(state, "has_book") {
+                level.unsupported("removing a lectern with its book");
+            }
+        }
+        _ => container::drop_contents(level, pos),
+    }
+}
+
 pub fn tick_block_entity(level: &mut Level, pos: Pos) {
     match level.block_entities.get(&pos) {
         Some(BlockEntity::Piston(_)) => piston::tick_moving(level, pos),
