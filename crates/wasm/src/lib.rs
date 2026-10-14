@@ -741,4 +741,65 @@ mod tests {
         );
         assert_eq!(contents["comparators"], serde_json::json!([{"pos": [1, 0, 0], "output": 1}]), "{contents}");
     }
+
+    /// An imported build whose items carry components opens, as the
+    /// website opens it: names are kept, and a component the engine doesn't
+    /// model is reported rather than stopping the build from opening.
+    #[test]
+    fn a_build_with_item_components_opens_and_keeps_them() {
+        use tickwright_schematic::nbt::{Tag, compound};
+        use tickwright_schematic::{BlockEntity, DATA_VERSION_26_3, Entity, Format, Schematic};
+        let name = |n: &str| compound(vec![("minecraft:custom_name", Tag::String(n.into()))]);
+        let stack = |slot: i8, id: &str, components: Tag| {
+            compound(vec![
+                ("Slot", Tag::Byte(slot)),
+                ("id", Tag::String(id.into())),
+                ("count", Tag::Int(1)),
+                ("components", components),
+            ])
+        };
+        let chest = tickwright_trace::BlockState::parse("chest[facing=north,type=single,waterlogged=false]").unwrap();
+        let s = Schematic {
+            size: [1, 2, 1],
+            blocks: vec![([0, 0, 0], chest)],
+            block_entities: vec![BlockEntity {
+                pos: [0, 0, 0],
+                data: compound(vec![(
+                    "Items",
+                    Tag::List(
+                        10,
+                        vec![
+                            stack(0, "minecraft:stone", name("Filler")),
+                            stack(1, "minecraft:snowball", compound(vec![("minecraft:max_stack_size", Tag::Int(64))])),
+                        ],
+                    ),
+                )]),
+            }],
+            entities: vec![Entity {
+                id: "minecraft:item".into(),
+                pos: [0.5, 1.0, 0.5],
+                data: compound(vec![(
+                    "Item",
+                    compound(vec![("id", Tag::String("minecraft:stone".into())), ("components", name("Rock"))]),
+                )]),
+            }],
+            data_version: Some(DATA_VERSION_26_3),
+        };
+        let bytes = s.write(Format::Litematic);
+        let mut fixture = Schematic::read(&bytes).unwrap().to_fixture("t", 0).unwrap();
+        fixture.entities = true;
+        let resolved = fixture.resolve(tickwright_trace::Transform::IDENTITY).unwrap();
+        let open = serde_json::json!({"op": "open", "version": "26.3", "fixture": resolved});
+        let id = ok(&open.to_string())["session"].as_u64().unwrap();
+        let what = ok(&format!(r#"{{"op":"unsupported","session":{id}}}"#));
+        assert_eq!(
+            what["unsupported"],
+            "the item component minecraft:max_stack_size (in slot 1 of the chest at 0 0 0) is not simulated by the engine yet"
+        );
+        let contents = ok(&format!(r#"{{"op":"contents","session":{id}}}"#));
+        let filler = &contents["containers"][0]["items"][0];
+        assert_eq!(filler["components"], r#"{"minecraft:custom_name":"Filler"}"#, "{contents}");
+        let entities = ok(&format!(r#"{{"op":"entities","session":{id}}}"#));
+        assert_eq!(entities["entities"][0]["detail"], "minecraft:stone*1", "{entities}");
+    }
 }

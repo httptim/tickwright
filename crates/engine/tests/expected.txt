@@ -271,3 +271,5 @@ tnt_breaks_empty_shulker_boxes order
 hopper_stack_sizes order
 item_stack_sizes order
 hopper_full_stack_sizes order
+hopper_sorter_named_filler order
+item_names_merge order
