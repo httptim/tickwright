@@ -489,26 +489,9 @@ fn destroy(level: &mut Level, k: usize) {
 }
 
 /// `Containers.dropContents` at an entity: each slot's stack thrown out in
-/// handfuls of 10 to 30, from a random point in the block the entity is in.
+/// parts of 10 to 30, from a random spot in the block the entity is in.
 fn drop_contents(level: &mut Level, at: Vec3, items: &mut [Stack]) {
-    // `EntityTypes.ITEM.getWidth()`.
-    let size = 0.25f32 as f64;
-    let range = 1.0 - size;
     for stack in items.iter_mut() {
-        let x = at.x.floor() + level.random.next_double() * range + size / 2.0;
-        let y = at.y.floor() + level.random.next_double() * range;
-        let z = at.z.floor() + level.random.next_double() * range + size / 2.0;
-        while !stack.is_empty() {
-            let n = level.random.next_int_bounded(21) + 10;
-            let part = stack.split(n);
-            let id = part.id.strip_prefix("minecraft:").unwrap_or(&part.id).to_string();
-            let mut item = super::item::new_tossed(level, Vec3::new(x, y, z), Stack::new(&id, part.count));
-            let spread = 0.11485000171139836;
-            let dx = level.random.triangle(0.0, spread);
-            let dy = level.random.triangle(0.2, spread);
-            let dz = level.random.triangle(0.0, spread);
-            item.motion = Vec3::new(dx, dy, dz);
-            level.add_entity(item);
-        }
+        crate::blocks::container::drop_item_stack_at(level, at, std::mem::take(stack));
     }
 }

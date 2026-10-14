@@ -306,13 +306,20 @@ pub fn drop_contents(level: &mut Level, pos: Pos) {
 }
 
 /// `Containers.dropItemStack` at the block `pos`.
-fn drop_item_stack(level: &mut Level, pos: Pos, mut stack: Stack) {
+fn drop_item_stack(level: &mut Level, pos: Pos, stack: Stack) {
+    drop_item_stack_at(level, Vec3::new(pos.x as f64, pos.y as f64, pos.z as f64), stack);
+}
+
+/// `Containers.dropItemStack` at `at` (a block's corner, or an entity's
+/// position for `dropContents` at an entity): a spot in the block `at` is
+/// in, from the level's random source, then the stack in parts of 10 to 30.
+pub fn drop_item_stack_at(level: &mut Level, at: Vec3, mut stack: Stack) {
     // `EntityTypes.ITEM.getWidth()`: an item is a quarter of a block wide.
     let (range, half) = (1.0 - 0.25, 0.25 / 2.0);
     let r = &mut level.random;
-    let x = pos.x as f64 + r.next_double() * range + half;
-    let y = pos.y as f64 + r.next_double() * range;
-    let z = pos.z as f64 + r.next_double() * range + half;
+    let x = at.x.floor() + r.next_double() * range + half;
+    let y = at.y.floor() + r.next_double() * range;
+    let z = at.z.floor() + r.next_double() * range + half;
     while !stack.is_empty() {
         let n = level.random.next_int_bounded(21) + 10;
         let part = stack.split(n);
