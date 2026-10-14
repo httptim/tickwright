@@ -441,9 +441,11 @@ fn clamp_loaded_motion(m: Vec3) -> Vec3 {
 // --- movement --------------------------------------------------------------
 
 /// Buffers that moves and block walks reuse, so that once they have grown
-/// moving an entity allocates nothing. Each use clears what it takes, and
-/// they hold no state between uses: a copy of the level starts with empty
-/// ones.
+/// moving an entity allocates nothing. Each use takes a buffer out of the
+/// level, clears it, and puts it back, and they hold no state between
+/// uses: a copy of the level starts with empty ones. A use nested inside
+/// another (a block an entity feels moving another entity) finds an empty
+/// buffer and allocates its own, which is safe, only slower.
 #[derive(Default)]
 pub(crate) struct Scratch {
     /// `Entity.visitedBlocks`: the blocks that felt the entity in this
@@ -663,11 +665,12 @@ fn check_inside_blocks(
 
 /// Whether the entity moving from `from` to `to` touches the block's
 /// `getEntityInsideCollisionShape`. That is the whole block for every
-/// block but tripwire (and blocks the engine doesn't simulate), so the
-/// walk reaching it is enough; string is felt only if the box sweeps
-/// through its thin shape (`collidedWithShapeMovingFrom`). A block the
-/// entity misses is not counted as visited, so a later move can still
-/// reach it.
+/// block the engine simulates but tripwire and powder snow, so the walk
+/// reaching it is enough; string is felt only if the box sweeps through
+/// its thin shape (`collidedWithShapeMovingFrom`). Powder snow is taken
+/// as a whole block here, and any entity it is felt by is refused
+/// (`blocks::entity_inside`). A block the entity misses is not counted as
+/// visited, so a later part of the move can still reach it.
 fn moved_into(level: &Level, e: &Entity, p: Pos, state: StateId, from: Vec3, to: Vec3) -> bool {
     match level.kind(state) {
         Kind::Tripwire => {
@@ -1330,4 +1333,33 @@ pub fn replaceable(level: &Level, state: StateId) -> bool {
 /// `FallingBlock.isFree`.
 pub fn is_free(level: &Level, state: StateId) -> bool {
     replaceable(level, state) || level.reg.name(state) == "minecraft:fire" || level.reg.name(state) == "minecraft:lava"
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rules::Rules;
+
+    /// No capture can show this, because the entities the engine simulates
+    /// make one move before they feel blocks, and a later leg of that move
+    /// keeps the height of the leg that missed. An entity whose moves this
+    /// tick pass over a string, then through it, must still press it.
+    #[test]
+    fn a_string_missed_by_one_move_is_pressed_by_the_next() {
+        let mut level = Level::new(Rules::for_version("26.3").unwrap());
+        let string = level.reg.parse("tripwire[attached=false,disarmed=false,powered=false]").unwrap();
+        let pos = Pos::new(0, 0, 0);
+        level.set_block(pos, string, crate::level::flags::CLIENTS);
+        let item = Data::Item(item::Item::new(Stack::new("stone", 1)));
+        let e = Entity::new(&mut level, item, Vec3::new(0.5, 0.3, 0.5));
+        level.add_entity(e);
+        let mut e = level.take_entity(0);
+        // Over the string's half-block shape, then down through it.
+        let over = Movement { from: Vec3::new(0.5, 0.9, 0.5), to: Vec3::new(0.5, 0.8, 0.5), asked: None };
+        let through = Movement { from: over.to, to: e.pos, asked: None };
+        e.final_movements = vec![over, through];
+        apply_effects_for_last_movements(&mut level, &mut e);
+        level.put_entity(e);
+        assert!(level.flag(level.get(pos), "powered"));
+    }
 }

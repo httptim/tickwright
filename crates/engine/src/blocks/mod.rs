@@ -645,6 +645,10 @@ pub fn entity_inside(level: &mut Level, k: usize, pos: Pos, state: StateId, prec
         Kind::Button => button::entity_inside(level, pos, state),
         Kind::Fire => fire::entity_inside(level, k),
         Kind::Honey => plain::honey_entity_inside(level, k, pos),
+        // `PowderSnowBlock`: entities sink into it and stick, and one that
+        // has fallen more than 2.5 blocks meets a shape of its own. The
+        // engine tracks no fall distance.
+        Kind::PowderSnow => level.unsupported("an entity in powder snow"),
         _ => {}
     }
 }

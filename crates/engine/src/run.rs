@@ -412,4 +412,22 @@ mod tests {
         assert_eq!(u.tick, 23);
         assert_eq!(u.message, "dispensing minecraft:tnt is not simulated by the engine yet");
     }
+
+    #[test]
+    fn an_entity_in_powder_snow_is_refused() {
+        // An item dropped five blocks onto three blocks of powder snow.
+        let source = FixtureSource::from_json(
+            r###"{"name": "t", "ticks": 30, "entities": true, "palette": {"#": "stone", "p": "powder_snow"},
+                "layers": [["#"], ["p"], ["p"], ["p"], ["."], ["."], ["."], ["."], ["."]],
+                "stimuli": [
+                    {"tick": 2, "action": "summon", "entity": "item", "at": [0.5, 9.0, 0.5],
+                     "nbt": "{Item:{id:\"stone\",count:1}}"}
+                ]}"###,
+        )
+        .unwrap();
+        let fixture = source.resolve(Transform::IDENTITY).unwrap();
+        let trace = super::run_partial(&fixture, "26.3").unwrap();
+        let u = trace.unsupported.as_ref().unwrap();
+        assert_eq!(u.message, "an entity in powder snow is not simulated by the engine yet");
+    }
 }
