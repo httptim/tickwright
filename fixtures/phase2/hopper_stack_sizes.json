@@ -1,0 +1,175 @@
+{
+  "name": "hopper_stack_sizes",
+  "description": "Items move in stacks of their own size, not 64. Hoppers pass 20 ender pearls from a chest into a chest, which fills a slot at 16 and starts another, and the same into a locked hopper, whose comparator climbs to 4 as the pearls arrive. A third pair of hoppers passes three diamond pickaxes, which take a slot each, so its comparator reads 9. A lever fires a dropper twice into a chest holding 15 pearls: the first tops the slot up to 16 and the second starts a new one.",
+  "ticks": 175,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "hopper",
+    "container",
+    "comparator",
+    "dropper",
+    "stack_size"
+  ],
+  "palette": {
+    "#": "stone",
+    "C": "chest[facing=north,type=single,waterlogged=false]",
+    "h": "hopper[enabled=true,facing=down]",
+    "H": "hopper[enabled=false,facing=down]",
+    "R": "redstone_block",
+    "c": "comparator[facing=north,mode=compare,powered=false]",
+    "|": "redstone_wire[east=none,north=side,power=0,south=side,west=none]",
+    "D": "dropper[facing=north,triggered=false]",
+    "l": "lever[face=floor,facing=north,powered=false]"
+  },
+  "layers": [
+    [
+      "########",
+      "########",
+      "########",
+      "########"
+    ],
+    [
+      "C.HRH.C.",
+      "..c.c.Dl",
+      "..|.|...",
+      "..|.|..."
+    ],
+    [
+      "h.h.h...",
+      "........",
+      "........",
+      "........"
+    ],
+    [
+      "C.C.C...",
+      "........",
+      "........",
+      "........"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "use",
+      "pos": [
+        7,
+        1,
+        1
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "use",
+      "pos": [
+        7,
+        1,
+        1
+      ]
+    },
+    {
+      "tick": 14,
+      "action": "use",
+      "pos": [
+        7,
+        1,
+        1
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "pos": [
+        0,
+        3,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 1,
+          "id": "ender_pearl",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "pos": [
+        2,
+        3,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 1,
+          "id": "ender_pearl",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "pos": [
+        4,
+        3,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "diamond_pickaxe",
+          "count": 1
+        },
+        {
+          "slot": 1,
+          "id": "diamond_pickaxe",
+          "count": 1
+        },
+        {
+          "slot": 2,
+          "id": "diamond_pickaxe",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "pos": [
+        6,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "ender_pearl",
+          "count": 15
+        }
+      ]
+    },
+    {
+      "pos": [
+        6,
+        1,
+        1
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "ender_pearl",
+          "count": 16
+        }
+      ]
+    }
+  ]
+}
