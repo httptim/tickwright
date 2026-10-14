@@ -961,10 +961,12 @@ mod tests {
     /// powering it: a line of budded rails, as players use to drive an
     /// update skipper. Updating the first rail turns them off one after
     /// another, all in one chain. Each rail that turns off queues ten
-    /// updates: around itself and the block below it, as any rail does when
-    /// its state changes (`affectNeighborsAfterRemoval`), then around itself
-    /// again, six shape updates and around the block below as it turns off.
-    /// The next rail turns off during the first of these.
+    /// updates: around itself and the block below it, as a straight rail
+    /// (powered, activator or detector) does when its state changes
+    /// (`affectNeighborsAfterRemoval`; a plain rail only updates above
+    /// itself, and only on a slope), then around itself again, six shape
+    /// updates and around the block below as it turns off. The next rail
+    /// turns off during the first of these.
     fn stale_rails(len: i32) -> Level {
         let mut level = Level::new(Rules::for_version("26.3").unwrap());
         let stone = level.reg.parse("stone").unwrap();
@@ -994,19 +996,30 @@ mod tests {
     /// The first rail turns off on the chain's first update, and rail
     /// `j + 1` while the first update rail `j` queued runs, which is the
     /// chain's update `2 + 10 * j`. So a chain that may queue `cap` updates
-    /// turns off every rail `j + 1` with `2 + 10 * j <= cap`.
+    /// turns off every rail `j + 1` with `2 + 10 * j <= cap`. This holds for
+    /// a cap of 2 or more; a cap of 1 turns off only the first rail.
     fn rails_turned_off_by_one_chain(cap: i32) -> i32 {
+        assert!(cap >= 2);
         (cap - 2) / 10 + 2
     }
 
     #[test]
     fn a_chain_stops_after_the_capped_number_of_updates() {
-        for cap in [10, 24, 25, 100, 1001] {
+        // A cap of 12 just reaches the update that turns off the third rail
+        // (2 + 10 * 1) and 11 just misses it, so a count off by one either
+        // way fails.
+        for (cap, off) in [(10, 2), (11, 2), (12, 3), (24, 4), (25, 4), (100, 11), (1001, 101)] {
+            assert_eq!(rails_turned_off_by_one_chain(cap), off);
             let mut level = stale_rails(400);
             level.max_chained_updates = cap as usize;
             poke(&mut level, 0);
             assert_eq!(rails_off(&level, 400), rails_turned_off_by_one_chain(cap), "cap {cap}");
         }
+        // A cap of 1 runs only the chain's first update.
+        let mut level = stale_rails(400);
+        level.max_chained_updates = 1;
+        poke(&mut level, 0);
+        assert_eq!(rails_off(&level, 400), 1);
     }
 
     #[test]

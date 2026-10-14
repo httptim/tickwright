@@ -17,7 +17,7 @@ all eight orientations and must match at the order level
 | `instant-tile-ticks` | no (believed) | | not present in 26.3 |
 | `dust-locational` | yes | `phase2/dust_piston_race_a`, `phase2/dust_piston_race_b`, `nucleation/wire_corner_pull` | covered: the same race at two origins |
 | `directional-update-order` | yes | `phase2/pistons_face_off` | covered |
-| `redstone-experiments` | opt-in, captured | the 14 fixtures in `experiments/` | covered: with the feature on, dust runs the experimental evaluator and updates carry an orientation; every fixture matches in all eight orientations. Where the game draws an orientation from the level's random source, the engine uses a sequence of its own, so a build whose outcome depends on that draw is not covered |
+| `redstone-experiments` | opt-in, captured | the 14 fixtures in `experiments/` | covered: with the feature on, dust runs the experimental evaluator and updates carry an orientation; every fixture matches in all eight orientations. Where the game draws an orientation from the level's random source, the engine uses a sequence of its own and never advances the level's random source, so neither a build whose outcome depends on that draw nor one that uses the level's random source after it (entities, explosions) is covered |
 | `dust-dot-cross` | yes | `phase1/dust_dot_vs_cross` | covered |
 | `diode-pulse-loss` | yes | `phase1/repeater_chain_pulse_1` | covered |
 | `observer-double-schedule` | yes | `phase2/observer_clock`, `phase2/observer_removed_mid_pulse` | covered |
