@@ -272,3 +272,5 @@ jukebox_hopper_loop order
 jukebox_dropper_sculk order
 jukebox_pop_out order
 jukebox_blown_up order
+explosion_spills_containers order
+headless_piston_removes_chest order
