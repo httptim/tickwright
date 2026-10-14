@@ -156,6 +156,7 @@ crafter_into_crafter order
 crafter_iron_block order
 daylight_detector_day order
 daylight_detector_dusk_dawn order
+daylight_detector_transitions order
 tripwire_cut_string order
 tripwire_string_completes order
 shelf_chain_power order
