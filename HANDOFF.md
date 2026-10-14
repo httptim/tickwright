@@ -9,8 +9,9 @@ picking the work up.
 
 - The engine targets Java Edition 26.3. Every behaviour is checked against
   traces captured from the real 26.3 server (`traces/26.3`).
-- There are 269 fixtures (`fixtures/`) and 2231 traces: one per fixture
-  and orientation, and 100 more seeds of `phase4/tnt_cannon`. Every trace
+- There are 275 fixtures (`fixtures/`) and 2279 traces: one per fixture
+  and orientation it is captured in (all eight, unless the fixture lists
+  fewer), and 100 more seeds of `phase4/tnt_cannon`. Every trace
   matches at the strictest level ("order"), and no fixture is refused.
   The fixtures listed in `crates/engine/tests/expected.txt` must keep
   matching in every captured run.
