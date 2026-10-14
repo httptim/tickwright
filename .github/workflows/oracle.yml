@@ -29,24 +29,34 @@ on:
 permissions:
   contents: write
 
+env:
+  MC_VERSION: "26.3"
+  # The JVM the server runs on, pinned so a new release in the runner's tool
+  # cache can't change it, or give the two jobs different ones. Math.sin and
+  # Math.cos depend on it: rerun the kick-trig job's check after changing it.
+  JAVA_VERSION: "25.0.4+1"
+
 jobs:
   capture:
     runs-on: ubuntu-latest
     env:
-      MC_VERSION: "26.3"
       REPORTS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "25"
+          java-version: ${{ env.JAVA_VERSION }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: actions/cache@v4
         with:
           path: harness/work/server-*.jar
           key: server-jar-${{ env.MC_VERSION }}
+      - name: Machine
+        run: |
+          lscpu | grep '^Model name'
+          java -version
       - name: Capture traces
         run: |
           if [ -n "${{ inputs.only }}" ]; then
@@ -113,3 +123,55 @@ jobs:
           if not failed:
               note(lines[-15:])
           PY
+
+  # Newly primed TNT kicks at a random angle through Math.sin and Math.cos,
+  # whose last bit depends on the JVM and the CPU. Measures how many of a
+  # million kick angles per seed this runner's JVM, interpreted and compiled,
+  # works out differently from the engine. It reports, and fails only if the
+  # check itself can't run.
+  kick-trig:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/cache@v4
+        with:
+          path: harness/work/server-*.jar
+          key: server-jar-${{ env.MC_VERSION }}
+      - name: Measure Math.sin and Math.cos against the engine
+        run: harness/kick-trig.sh
+      - name: Kick trigonometry summary
+        if: always()
+        run: |
+          out=harness/work/kick-trig
+          [ -f "$out/summary.txt" ] || exit 0
+          cpu="$(lscpu | grep '^Model name' | tr -s ' ')"
+          note="Differences are expected until the engine has a bit-exact version: crate::math is correctly rounded, and HotSpot on x86-64 is an ulp away on about 1 kick angle in 400."
+          {
+            echo "### Kick trigonometry"
+            echo
+            echo "$note"
+            echo
+            echo '```'
+            echo "$cpu"
+            cat "$out/summary.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Annotations can be read through the API when the log can't.
+          echo "::notice::$cpu%0A$(sed ':a;N;$!ba;s/\n/%0A/g' "$out/summary.txt")%0A$note"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kick-trig-${{ env.MC_VERSION }}
+          path: |
+            harness/work/kick-trig/diffs.tsv
+            harness/work/kick-trig/summary.txt
+            harness/work/kick-trig/*.log
+          if-no-files-found: ignore

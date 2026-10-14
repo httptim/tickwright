@@ -1,6 +1,6 @@
 # Engine handoff
 
-Where the Tickwright engine stands as of 2026-10-12, what to do next, and
+Where the Tickwright engine stands as of 2026-10-14, what to do next, and
 how to check your work. The [README](README.md) explains the layout, the
 CLI and how to write fixtures. This file is the short version for someone
 picking the work up.
@@ -128,7 +128,7 @@ Traces only come from the real game. Never write or edit one by hand.
    gh workflow run oracle.yml --ref <branch> -f commit_data=true
    ```
    It downloads the official 26.3 server jar from Mojang's version
-   manifest and checks its SHA-1 (`harness/run.sh`). The jar is never
+   manifest and checks its SHA-1 (`harness/server.sh`). The jar is never
    committed. The workflow then captures every fixture with the agent in
    `harness/` and commits the traces back to the branch.
 3. Pull the bot's commit, then make your engine change match the traces.
@@ -154,8 +154,27 @@ differs from the committed traces. That keeps them honest.
   decimals; a whole number also turns wrongly, since it is mirrored before
   the game centres it.
 - **Trigonometry:** where the game calls `Math.sin` or `Math.cos` (the
-  kick of newly primed TNT), use `crate::math`, which rounds correctly as
-  the captures do. The platform's `sin` is an ulp off in a few cases.
+  kick of newly primed TNT), use `crate::math`, which is correctly
+  rounded. The platform's `sin` is an ulp off in a few cases.
+- **Known difference, TNT kicks:** the server isn't quite correctly
+  rounded either. HotSpot on x86-64, which the captures run on, gives a
+  sine or cosine an ulp away on about 1 kick angle in 400, so a TNT kick
+  there can differ from the engine's in the last bit of its motion. On
+  arm64 servers about 1 kick angle in 6 differs from x86-64. The oracle
+  workflow's `kick-trig` job (`harness/kick-trig.sh`) measures this on
+  every run: a million angles per seed, interpreted and compiled, with the
+  counts in its job summary. On 2026-10-14, with Temurin 25.0.4.1, it was
+  1,244 sines and 1,294 cosines of 1,048,576 angles, the same in every
+  mode. A bit-exact version is future work. No committed capture draws
+  such an angle. `tnt_kicks` (in PR #61, with its traces) does, and can
+  come back when the engine matches: a floor lever on an obsidian block in
+  the middle of a 5x5 obsidian floor, TNT on the block's four sides and on
+  the lever's four sides and above it, the lever used at tick 2, 12 ticks.
+  Its name was chosen for the seed it gives: in `tnt_kicks@r0` the sixth
+  kick's angle is 4.9621796316599145, and in `tnt_kicks@r90` the ninth's is
+  4.9431512074487465. The server's cosines of these are
+  0.24720111325462757 and 0.22871961211462125, an ulp below the correctly
+  rounded ones.
 - **Check the capture:** make sure a new fixture really does what its
   description says. It's easy to aim an arrow or drop an item that never
   touches the block under test.
