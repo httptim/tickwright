@@ -26,6 +26,11 @@ pub struct Minecart {
     /// A hopper minecart, and whether it is taking items (`enabled`).
     pub hopper: bool,
     pub enabled: bool,
+    /// `VehicleEntity`'s damage, which falls by 1 a tick; past 40 a hit
+    /// breaks the cart.
+    pub damage: f32,
+    /// `hurtTime`: ticks left of the last hit's shake.
+    pub hurt_time: i32,
 }
 
 impl Minecart {
@@ -44,6 +49,18 @@ impl Minecart {
             items: (size > 0).then(|| vec![Stack::default(); size]),
             hopper: name == "hopper_minecart",
             enabled: true,
+            damage: 0.0,
+            hurt_time: 0,
+        }
+    }
+
+    /// `getDropItem`: what the cart leaves when it breaks.
+    fn drop_item(&self) -> &'static str {
+        match (self.furnace, self.hopper, self.items.is_some()) {
+            (true, _, _) => "furnace_minecart",
+            (_, true, _) => "hopper_minecart",
+            (_, _, true) => "chest_minecart",
+            _ => "minecart",
         }
     }
 
@@ -160,6 +177,13 @@ fn natural_slowdown(e: &Entity, m: Vec3) -> Vec3 {
 
 /// `AbstractMinecart.tick`.
 pub fn tick(level: &mut Level, e: &mut Entity) {
+    let m = cart_mut(e);
+    if m.hurt_time > 0 {
+        m.hurt_time -= 1;
+    }
+    if m.damage > 0.0 {
+        m.damage -= 1.0;
+    }
     if e.pos.y < (level.min_y() - 64) as f64 {
         e.discard();
         return;
@@ -188,9 +212,17 @@ fn behavior_tick(level: &mut Level, e: &mut Entity) {
     if is_rail_state(level, state) {
         move_along_track(level, e);
         // `activateMinecart`: a hopper minecart is off on a powered
-        // activator rail and on again on an unpowered one.
-        if level.reg.name(state) == "minecraft:activator_rail" && cart(e).hopper {
-            cart_mut(e).enabled = !level.flag(state, "powered");
+        // activator rail and on again on an unpowered one, and a plain
+        // minecart on a powered one shakes as if hit hard (`Minecart`).
+        if level.reg.name(state) == "minecraft:activator_rail" {
+            let powered = level.flag(state, "powered");
+            let m = cart_mut(e);
+            if m.hopper {
+                m.enabled = !powered;
+            } else if powered && !m.furnace && m.items.is_none() && m.hurt_time == 0 {
+                m.hurt_time = 10;
+                m.damage = 50.0;
+            }
         }
     } else {
         come_off_track(level, e);
@@ -409,6 +441,74 @@ fn move_along_track(level: &mut Level, e: &mut Entity) {
                 return;
             }
             e.motion = Vec3::new(xdd, m.y, zdd);
+        }
+    }
+}
+
+/// `VehicleEntity.hurtServer` for the cart at `k`, hit by an explosion for
+/// `amount`: past 40 damage it breaks (`destroy`).
+pub fn hurt(level: &mut Level, k: usize, amount: f32) {
+    let e = &mut level.entities[k];
+    if e.removed {
+        return;
+    }
+    let m = cart_mut(e);
+    m.hurt_time = 10;
+    m.damage += amount * 10.0;
+    let broken = m.damage > 40.0;
+    // `gameEvent(ENTITY_DAMAGE)`, and `ENTITY_DIE` when it breaks.
+    let at = e.pos;
+    if crate::blocks::could_hear_entity(level, at) {
+        level.unsupported("a sculk sensor hearing a minecart hit by an explosion");
+    }
+    if broken {
+        destroy(level, k);
+    }
+}
+
+/// `VehicleEntity.destroy`, for a chest or hopper cart as
+/// `AbstractMinecartContainer` overrides it: killing the cart spills what
+/// it holds (`remove`), then the cart's own item drops, then
+/// `chestVehicleDestroyed` spills it again, which finds every slot empty
+/// but still draws a place for each.
+fn destroy(level: &mut Level, k: usize) {
+    let e = &mut level.entities[k];
+    e.discard();
+    let at = e.pos;
+    let m = cart_mut(e);
+    let drop = m.drop_item();
+    let items = m.items.take();
+    if let Some(mut items) = items {
+        drop_contents(level, at, &mut items);
+        super::item::spawn_at_location(level, at, Stack::new(drop, 1));
+        drop_contents(level, at, &mut items);
+        cart_mut(&mut level.entities[k]).items = Some(items);
+    } else {
+        super::item::spawn_at_location(level, at, Stack::new(drop, 1));
+    }
+}
+
+/// `Containers.dropContents` at an entity: each slot's stack thrown out in
+/// handfuls of 10 to 30, from a random point in the block the entity is in.
+fn drop_contents(level: &mut Level, at: Vec3, items: &mut [Stack]) {
+    // `EntityTypes.ITEM.getWidth()`.
+    let size = 0.25f32 as f64;
+    let range = 1.0 - size;
+    for stack in items.iter_mut() {
+        let x = at.x.floor() + level.random.next_double() * range + size / 2.0;
+        let y = at.y.floor() + level.random.next_double() * range;
+        let z = at.z.floor() + level.random.next_double() * range + size / 2.0;
+        while !stack.is_empty() {
+            let n = level.random.next_int_bounded(21) + 10;
+            let part = stack.split(n);
+            let id = part.id.strip_prefix("minecraft:").unwrap_or(&part.id).to_string();
+            let mut item = super::item::new_tossed(level, Vec3::new(x, y, z), Stack::new(&id, part.count));
+            let spread = 0.11485000171139836;
+            let dx = level.random.triangle(0.0, spread);
+            let dy = level.random.triangle(0.2, spread);
+            let dz = level.random.triangle(0.0, spread);
+            item.motion = Vec3::new(dx, dy, dz);
+            level.add_entity(item);
         }
     }
 }

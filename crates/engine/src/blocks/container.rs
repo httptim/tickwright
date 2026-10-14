@@ -56,7 +56,7 @@ impl Stack {
     }
 
     /// `ItemStack.split`.
-    pub(super) fn split(&mut self, amount: i32) -> Stack {
+    pub(crate) fn split(&mut self, amount: i32) -> Stack {
         let n = amount.min(self.count);
         self.count -= n;
         Stack { id: self.id.clone(), count: n }

@@ -1,0 +1,21 @@
+{
+"damage_resistant": {
+  "minecraft:ancient_debris": ["minecraft:campfire", "minecraft:fireball", "minecraft:hot_floor", "minecraft:in_fire", "minecraft:lava", "minecraft:on_fire", "minecraft:sulfur_cube_hot", "minecraft:unattributed_fireball"],
+  "minecraft:nether_star": ["minecraft:bad_respawn_point", "minecraft:explosion", "minecraft:fireworks", "minecraft:player_explosion"],
+  "minecraft:netherite_axe": ["minecraft:campfire", "minecraft:fireball", "minecraft:hot_floor", "minecraft:in_fire", "minecraft:lava", "minecraft:on_fire", "minecraft:sulfur_cube_hot", "minecraft:unattributed_fireball"],
+  "minecraft:netherite_block": ["minecraft:campfire", "minecraft:fireball", "minecraft:hot_floor", "minecraft:in_fire", "minecraft:lava", "minecraft:on_fire", "minecraft:sulfur_cube_hot", "minecraft:unattributed_fireball"],
+  "minecraft:netherite_boots": ["minecraft:campfire", "minecraft:fireball", "minecraft:hot_floor", "minecraft:in_fire", "minecraft:lava", "minecraft:on_fire", "minecraft:sulfur_cube_hot", "minecraft:unattributed_fireball"],
+  "minecraft:netherite_chestplate": ["minecraft:campfire", "minecraft:fireball", "minecraft:hot_floor", "minecraft:in_fire", "minecraft:lava", "minecraft:on_fire", "minecraft:sulfur_cube_hot", "minecraft:unattributed_fireball"],
+  "minecraft:netherite_helmet": ["minecraft:campfire", "minecraft:fireball", "minecraft:hot_floor", "minecraft:in_fire", "minecraft:lava", "minecraft:on_fire", "minecraft:sulfur_cube_hot", "minecraft:unattributed_fireball"],
+  "minecraft:netherite_hoe": ["minecraft:campfire", "minecraft:fireball", "minecraft:hot_floor", "minecraft:in_fire", "minecraft:lava", "minecraft:on_fire", "minecraft:sulfur_cube_hot", "minecraft:unattributed_fireball"],
+  "minecraft:netherite_horse_armor": ["minecraft:campfire", "minecraft:fireball", "minecraft:hot_floor", "minecraft:in_fire", "minecraft:lava", "minecraft:on_fire", "minecraft:sulfur_cube_hot", "minecraft:unattributed_fireball"],
+  "minecraft:netherite_ingot": ["minecraft:campfire", "minecraft:fireball", "minecraft:hot_floor", "minecraft:in_fire", "minecraft:lava", "minecraft:on_fire", "minecraft:sulfur_cube_hot", "minecraft:unattributed_fireball"],
+  "minecraft:netherite_leggings": ["minecraft:campfire", "minecraft:fireball", "minecraft:hot_floor", "minecraft:in_fire", "minecraft:lava", "minecraft:on_fire", "minecraft:sulfur_cube_hot", "minecraft:unattributed_fireball"],
+  "minecraft:netherite_nautilus_armor": ["minecraft:campfire", "minecraft:fireball", "minecraft:hot_floor", "minecraft:in_fire", "minecraft:lava", "minecraft:on_fire", "minecraft:sulfur_cube_hot", "minecraft:unattributed_fireball"],
+  "minecraft:netherite_pickaxe": ["minecraft:campfire", "minecraft:fireball", "minecraft:hot_floor", "minecraft:in_fire", "minecraft:lava", "minecraft:on_fire", "minecraft:sulfur_cube_hot", "minecraft:unattributed_fireball"],
+  "minecraft:netherite_scrap": ["minecraft:campfire", "minecraft:fireball", "minecraft:hot_floor", "minecraft:in_fire", "minecraft:lava", "minecraft:on_fire", "minecraft:sulfur_cube_hot", "minecraft:unattributed_fireball"],
+  "minecraft:netherite_shovel": ["minecraft:campfire", "minecraft:fireball", "minecraft:hot_floor", "minecraft:in_fire", "minecraft:lava", "minecraft:on_fire", "minecraft:sulfur_cube_hot", "minecraft:unattributed_fireball"],
+  "minecraft:netherite_spear": ["minecraft:campfire", "minecraft:fireball", "minecraft:hot_floor", "minecraft:in_fire", "minecraft:lava", "minecraft:on_fire", "minecraft:sulfur_cube_hot", "minecraft:unattributed_fireball"],
+  "minecraft:netherite_sword": ["minecraft:campfire", "minecraft:fireball", "minecraft:hot_floor", "minecraft:in_fire", "minecraft:lava", "minecraft:on_fire", "minecraft:sulfur_cube_hot", "minecraft:unattributed_fireball"]
+}
+}

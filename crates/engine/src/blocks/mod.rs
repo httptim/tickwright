@@ -26,6 +26,7 @@ pub mod lectern;
 pub mod plate;
 mod sculk;
 mod shelf;
+pub use sculk::could_hear as could_hear_entity;
 pub use sculk::post as post_game_event;
 mod lever;
 mod note;

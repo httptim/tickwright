@@ -7,6 +7,7 @@ use std::sync::OnceLock;
 use serde_json::Value;
 
 const MATERIALS_26_3: &str = include_str!("../../../data/26.3/materials.json");
+const COMPONENTS_26_3: &str = include_str!("../../../data/26.3/item_components.json");
 const RECIPES_26_3: &str = include_str!("../../../data/26.3/recipes.json");
 
 fn stack_sizes() -> &'static HashMap<String, i32> {
@@ -32,6 +33,28 @@ pub fn max_stack_size(id: &str) -> i32 {
         &full
     };
     stack_sizes().get(id).copied().unwrap_or(64)
+}
+
+fn damage_resistant() -> &'static HashMap<String, Vec<String>> {
+    static RESISTANT: OnceLock<HashMap<String, Vec<String>>> = OnceLock::new();
+    RESISTANT.get_or_init(|| {
+        let v: Value = serde_json::from_str(COMPONENTS_26_3).expect("data/26.3/item_components.json is valid");
+        serde_json::from_value(v["damage_resistant"].clone()).expect("damage_resistant")
+    })
+}
+
+/// `ItemStack.canBeHurtBy`: whether an item entity holding `id` takes
+/// damage of `damage_type` (such as `minecraft:explosion`), from the
+/// item's default `damage_resistant` component.
+pub fn can_be_hurt_by(id: &str, damage_type: &str) -> bool {
+    let full;
+    let id = if id.contains(':') {
+        id
+    } else {
+        full = format!("minecraft:{id}");
+        &full
+    };
+    damage_resistant().get(id).is_none_or(|types| !types.iter().any(|t| t == damage_type))
 }
 
 /// `Item.getCraftingRemainder`: what a crafting slot leaves behind.
@@ -229,6 +252,15 @@ mod tests {
         assert_eq!(max_stack_size("minecraft:stone"), 64);
         assert_eq!(max_stack_size("minecraft:egg"), 16);
         assert_eq!(max_stack_size("cake"), 1);
+    }
+
+    #[test]
+    fn damage_resistance_comes_from_the_game() {
+        assert!(!can_be_hurt_by("nether_star", "minecraft:explosion"));
+        assert!(can_be_hurt_by("nether_star", "minecraft:in_fire"));
+        assert!(can_be_hurt_by("minecraft:netherite_ingot", "minecraft:explosion"));
+        assert!(!can_be_hurt_by("netherite_ingot", "minecraft:lava"));
+        assert!(can_be_hurt_by("stone", "minecraft:explosion"));
     }
 
     #[test]

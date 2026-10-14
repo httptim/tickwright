@@ -342,6 +342,26 @@ mod tests {
     }
 
     #[test]
+    fn a_sculk_sensor_that_could_hear_an_entity_hit_is_refused() {
+        // The engine doesn't post the game events entities make, so an
+        // explosion hitting an item in a sensor's range is refused.
+        let source = FixtureSource::from_json(
+            r####"{"name": "t", "ticks": 20, "entities": true,
+                "palette": {"o": "obsidian", "s": "sculk_sensor[power=0,sculk_sensor_phase=inactive,waterlogged=false]"},
+                "layers": [["ooooo"], ["....s"]],
+                "stimuli": [
+                    {"tick": 1, "action": "summon", "entity": "item", "at": [1.5, 1.0, 0.5],
+                     "nbt": "{Item:{id:\"stone\",count:1}}"},
+                    {"tick": 1, "action": "summon", "entity": "tnt", "at": [0.5, 1.0, 0.5], "nbt": "{fuse:5}"}
+                ]}"####,
+        )
+        .unwrap();
+        let fixture = source.resolve(Transform::IDENTITY).unwrap();
+        let u = super::run_partial(&fixture, "26.3").unwrap().unsupported.unwrap();
+        assert_eq!(u.message, "a sculk sensor hearing an item hit by an explosion is not simulated by the engine yet");
+    }
+
+    #[test]
     fn a_partial_run_stops_before_the_unsupported_tick() {
         let source = FixtureSource::from_json(
             r###"{"name": "t", "ticks": 10, "entities": true, "palette": {"#": "stone", "f": "fire"},

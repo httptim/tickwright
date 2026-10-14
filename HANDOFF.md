@@ -29,7 +29,9 @@ picking the work up.
   - **Entities (phase 4):**
     - items, including those droppers, dispensers and crafters throw out
     - falling blocks
-    - primed TNT and explosions
+    - primed TNT and explosions, which hurt items (not those whose default
+      components resist explosions, such as nether stars) and damage and
+      break minecarts, spilling what chest and hopper carts hold
     - minecarts (plain, furnace, chest and hopper)
     - slime bounces and launches
     - moving blocks shoving entities, slime launching them, and honey
