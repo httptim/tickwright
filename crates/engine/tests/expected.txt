@@ -268,3 +268,5 @@ tnt_fast_walk_limit_rising order
 piston_moves_waterlogged_blocks order
 tnt_breaks_double_slabs order
 tnt_breaks_empty_shulker_boxes order
+waterlogged_blocks_leak order
+waterlogged_blocks_broken order

@@ -393,7 +393,9 @@ impl Level {
         if drop && self.simulate_entities {
             self.drop_resources(pos, state);
         }
-        let ok = self.set_block_rec(pos, self.air, flags::ALL | extra, recursion);
+        // What fluid the block held stays.
+        let left = blocks::water::legacy_block(self, blocks::water::fluid_state(self, state));
+        let ok = self.set_block_rec(pos, left, flags::ALL | extra, recursion);
         if ok {
             self.game_event(GameEvent::BlockDestroy, pos);
         }
@@ -427,8 +429,17 @@ impl Level {
         blocks::post_game_event(self, event, pos);
     }
 
+    /// `Level.removeBlock(pos, false)`: the block goes, and what fluid it
+    /// held stays.
     pub fn remove_block(&mut self, pos: Pos) -> bool {
-        self.set_block(pos, self.air, flags::ALL)
+        self.remove_block_moving(pos, false)
+    }
+
+    /// `Level.removeBlock(pos, movedByPiston)`.
+    pub fn remove_block_moving(&mut self, pos: Pos, moved_by_piston: bool) -> bool {
+        let left = blocks::water::legacy_block(self, blocks::water::fluid_state(self, self.get(pos)));
+        let f = if moved_by_piston { flags::ALL | flags::MOVE_BY_PISTON } else { flags::ALL };
+        self.set_block(pos, left, f)
     }
 
     // --- block entities ----------------------------------------------------

@@ -77,10 +77,26 @@ pub(super) fn tick_if_waterlogged(level: &mut Level, pos: Pos, state: StateId) {
     }
 }
 
-/// Blocks that implement `SimpleWaterloggedBlock` (a `LiquidBlockContainer`).
+/// Whether `state` is a block the engine simulates that implements
+/// `SimpleWaterloggedBlock` (a `LiquidBlockContainer`): it has a
+/// `waterlogged` property, holds a water source while that is set
+/// (`getFluidState`), and takes one from flowing water or a bucket. Every
+/// waterloggable block the engine knows is listed: trapdoors, chests,
+/// rails, slabs short of double, leaves, shelves, sculk sensors and dead
+/// coral (plants, fans and wall fans).
 pub(super) fn is_container(level: &Level, state: StateId) -> bool {
     match level.kind(state) {
-        Kind::Trapdoor | Kind::Chest | Kind::PoweredRail | Kind::DetectorRail | Kind::Rail => true,
+        Kind::Trapdoor
+        | Kind::Chest
+        | Kind::PoweredRail
+        | Kind::DetectorRail
+        | Kind::Rail
+        | Kind::Leaves
+        | Kind::Shelf
+        | Kind::SculkSensor
+        | Kind::CalibratedSculkSensor
+        | Kind::DeadCoral
+        | Kind::DeadCoralWallFan => level.reg.value(state, "waterlogged").is_some(),
         Kind::Slab => level.prop(state, "type") != "double",
         _ => false,
     }
@@ -101,7 +117,7 @@ pub fn fluid_state(level: &Level, state: StateId) -> FluidState {
 }
 
 /// `FluidState.createLegacyBlock`.
-pub(super) fn legacy_block(level: &Level, fs: FluidState) -> StateId {
+pub fn legacy_block(level: &Level, fs: FluidState) -> StateId {
     if fs.is_empty() {
         return level.air;
     }
