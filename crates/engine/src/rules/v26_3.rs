@@ -19,6 +19,8 @@ fn block(name: &str) -> Option<Kind> {
             Kind::Solid
         }
         "quartz_block" | "chiseled_quartz_block" | "smooth_quartz" | "quartz_pillar" => Kind::Solid,
+        // Melon, pumpkin and big dripleaf stems are plants, not logs.
+        n if n.ends_with("melon_stem") || n.ends_with("pumpkin_stem") || n == "big_dripleaf_stem" => return None,
         n if n.ends_with("_log") || n.ends_with("_wood") || n.ends_with("_stem") || n.ends_with("_hyphae") => Kind::Log,
         n if n.ends_with("_leaves") => Kind::Leaves,
         "target" => Kind::Target,
