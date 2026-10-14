@@ -94,6 +94,15 @@ the game produces, which also catches a capture that is not deterministic.
 After changing fixtures or the harness, run the workflow by hand with
 `commit_data` to commit fresh copies to the branch.
 
+One known difference: the game's server (HotSpot on x86-64) works out
+`Math.sin` and `Math.cos` an ulp away from the correctly rounded value on
+about 1 in 400 of the angles newly primed TNT kicks at, so a TNT kick
+there can differ from the engine's in the last bit. On arm64 servers about
+1 kick angle in 6 differs from x86-64. The workflow's `kick-trig` job
+(`harness/kick-trig.sh`) measures it on every run, on the same runner type
+(`ubuntu-latest`) and Java as the captures, and reports the counts in its
+job summary. A bit-exact version is future work.
+
 ## Writing a fixture
 
 ```json
