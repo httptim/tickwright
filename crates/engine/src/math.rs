@@ -13,6 +13,11 @@
 //! multiplications, which round the same on every platform, WebAssembly
 //! included; Rust never fuses them into a multiply-add.
 //!
+//! Only kick angles, `|x|` below 2π rounded to a float, are accepted: they
+//! are all the JVM has been checked on, and larger arguments may round
+//! differently in ways those don't show. Anything else panics (a trap in
+//! WebAssembly), NaN and infinities included.
+//!
 //! HotSpot on arm64 computes these differently (on about one kick angle in
 //! six it differs from x86-64), so a server on an arm64 machine can throw
 //! TNT a little differently from the one the captures ran on.
@@ -105,25 +110,26 @@ const TABLE: [[u64; 4]; 64] = [
     [0xbf73b92e176d6d31, 0xbfb917a6bc29b42c, 0x3c3e2718e0000000, 0x3ff0000000000000],
 ];
 
-/// Where `x` falls: `Main` for `2^-252 <= |x| < 90112`, the only range the
-/// game's angles reach; `Tiny` below it, zero included.
+/// The bound on a kick's angle: `PrimedTnt` draws `nextDouble() * (float)
+/// (Math.PI * 2)`, which stays below this.
+const KICK_RANGE: f64 = 6.2831854820251465;
+
+/// Which of the stub's paths `x` takes: `Main` from `2^-252`, `Tiny` below
+/// it, zero included.
 enum Range {
     Tiny,
     Main,
 }
 
+/// Panics unless `|x|` is below [`KICK_RANGE`].
 fn range(x: f64) -> Range {
+    assert!(x.abs() < KICK_RANGE, "crate::math only takes kick angles, below 2π, not {x}");
     // The stub's own test, on the top 16 bits of `x`.
     let t = (((x.to_bits() >> 32) as u32) & 0x7fff_0000).wrapping_sub(0x3030_0000);
-    if t <= 0x10c5_0000 {
-        Range::Main
-    } else {
-        assert!((t as i32) < 0x10c5_0000, "Math.sin and Math.cos are only worked out below 90112, not {x}");
-        Range::Tiny
-    }
+    if t <= 0x10c5_0000 { Range::Main } else { Range::Tiny }
 }
 
-/// `sin(x + quarter * π / 2)`, for `x` in the main range.
+/// `sin(x + quarter * π / 2)`, for a kick angle `x` on the main path.
 ///
 /// Reduces `x` to `n * π / 32 + r + c`, looks up `B = (n + 16 * quarter)
 /// * π / 32`, and adds up
@@ -165,7 +171,7 @@ fn kernel(x: f64, quarter: i32) -> f64 {
     res_hi + ((((corr + k2) + k3) + pol_s) + pol_c)
 }
 
-/// `Math.sin`.
+/// `Math.sin` of a kick angle. Panics if `|x|` is 2π or more, or NaN.
 pub fn sin(x: f64) -> f64 {
     match range(x) {
         Range::Main => kernel(x, 0),
@@ -175,7 +181,7 @@ pub fn sin(x: f64) -> f64 {
     }
 }
 
-/// `Math.cos`.
+/// `Math.cos` of a kick angle. Panics if `|x|` is 2π or more, or NaN.
 pub fn cos(x: f64) -> f64 {
     match range(x) {
         Range::Main => kernel(x, 1),
@@ -320,6 +326,10 @@ mod tests {
             (0.5211042632243493, None, Some(0.8672699642179156)),
             (0.7548808569109708, Some(0.6852018952724912), None),
             (5.912670801448523, None, Some(0.9321411690010072)),
+            // tnt_kicks: the sixth kick in r0 and the ninth in r90, as the
+            // captured motions show them.
+            (4.9621796316599145, None, Some(0.24720111325462757)),
+            (4.9431512074487465, None, Some(0.22871961211462125)),
         ] {
             let (es, ec) = exact(x);
             assert_eq!(sin(x), s.unwrap_or(es.round()), "sin({x})");
@@ -362,6 +372,28 @@ mod tests {
             assert!(ulps(cos(x), c.round()) <= 1, "cos({x}): {} vs {}", cos(x), c.round());
             x += 0.000123;
         }
+    }
+
+    #[test]
+    fn negative_angles_mirror_positive_ones() {
+        let mut x = 0.0;
+        while x < KICK_RANGE {
+            assert_eq!(sin(-x).to_bits(), (-sin(x)).to_bits(), "sin(-{x})");
+            assert_eq!(cos(-x).to_bits(), cos(x).to_bits(), "cos(-{x})");
+            x += 0.0000987;
+        }
+    }
+
+    #[test]
+    fn refuses_anything_but_kick_angles() {
+        for x in [KICK_RANGE, -KICK_RANGE, 7.0, 1e6, f64::INFINITY, f64::NEG_INFINITY, f64::NAN] {
+            assert!(std::panic::catch_unwind(|| sin(x)).is_err(), "sin({x})");
+            assert!(std::panic::catch_unwind(|| cos(x)).is_err(), "cos({x})");
+        }
+        // The largest angle a kick can draw is taken.
+        let largest = f64::from_bits(KICK_RANGE.to_bits() - 1);
+        let (s, c) = exact(largest);
+        assert!((sin(largest) - s.round()).abs() <= f64::EPSILON && (cos(largest) - c.round()).abs() <= f64::EPSILON);
     }
 
     #[test]

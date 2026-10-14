@@ -31,8 +31,10 @@ permissions:
 
 env:
   MC_VERSION: "26.3"
-  # The JVM the server runs on. Both jobs use it.
-  JAVA_VERSION: "25"
+  # The JVM the server runs on, pinned so a new release in the runner's tool
+  # cache can't change it, or give the two jobs different ones. Math.sin and
+  # Math.cos depend on it: rerun the kick-trig job's check after changing it.
+  JAVA_VERSION: "25.0.4+1"
 
 jobs:
   capture:
@@ -51,6 +53,10 @@ jobs:
         with:
           path: harness/work/server-*.jar
           key: server-jar-${{ env.MC_VERSION }}
+      - name: Machine
+        run: |
+          lscpu | grep '^Model name'
+          java -version
       - name: Capture traces
         run: |
           if [ -n "${{ inputs.only }}" ]; then
@@ -123,6 +129,8 @@ jobs:
   # this runner's for a million kick angles, interpreted and compiled.
   kick-trig:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

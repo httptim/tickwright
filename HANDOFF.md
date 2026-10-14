@@ -1,6 +1,6 @@
 # Engine handoff
 
-Where the Tickwright engine stands as of 2026-10-12, what to do next, and
+Where the Tickwright engine stands as of 2026-10-14, what to do next, and
 how to check your work. The [README](README.md) explains the layout, the
 CLI and how to write fixtures. This file is the short version for someone
 picking the work up.
@@ -127,7 +127,7 @@ Traces only come from the real game. Never write or edit one by hand.
    gh workflow run oracle.yml --ref <branch> -f commit_data=true
    ```
    It downloads the official 26.3 server jar from Mojang's version
-   manifest and checks its SHA-1 (`harness/run.sh`). The jar is never
+   manifest and checks its SHA-1 (`harness/server.sh`). The jar is never
    committed. The workflow then captures every fixture with the agent in
    `harness/` and commits the traces back to the branch.
 3. Pull the bot's commit, then make your engine change match the traces.
@@ -156,13 +156,16 @@ differs from the committed traces. That keeps them honest.
   kick of newly primed TNT), use `crate::math`. It does the arithmetic of
   the stub HotSpot runs on x86-64, interpreted or compiled, which is an
   ulp off the correctly rounded value on about one kick angle in 400
-  (`tnt_kicks` hits two). The oracle workflow's `kick-trig` job
-  (`harness/kick-trig.sh`) compares the two on a million kick angles: on
-  2026-10-14, with Temurin 25.0.4.1 on Intel Xeon Platinum 8370C and 8573C
-  and AMD EPYC 7763 runners, all matched. Check it again when the oracle's
-  Java changes. HotSpot on arm64 differs on about one kick angle in six,
-  so a server on an arm64 machine throws TNT a little differently from the
-  captures.
+  (`tnt_kicks` hits two), and it only takes kick angles (below 2π). The
+  oracle workflow's `kick-trig` job (`harness/kick-trig.sh`) compares it
+  with the runner's JVM on a million kick angles per seed. On 2026-10-14,
+  with Temurin 25.0.4.1, the correctly rounded version it replaced
+  differed on 2,538 results in every mode (Intel Xeon Platinum 8573C),
+  and this one matched every result on Intel Xeon Platinum 8370C and AMD
+  EPYC 7763 and 9V74 runners. Check it again when the oracle's Java
+  (pinned in `oracle.yml`) changes. HotSpot on arm64 differs on about one
+  kick angle in six, so a server on an arm64 machine throws TNT a little
+  differently from the captures.
 - **Check the capture:** make sure a new fixture really does what its
   description says. It's easy to aim an arrow or drop an item that never
   touches the block under test.
