@@ -302,7 +302,7 @@ fn interact_with_blocks(level: &mut Level, mut blocks: Vec<Pos>) {
         }
         let kind = level.kind(state);
         if kind != Kind::Tnt {
-            for stack in crate::loot::block_drops(level, state) {
+            for stack in crate::loot::block_drops(level, p, state) {
                 add_or_append(&mut drops, stack, p);
             }
         }

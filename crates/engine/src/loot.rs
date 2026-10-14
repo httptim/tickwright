@@ -17,6 +17,7 @@ use serde::Deserialize;
 
 use crate::entity::Stack;
 use crate::level::Level;
+use crate::pos::Pos;
 use crate::registry::StateId;
 
 #[derive(Deserialize)]
@@ -36,6 +37,10 @@ struct Rule {
     item: String,
     #[serde(default = "one")]
     count: i32,
+    /// The item takes what the block entity holds (a shulker box's
+    /// `container` component).
+    #[serde(default)]
+    contents: bool,
 }
 
 fn one() -> i32 {
@@ -52,9 +57,9 @@ fn stack(item: &str, count: i32) -> Stack {
 
 /// `BlockState.getDrops` for a break with no tool. Tables the engine can't
 /// evaluate exactly mark the run unsupported and drop nothing.
-pub fn block_drops(level: &mut Level, state: StateId) -> Vec<Stack> {
+pub fn block_drops(level: &mut Level, pos: Pos, state: StateId) -> Vec<Stack> {
     let mut out = Vec::new();
-    for s in table_drops(level, state) {
+    for s in table_drops(level, pos, state) {
         split_stack(s, &mut out);
     }
     out
@@ -71,7 +76,7 @@ fn split_stack(mut s: Stack, out: &mut Vec<Stack>) {
     }
 }
 
-fn table_drops(level: &mut Level, state: StateId) -> Vec<Stack> {
+fn table_drops(level: &mut Level, pos: Pos, state: StateId) -> Vec<Stack> {
     let name = level.reg.name(state).to_string();
     // A wall variant (`Blocks.wallVariant`) drops by its standing block's
     // table, which the data has under the standing block's name:
@@ -92,8 +97,17 @@ fn table_drops(level: &mut Level, state: StateId) -> Vec<Stack> {
             .filter_map(|rules| {
                 rules.iter().find(|r| r.when.iter().all(|(k, v)| level.reg.value(state, k) == Some(v.as_str())))
             })
+            .filter(|r| {
+                // An empty box gives the plain item; a full one would carry
+                // its contents as a component, which the engine doesn't model.
+                let full = r.contents && crate::blocks::shulker_box_holds_items(level, pos);
+                if full {
+                    level.unsupported(format!("dropping {name} with what it holds"));
+                }
+                !full
+            })
             .map(|r| stack(&r.item, r.count))
-            .collect(),
+            .collect::<Vec<_>>(),
     }
 }
 
@@ -105,7 +119,7 @@ mod tests {
 
     fn drops(level: &mut Level, state: &str) -> Vec<(String, i32)> {
         let s = level.reg.parse(state).unwrap();
-        block_drops(level, s).into_iter().map(|st| (st.id, st.count)).collect()
+        block_drops(level, crate::pos::Pos::new(0, 0, 0), s).into_iter().map(|st| (st.id, st.count)).collect()
     }
 
     #[test]

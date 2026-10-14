@@ -402,10 +402,12 @@ impl Level {
 
     /// `Block.dropResources`: the block's loot, popped out around it.
     pub fn drop_resources(&mut self, pos: Pos, state: StateId) {
-        if blocks::has_block_entity(self.kind(state)) {
+        // A shulker box's drop carries what it holds, which its loot rule
+        // checks.
+        if blocks::has_block_entity(self.kind(state)) && self.kind(state) != Kind::ShulkerBox {
             self.unsupported(format!("dropping {} with its block entity", self.reg.name(state)));
         }
-        for stack in crate::loot::block_drops(self, state) {
+        for stack in crate::loot::block_drops(self, pos, state) {
             crate::entity::item::pop_resource(self, pos, stack);
         }
     }
