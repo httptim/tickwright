@@ -93,14 +93,43 @@ pub struct Power {
 /// An edit, kept so the ticks after it can be run again.
 #[derive(Clone, Debug)]
 enum Input {
-    Set { pos: Pos, state: StateId, flags: i32 },
-    Place { item: String, click: blocks::placement::Click },
-    Destroy(Pos),
+    Set {
+        pos: Pos,
+        state: StateId,
+        flags: i32,
+    },
+    Place {
+        item: String,
+        click: blocks::placement::Click,
+    },
+    /// A break, with the flags it adds to the write.
+    Destroy {
+        pos: Pos,
+        extra: i32,
+    },
     Use(Pos),
-    Page { pos: Pos, page: i32 },
+    Page {
+        pos: Pos,
+        page: i32,
+    },
     Time(i64),
-    Item { pos: Pos, slot: usize, id: String, count: i32 },
-    Summon { entity: String, at: Vec3, motion: Option<Vec3>, nbt: Option<String> },
+    Item {
+        pos: Pos,
+        slot: usize,
+        id: String,
+        count: i32,
+    },
+    Summon {
+        entity: String,
+        at: Vec3,
+        motion: Option<Vec3>,
+        nbt: Option<String>,
+    },
+}
+
+/// The flag a write that removes block entities as `/setblock` does adds.
+fn discard(discard_contents: bool) -> i32 {
+    if discard_contents { flags::SKIP_BLOCK_ENTITY_SIDEEFFECTS } else { 0 }
 }
 
 /// Make an edit. Run again, it changes the world exactly as it did the
@@ -114,8 +143,8 @@ fn apply(level: &mut Level, input: &Input) -> Result<bool> {
             level.new_clicking_player();
             return blocks::placement::place(level, item, *click);
         }
-        Input::Destroy(pos) => {
-            level.destroy_block_with(*pos, false, flags::SKIP_BLOCK_ENTITY_SIDEEFFECTS, MAX_RECURSION);
+        Input::Destroy { pos, extra } => {
+            level.destroy_block_with(*pos, false, *extra, MAX_RECURSION);
         }
         Input::Use(pos) => {
             level.new_clicking_player();
@@ -326,6 +355,13 @@ impl Session {
     /// Write `state` (such as `repeater[delay=2,facing=north]`) at `pos`.
     /// Blocks the engine does not simulate are refused by name.
     pub fn set_block(&mut self, pos: Pos, state: &str, placement: Placement) -> Result<()> {
+        self.set_block_as(pos, state, placement, true)
+    }
+
+    /// [`Session::set_block`], choosing whether a block entity it replaces
+    /// goes as `/setblock` removes it (`discard_contents`), or spills what
+    /// it holds as breaking it in the game does, as a fixture stimulus can.
+    pub fn set_block_as(&mut self, pos: Pos, state: &str, placement: Placement, discard_contents: bool) -> Result<()> {
         let id = self.level.reg.parse(state)?;
         if self.level.kind(id) == Kind::Other {
             bail!("{} is not supported by the engine yet", self.level.reg.name(id));
@@ -333,7 +369,7 @@ impl Session {
         let flags = match placement {
             Placement::Quiet => flags::CLIENTS | flags::KNOWN_SHAPE,
             Placement::Updates => flags::ALL,
-        } | flags::SKIP_BLOCK_ENTITY_SIDEEFFECTS;
+        } | discard(discard_contents);
         self.edit(Input::Set { pos, state: id, flags })?;
         Ok(())
     }
@@ -356,7 +392,12 @@ impl Session {
     /// Break the block at `pos` without drops, with normal updates. A block
     /// entity goes without its side effects, as with [`Session::set_block`].
     pub fn destroy(&mut self, pos: Pos) {
-        let _ = self.edit(Input::Destroy(pos));
+        self.destroy_as(pos, true);
+    }
+
+    /// [`Session::destroy`], choosing as [`Session::set_block_as`] does.
+    pub fn destroy_as(&mut self, pos: Pos, discard_contents: bool) {
+        let _ = self.edit(Input::Destroy { pos, extra: discard(discard_contents) });
     }
 
     /// Right-click the block at `pos` with an empty hand.
@@ -1431,9 +1472,9 @@ mod tests {
                     Action::Use => s.use_block(pos),
                     Action::Set => {
                         let how = if st.quiet { Placement::Quiet } else { Placement::Updates };
-                        s.set_block(pos, st.state.as_deref().unwrap(), how).unwrap()
+                        s.set_block_as(pos, st.state.as_deref().unwrap(), how, st.discard_contents).unwrap()
                     }
-                    Action::Destroy => s.destroy(pos),
+                    Action::Destroy => s.destroy_as(pos, st.discard_contents),
                     Action::Place => {
                         let p = st.place.as_ref().unwrap();
                         s.place(&p.item, crate::run::click(pos, p).unwrap()).unwrap();
