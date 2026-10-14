@@ -1,0 +1,114 @@
+{
+  "name": "minecart_damage_wears_off",
+  "description": "A minecart's damage falls by 1 a tick. Two plain carts are each hit twice by TNT 7.5 blocks away, about 28 damage a hit. The first is hit again 5 ticks later and breaks, past 40. The second is hit again 20 ticks later, when its damage has worn down to about 9, and only shakes.",
+  "ticks": 45,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "tnt",
+    "explosion",
+    "minecart"
+  ],
+  "entities": true,
+  "palette": {
+    "#": "obsidian"
+  },
+  "layers": [
+    [
+      "################",
+      "################",
+      "################",
+      "################",
+      "################",
+      "################",
+      "################",
+      "################",
+      "################",
+      "################",
+      "################"
+    ],
+    [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        2.5,
+        1.0,
+        1.25
+      ]
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        13.5,
+        1.0,
+        1.25
+      ]
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        2.5,
+        1.0,
+        8.75
+      ],
+      "nbt": "{fuse:10}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        13.5,
+        1.0,
+        8.75
+      ],
+      "nbt": "{fuse:10}"
+    },
+    {
+      "tick": 13,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        2.5,
+        1.0,
+        8.75
+      ],
+      "nbt": "{fuse:4}"
+    },
+    {
+      "tick": 13,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        13.5,
+        1.0,
+        8.75
+      ],
+      "nbt": "{fuse:19}"
+    }
+  ]
+}
