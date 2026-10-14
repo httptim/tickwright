@@ -43,14 +43,15 @@ kick() {
     local mode="$1" passes="$2"
     shift 2
     echo "==> $mode: java $*"
-    java "$@" -cp "$OUT/classes:$CP" KickTrig "$SEED" "$COUNT" "$passes" "$OUT/$mode.bin" > "$OUT/$mode.log" 2>&1 || {
-        cat "$OUT/$mode.log"
+    java "$@" -cp "$OUT/classes:$CP" KickTrig "$SEED" "$COUNT" "$passes" "$OUT/$mode.bin" \
+        > "$OUT/$mode.log" 2> "$OUT/$mode.vm.log" || {
+        cat "$OUT/$mode.log" "$OUT/$mode.vm.log"
         exit 1
     }
-    grep -E '^[A-Za-z]+RandomSource: ' "$OUT/$mode.log"
-    grep -E 'KickTrig::kick|Math::(sin|cos)' "$OUT/$mode.log" | head -20 || true
+    cat "$OUT/$mode.log"
+    grep -E 'KickTrig::kick|Math::(sin|cos)' "$OUT/$mode.vm.log" | head -20 || true
 }
-JIT=(-XX:+UnlockDiagnosticVMOptions -XX:+PrintCompilation -XX:+PrintInlining)
+JIT=(-XX:+UnlockDiagnosticVMOptions -XX:+PrintCompilation -XX:+PrintInlining -XX:+DisplayVMOutputToStderr)
 kick interpreted 1 -Xint
 kick c1 10 -XX:TieredStopAtLevel=1 "${JIT[@]}"
 kick c2 10 -XX:-TieredCompilation "${JIT[@]}"
