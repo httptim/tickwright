@@ -9,7 +9,7 @@ use crate::blocks::{Kind, fire, plain};
 use crate::level::{Level, flags};
 
 /// `AbstractHurtingProjectile.accelerationPower`'s default.
-const ACCELERATION: f64 = 0.1;
+pub(super) const ACCELERATION: f64 = 0.1;
 /// `getInertia`, out of water.
 const INERTIA: f64 = 0.95f32 as f64;
 

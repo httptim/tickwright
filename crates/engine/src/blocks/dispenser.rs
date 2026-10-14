@@ -277,7 +277,7 @@ fn insert_item(level: &mut Level, pos: Pos, mut stack: Stack) -> Stack {
     let max = stack.max_stack_size();
     for i in 0..container::size(level, pos) {
         let cur = container::get_item(level, pos, i);
-        if cur.is_empty() || cur.id == stack.id {
+        if cur.is_empty() || cur.same_item(&stack) {
             let n = stack.count.min(max - cur.count);
             if n > 0 {
                 if cur.is_empty() {

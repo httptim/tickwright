@@ -12,8 +12,11 @@ mod fireball;
 mod fluid;
 pub mod item;
 mod minecart;
-pub mod snbt;
+pub use tickwright_trace::snbt;
 mod tnt;
+
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use anyhow::{Context, Result, bail};
 
@@ -83,6 +86,19 @@ pub struct Entity {
     /// While the entity is out of the level's list, the index of the slot
     /// it left (`Level::take_entity`).
     slot: Option<usize>,
+    /// The data it was summoned or placed with, if it wasn't made by the
+    /// engine.
+    pub source: Option<Arc<Source>>,
+}
+
+/// What an entity was made from: the data it was summoned or saved with,
+/// which a save writes back with the engine's live values over it, so keys
+/// the engine doesn't read survive; and the data version that data is in,
+/// when it came from a file older than the game.
+#[derive(Clone, Debug)]
+pub struct Source {
+    pub tag: snbt::Tag,
+    pub data_version: Option<i32>,
 }
 
 impl Entity {
@@ -164,6 +180,119 @@ impl Entity {
             Data::Minecart(m) => m.items.as_ref().map(|i| crate::blocks::container::describe(i)),
             Data::SmallFireball | Data::Arrow(_) | Data::Gone => None,
         }
+    }
+
+    /// The entity's data as SNBT that `place_start_entity` reads back to
+    /// the same entity: the data it was made from, every key kept with its
+    /// type, and over it every value the engine keeps for its type as it is
+    /// now (an item's stack, age and pickup delay, a TNT's fuse, a falling
+    /// block's time, a minecart's rotation and items, an arrow's time in
+    /// the ground, motion, and so on). Its type and position are not part
+    /// of it.
+    pub fn saved_nbt(&self, level: &Level) -> String {
+        use snbt::Tag as T;
+        let mut m = match self.source.as_deref().map(|s| &s.tag) {
+            Some(T::Compound(m)) => m.clone(),
+            _ => BTreeMap::new(),
+        };
+        let mut set = |k: &str, v: Option<T>| match v {
+            Some(v) => m.insert(k.to_string(), v),
+            None => m.remove(k),
+        };
+        match &self.data {
+            Data::Item(i) => {
+                // An empty stack isn't saved (`ItemEntity.addAdditionalSaveData`).
+                set("Item", (!i.stack.is_empty()).then(|| saved_stack(&i.stack, None)));
+                set("PickupDelay", Some(T::Short(i.pickup_delay as i16)));
+                set("Age", Some(T::Short(i.age as i16)));
+                set("Health", Some(T::Short(i.health as i16)));
+            }
+            Data::Tnt(t) => {
+                set("fuse", Some(T::Short(t.fuse as i16)));
+                if t.power != 4.0 {
+                    set("explosion_power", Some(T::Float(t.power)));
+                }
+            }
+            Data::FallingBlock(f) => {
+                if self.source.as_deref().and_then(|s| s.tag.get("BlockState")).is_none() {
+                    set("BlockState", Some(saved_block_state(level, f.state)));
+                }
+                set("Time", Some(T::Int(f.time)));
+                set("DropItem", Some(T::Byte(f.drop_item as i8)));
+                set("CancelDrop", Some(T::Byte(f.cancel_drop as i8)));
+            }
+            Data::Minecart(c) => {
+                let x_rot = match self.source.as_deref().and_then(|s| s.tag.get("Rotation")) {
+                    Some(T::List(r)) => r.get(1).and_then(|t| t.number()).unwrap_or(0.0) as f32,
+                    _ => 0.0,
+                };
+                set("Rotation", Some(T::List(vec![T::Float(c.y_rot), T::Float(x_rot)])));
+                set("FlippedRotation", Some(T::Byte(c.flipped as i8)));
+                if c.hopper {
+                    set("Enabled", Some(T::Byte(c.enabled as i8)));
+                }
+                if let Some(items) = &c.items {
+                    let stacks = items
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, s)| !s.is_empty())
+                        .map(|(slot, s)| saved_stack(s, Some(slot)))
+                        .collect();
+                    set("Items", Some(T::List(stacks)));
+                }
+            }
+            Data::Arrow(a) => {
+                set("inGround", Some(T::Byte(a.in_ground as i8)));
+                set("life", Some(T::Short(a.life as i16)));
+                set("shake", Some(T::Byte(a.shake as i8)));
+                if let Some(state) = a.last_state {
+                    set("inBlockState", Some(arrow::saved_state(level, state)));
+                }
+            }
+            Data::SmallFireball | Data::Gone => {}
+        }
+        set(
+            "Motion",
+            Some(T::List(vec![T::Double(self.motion.x), T::Double(self.motion.y), T::Double(self.motion.z)])),
+        );
+        set("OnGround", Some(T::Byte(self.on_ground as i8)));
+        snbt::write(&T::Compound(m))
+    }
+
+    /// The data version the entity's data is in, when older than the
+    /// game's: that of the file it came from, which its item stacks share.
+    /// A stack with components or a tag that came from elsewhere, in
+    /// another version (a stack a hopper minecart pulled from a chest, say),
+    /// leaves the entity with no one version, and the error names its slot.
+    pub fn data_version(&self) -> Result<Option<i32>, String> {
+        let mut version: Option<Option<i32>> = self.source.as_deref().map(|s| s.data_version);
+        let mut seen: Option<String> = self.source.as_ref().map(|_| "its own data".to_string());
+        let stacks: Vec<(Option<usize>, &Stack)> = match &self.data {
+            Data::Item(i) => vec![(None, &i.stack)],
+            Data::Minecart(m) => m.items.iter().flatten().enumerate().map(|(k, s)| (Some(k), s)).collect(),
+            _ => Vec::new(),
+        };
+        let shown = |v: Option<i32>| v.map_or("26.3's".to_string(), |v| format!("data version {v}"));
+        for (slot, s) in stacks {
+            let Some(d) = s.data.as_ref().filter(|_| !s.is_empty()) else { continue };
+            let place = slot.map_or("its stack".to_string(), |k| format!("the stack in slot {k}"));
+            match version {
+                None => {
+                    version = Some(d.data_version);
+                    seen = Some(place);
+                }
+                Some(v) if v != d.data_version => {
+                    return Err(format!(
+                        "{place} is in {} where {} is in {}",
+                        shown(d.data_version),
+                        seen.unwrap_or_default(),
+                        shown(v)
+                    ));
+                }
+                Some(_) => {}
+            }
+        }
+        Ok(version.flatten())
     }
 
     /// `getOnPos(yOffset)`: the block the entity stands on, or the one
@@ -299,62 +428,69 @@ fn tick(level: &mut Level, e: &mut Entity) {
     }
 }
 
-/// `/summon <entity> x y z {nbt}`. Entity types and data the engine
-/// doesn't simulate are refused.
+/// `/summon <entity> x y z {nbt}`. An entity type the engine doesn't
+/// simulate is refused. Its data is read as the game reads it: keys the
+/// game doesn't know are ignored (an item's pre-1.20.5 `Count` or `tag`
+/// among them, so it holds one), and data that changes what the entity does
+/// in a way the engine doesn't model marks the level unsupported, by name.
 pub fn summon(level: &mut Level, entity: &str, at: Vec3, motion: Option<Vec3>, nbt: Option<&str>) -> Result<()> {
     let name = entity.strip_prefix("minecraft:").unwrap_or(entity);
-    let Some(known) = known_data(name) else {
+    if !SIMULATED.contains(&name) {
         bail!("summoning {entity} is not supported by the engine yet");
-    };
-    let tag = parse_data(nbt)?;
-    if let Some(k) = tag.keys().into_iter().find(|k| !known.contains(k)) {
-        bail!("summon data {k} for {entity} is not supported by the engine yet");
     }
-    spawn(level, name, &tag, at, motion)
+    spawn(level, name, &parse_data(nbt)?, at, motion, Origin::Summon)
 }
 
 /// An entity that is part of a build when it is placed. Types the engine
-/// doesn't simulate are left out, and so is saved data it doesn't model
-/// (a saved entity carries its UUID, rotation, air supply and the like).
-/// Returns whether the entity was created.
+/// doesn't simulate are left out. Its saved data is read as for `/summon`,
+/// except that an item `tag` saved before 1.20.5 marks the level
+/// unsupported rather than being dropped. Returns whether the entity was
+/// created.
 pub fn place_start_entity(
     level: &mut Level,
     entity: &str,
     at: Vec3,
     motion: Option<Vec3>,
     nbt: Option<&str>,
+    data_version: Option<i32>,
 ) -> Result<bool> {
     let name = entity.strip_prefix("minecraft:").unwrap_or(entity);
-    if known_data(name).is_none() {
+    if !SIMULATED.contains(&name) {
         return Ok(false);
     }
-    spawn(level, name, &parse_data(nbt)?, at, motion)?;
+    spawn(level, name, &parse_data(nbt)?, at, motion, Origin::Saved(data_version))?;
     Ok(true)
 }
 
-/// Each entity type the engine simulates, without `minecraft:`, and the
-/// summon data keys it reads.
-const KNOWN_DATA: &[(&str, &[&str])] = &[
-    ("item", &["Item", "PickupDelay", "Age"]),
-    ("tnt", &["fuse"]),
-    ("falling_block", &["BlockState", "Time", "DropItem", "CancelDrop"]),
-    ("minecart", &[]),
-    ("furnace_minecart", &[]),
-    ("chest_minecart", &["Items"]),
-    ("hopper_minecart", &["Items"]),
-    ("small_fireball", &[]),
-    ("arrow", &[]),
+/// Each entity type the engine simulates, without `minecraft:`.
+const SIMULATED: [&str; 9] = [
+    "item",
+    "tnt",
+    "falling_block",
+    "minecart",
+    "furnace_minecart",
+    "chest_minecart",
+    "hopper_minecart",
+    "small_fireball",
+    "arrow",
 ];
-
-fn known_data(name: &str) -> Option<&'static [&'static str]> {
-    KNOWN_DATA.iter().find(|(n, _)| *n == name).map(|(_, keys)| *keys)
-}
 
 /// The entity types the engine simulates, without `minecraft:`. A build's
 /// entities of any other type are left out of the world and carried in its
 /// file unchanged.
 pub fn simulated() -> impl Iterator<Item = &'static str> {
-    KNOWN_DATA.iter().map(|(name, _)| *name)
+    SIMULATED.into_iter()
+}
+
+/// Where entity data comes from.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Origin {
+    /// A `/summon` command, whose data the game reads as it is.
+    Summon,
+    /// A file, already brought up to 26.3's format by the schematic reader
+    /// but for item components and legacy tags, which are in the format of
+    /// the data version given, if older.
+    Saved(Option<i32>),
 }
 
 fn parse_data(nbt: Option<&str>) -> Result<snbt::Tag> {
@@ -364,23 +500,161 @@ fn parse_data(nbt: Option<&str>) -> Result<snbt::Tag> {
     })
 }
 
-fn spawn(level: &mut Level, name: &str, tag: &snbt::Tag, at: Vec3, motion: Option<Vec3>) -> Result<()> {
+/// How a refusal names an entity type.
+fn described(name: &str) -> &'static str {
+    match name {
+        "item" => "an item entity",
+        "tnt" => "a primed TNT",
+        "falling_block" => "a falling block",
+        "minecart" => "a minecart",
+        "furnace_minecart" => "a furnace minecart",
+        "chest_minecart" => "a chest minecart",
+        "hopper_minecart" => "a hopper minecart",
+        "small_fireball" => "a small fireball",
+        _ => "an arrow",
+    }
+}
+
+/// What in an entity's data changes what it does in a way the engine
+/// doesn't model, if anything. Every other key the game reads for these
+/// types either is read below or changes nothing the engine simulates
+/// (names, `UUID`, `Air`, `Rotation` but a minecart's, an item's `Thrower`,
+/// a projectile's `Owner`, an arrow's damage and pickup rules, a minecart's
+/// display block, and the like). A falling block's `HurtEntities` and
+/// `TileEntityData` are judged by its block, once that is read.
+fn refused_data(name: &str, tag: &snbt::Tag) -> Option<String> {
     let num = |key: &str| tag.get(key).and_then(|t| t.number());
+    let who = described(name);
+    if num("NoGravity").is_some_and(|v| v != 0.0) {
+        return Some(format!("{who} without gravity (NoGravity)"));
+    }
+    if num("Fire").is_some_and(|v| v > 0.0) {
+        return Some(format!("{who} on fire (Fire)"));
+    }
+    if matches!(tag.get("Passengers"), Some(snbt::Tag::List(l)) if !l.is_empty()) {
+        return Some(format!("{who} carrying passengers (Passengers)"));
+    }
+    match name {
+        "furnace_minecart" if num("PushX").is_some_and(|v| v != 0.0) || num("PushZ").is_some_and(|v| v != 0.0) => {
+            Some(format!("{who} being pushed (PushX, PushZ)"))
+        }
+        "chest_minecart" | "hopper_minecart" if tag.get("LootTable").is_some() => {
+            Some(format!("{who} holding an unopened loot table (LootTable)"))
+        }
+        "furnace_minecart" if num("Fuel").is_some_and(|v| v > 0.0) => Some(format!("{who} with fuel (Fuel)")),
+        "small_fireball" if num("acceleration_power").is_some_and(|v| v != fireball::ACCELERATION) => {
+            Some(format!("{who} with an acceleration_power other than 0.1"))
+        }
+        _ => None,
+    }
+}
+
+/// A stack as `ItemStack.CODEC` saves it, with its slot when it is in a
+/// container: its component patch and any legacy tag with their types as
+/// given.
+fn saved_stack(s: &Stack, slot: Option<usize>) -> snbt::Tag {
+    use snbt::Tag as T;
+    let id = if s.id.contains(':') { s.id.clone() } else { format!("minecraft:{}", s.id) };
+    let mut m = BTreeMap::new();
+    if let Some(slot) = slot {
+        m.insert("Slot".to_string(), T::Byte(slot as i8));
+    }
+    m.insert("id".to_string(), T::String(id));
+    m.insert("count".to_string(), T::Int(s.count));
+    if let Some(d) = &s.data {
+        if let Some(c) = d.components_tag() {
+            m.insert("components".to_string(), c);
+        }
+        if let Some(t) = d.legacy_tag() {
+            m.insert("tag".to_string(), t);
+        }
+    }
+    T::Compound(m)
+}
+
+/// A falling block's state as its `BlockState` key holds it.
+fn saved_block_state(level: &Level, state: crate::registry::StateId) -> snbt::Tag {
+    use snbt::Tag as T;
+    let text = level.reg.format(state);
+    let (name, props) = match text.split_once('[') {
+        Some((n, p)) => (n.to_string(), p.trim_end_matches(']').to_string()),
+        None => (text.clone(), String::new()),
+    };
+    let props: BTreeMap<String, T> = props
+        .split(',')
+        .filter(|p| !p.is_empty())
+        .map(|p| {
+            let (k, v) = p.split_once('=').unwrap_or((p, ""));
+            (k.to_string(), T::String(v.to_string()))
+        })
+        .collect();
+    let mut m = BTreeMap::from([("Name".to_string(), T::String(name))]);
+    if !props.is_empty() {
+        m.insert("Properties".to_string(), T::Compound(props));
+    }
+    T::Compound(m)
+}
+
+/// A saved item stack (`ItemStack.CODEC`): its id, its count (1 when it
+/// has none, as the codec reads it) and its component patch. A count
+/// outside 1 to 99, which the codec rejects, reads as an empty stack, as
+/// the game reads a stack it can't decode. `place` names where the stack
+/// is, for a refusal. A component the engine doesn't model, or a legacy
+/// `tag` in saved data, marks the level unsupported.
+fn read_stack(level: &mut Level, tag: &snbt::Tag, origin: Origin, place: &str) -> Result<Stack> {
+    let id = tag.get("id").and_then(|t| t.string()).with_context(|| format!("{place}: an item stack needs an id"))?;
+    let count = match tag.get("count") {
+        None => 1,
+        Some(c) => c.int_value().filter(|n| (1..=99).contains(n)).unwrap_or(0),
+    };
+    if count == 0 {
+        return Ok(Stack::default());
+    }
+    let (legacy, data_version) = match origin {
+        Origin::Saved(v) => (tag.get("tag"), v),
+        Origin::Summon => (None, None),
+    };
+    let data = crate::blocks::container::ItemData::from_tags(tag.get("components"), legacy, data_version)
+        .with_context(|| format!("{place}: {id}"))?;
+    if let Some(d) = &data {
+        if let Some(c) = d.refused_component() {
+            level.unsupported(format!("the item component {c} ({place})"));
+        }
+        if d.tag.is_some() {
+            level.unsupported(format!("an item tag saved before 1.20.5 ({place})"));
+        }
+    }
+    Ok(Stack::new(id, count).with_data(data))
+}
+
+fn spawn(level: &mut Level, name: &str, tag: &snbt::Tag, at: Vec3, motion: Option<Vec3>, origin: Origin) -> Result<()> {
+    let num = |key: &str| tag.get(key).and_then(|t| t.number());
+    if let Some(what) = refused_data(name, tag) {
+        level.unsupported(what);
+    }
     let data = match name {
         "item" => {
             let it = tag.get("Item").context("an item needs Item")?;
-            let id = it.get("id").and_then(|t| t.string()).context("Item.id")?;
-            let count = it.get("count").and_then(|t| t.number()).unwrap_or(1.0) as i32;
-            let mut item = item::Item::new(Stack::new(id, count));
+            let stack = read_stack(level, it, origin, "the stack an item entity holds")?;
+            let mut item = item::Item::new(stack);
             if let Some(d) = num("PickupDelay") {
                 item.pickup_delay = d as i32;
             }
             if let Some(a) = num("Age") {
                 item.age = a as i32;
             }
+            if let Some(h) = num("Health") {
+                item.health = h as i32;
+            }
+            // `UUIDUtil.CODEC` reads an int array or a list of ints alike.
+            item.target = tag.get("Owner").map(|o| snbt::write_value(o).into());
+            item.invulnerable = num("Invulnerable").is_some_and(|v| v != 0.0);
             Data::Item(item)
         }
-        "tnt" => Data::Tnt(tnt::Tnt { fuse: num("fuse").unwrap_or(80.0) as i32 }),
+        "tnt" => Data::Tnt(tnt::Tnt {
+            fuse: num("fuse").unwrap_or(80.0) as i32,
+            power: num("explosion_power").map_or(4.0, |p| (p as f32).clamp(0.0, 128.0)),
+        }),
         "falling_block" => {
             // `FallingBlockEntity.readAdditionalSaveData`: sand unless told.
             let state = match tag.get("BlockState") {
@@ -400,6 +674,17 @@ fn spawn(level: &mut Level, name: &str, tag: &snbt::Tag, at: Vec3, motion: Optio
             if level.kind(state) == Kind::Other {
                 bail!("a falling {} is not supported by the engine yet", level.reg.name(state));
             }
+            // Only living entities take fall damage, and the engine has
+            // none; but an anvil that hurts entities may chip itself.
+            if num("HurtEntities").is_some_and(|v| v != 0.0) && level.reg.name(state).ends_with("anvil") {
+                level.unsupported("a falling anvil that hurts entities (HurtEntities)");
+            }
+            // Block entity data applies only to a block with a block entity.
+            if !tag.get("TileEntityData").is_none_or(|t| t.keys().is_empty())
+                && crate::blocks::has_block_entity(level.kind(state))
+            {
+                level.unsupported("a falling block carrying block entity data (TileEntityData)");
+            }
             Data::FallingBlock(falling::Falling {
                 state,
                 time: num("Time").unwrap_or(0.0) as i32,
@@ -408,24 +693,52 @@ fn spawn(level: &mut Level, name: &str, tag: &snbt::Tag, at: Vec3, motion: Optio
             })
         }
         "small_fireball" => Data::SmallFireball,
-        "arrow" => Data::Arrow(Default::default()),
+        "arrow" => Data::Arrow(arrow::Arrow::read(level, tag)),
         _ => {
             let mut cart = minecart::Minecart::new(name);
-            if let (Some(items), Some(snbt::Tag::List(list))) = (cart.items.as_mut(), tag.get("Items")) {
+            // `Entity.load` reads the rotation through `setRot`, which
+            // takes it modulo 360.
+            if let Some(snbt::Tag::List(r)) = tag.get("Rotation")
+                && let Some(y) = r.first().and_then(|t| t.number())
+            {
+                cart.y_rot = y as f32 % 360.0;
+            }
+            cart.flipped = num("FlippedRotation").is_some_and(|v| v != 0.0);
+            if cart.hopper {
+                cart.enabled = num("Enabled").is_none_or(|v| v != 0.0);
+            }
+            if cart.items.is_some()
+                && let Some(snbt::Tag::List(list)) = tag.get("Items")
+            {
                 for it in list {
                     let slot = it.get("Slot").and_then(|t| t.number()).context("Items[].Slot")? as usize;
-                    let id = it.get("id").and_then(|t| t.string()).context("Items[].id")?;
-                    let count = it.get("count").and_then(|t| t.number()).unwrap_or(1.0) as i32;
-                    let id = if id.contains(':') { id.to_string() } else { format!("minecraft:{id}") };
-                    *items.get_mut(slot).context("Items[].Slot out of range")? =
-                        crate::blocks::container::Stack::new(&id, count);
+                    let place = format!("in slot {slot} of {}", described(name));
+                    let mut stack = read_stack(level, it, origin, &place)?;
+                    if !stack.is_empty() && !stack.id.contains(':') {
+                        stack.id = format!("minecraft:{}", stack.id);
+                    }
+                    let items = cart.items.as_mut().unwrap();
+                    *items.get_mut(slot).with_context(|| format!("Items: slot {slot} is out of range"))? = stack;
                 }
             }
             Data::Minecart(cart)
         }
     };
     let mut e = Entity::new(level, data, at);
-    if let Some(m) = motion {
+    let data_version = match origin {
+        Origin::Saved(v) => v,
+        Origin::Summon => None,
+    };
+    e.source = Some(Arc::new(Source { tag: tag.clone(), data_version }));
+    e.on_ground = num("OnGround").is_some_and(|v| v != 0.0);
+    let saved_motion = match tag.get("Motion") {
+        Some(snbt::Tag::List(m)) if m.len() == 3 => {
+            let v: Vec<f64> = m.iter().map(|t| t.number().unwrap_or(0.0)).collect();
+            Some(Vec3::new(v[0], v[1], v[2]))
+        }
+        _ => None,
+    };
+    if let Some(m) = motion.or(saved_motion) {
         e.motion = clamp_loaded_motion(m);
     }
     level.add_entity(e);
@@ -1361,5 +1674,264 @@ mod tests {
         apply_effects_for_last_movements(&mut level, &mut e);
         level.put_entity(e);
         assert!(level.flag(level.get(pos), "powered"));
+    }
+
+    /// The entity `/summon` (or a saved build) makes from `nbt`, and what
+    /// the level was marked unsupported for.
+    fn spawn(entity: &str, nbt: &str, saved: bool) -> (Entity, Option<String>) {
+        let mut level = Level::new(Rules::for_version("26.3").unwrap());
+        level.simulate_entities = true;
+        let at = Vec3::new(0.5, 100.0, 0.5);
+        if saved {
+            assert!(place_start_entity(&mut level, entity, at, None, Some(nbt), None).unwrap());
+        } else {
+            summon(&mut level, entity, at, None, Some(nbt)).unwrap();
+        }
+        (level.entities.pop().unwrap(), level.unsupported)
+    }
+
+    fn item(e: &Entity) -> &super::item::Item {
+        match &e.data {
+            Data::Item(i) => i,
+            _ => panic!("not an item"),
+        }
+    }
+
+    #[test]
+    fn item_components_are_kept_and_compared() {
+        let (plain, u) = spawn("item", r#"{Item:{id:"stone",count:3}}"#, false);
+        assert_eq!(u, None);
+        assert!(item(&plain).stack.data.is_none());
+        // An empty patch is the same as none.
+        let (empty, _) = spawn("item", r#"{Item:{id:"stone",count:3,components:{}}}"#, false);
+        assert!(item(&empty).stack.same_item(&item(&plain).stack));
+        let (named, u) = spawn("item", r#"{Item:{id:"stone",components:{"minecraft:custom_name":"Rock"}}}"#, false);
+        assert_eq!(u, None);
+        assert_eq!(item(&named).stack.count, 1);
+        assert!(!item(&named).stack.same_item(&item(&plain).stack));
+        // The same patch, spelled another way.
+        let (again, _) = spawn("item", r#"{Item:{id:"minecraft:stone",components:{custom_name:'Rock'}}}"#, false);
+        assert!(item(&again).stack.same_item(&item(&named).stack));
+    }
+
+    #[test]
+    fn components_the_engine_does_not_model_are_refused_by_name() {
+        let (e, u) =
+            spawn("item", r#"{Item:{id:"ender_pearl",count:10,components:{"minecraft:max_stack_size":64}}}"#, false);
+        assert_eq!(item(&e).stack.count, 10);
+        assert_eq!(u.as_deref(), Some("the item component minecraft:max_stack_size (the stack an item entity holds)"));
+        let (_, u) = spawn("item", r#"{Item:{id:"stone",components:{"!max_stack_size":{}}}}"#, false);
+        assert_eq!(u.as_deref(), Some("the item component minecraft:max_stack_size (the stack an item entity holds)"));
+        let (_, u) = spawn(
+            "hopper_minecart",
+            r##"{Items:[{Slot:0b,id:"stone",count:3},{Slot:3b,id:"stone",components:{damage_resistant:{types:"#minecraft:is_fire"}}}]}"##,
+            true,
+        );
+        assert_eq!(
+            u.as_deref(),
+            Some("the item component minecraft:damage_resistant (in slot 3 of a hopper minecart)")
+        );
+    }
+
+    #[test]
+    fn legacy_item_data_reads_as_the_game_reads_it() {
+        // `/summon` reads 26.3's format only: `Count` and `tag` are unknown
+        // keys, so the stack holds one, and nothing is refused.
+        let (e, u) = spawn("item", r#"{Item:{id:"stone",Count:5b,tag:{display:{Name:'"Rock"'}}}}"#, false);
+        assert_eq!((item(&e).stack.count, u), (1, None));
+        assert!(item(&e).stack.data.is_none());
+        // A saved stack the schematic reader brought up to date keeps its
+        // tag, which is refused by name.
+        let (e, u) = spawn("item", r#"{Item:{id:"stone",count:5,tag:{display:{Name:'"Rock"'}}}}"#, true);
+        assert_eq!(item(&e).stack.count, 5);
+        assert_eq!(u.as_deref(), Some("an item tag saved before 1.20.5 (the stack an item entity holds)"));
+    }
+
+    #[test]
+    fn components_compare_by_type_where_the_game_does() {
+        let stack = |c: &str| {
+            let (e, u) = spawn("item", &format!(r#"{{Item:{{id:"stone",components:{c}}}}}"#), false);
+            assert_eq!(u, None, "{c}");
+            item(&e).stack.clone()
+        };
+        // NBT components compare tag for tag.
+        let typed = ["1b", "1s", "1", "1L", "1.0f", "1.0d", "[I;1,2]", "[1,2]", "0.1f", "0.10000000149011612d"];
+        for (i, a) in typed.iter().enumerate() {
+            for b in &typed[i + 1..] {
+                for name in ["custom_data", "bucket_entity_data"] {
+                    let (x, y) = (stack(&format!("{{{name}:{{n:{a}}}}}")), stack(&format!("{{{name}:{{n:{b}}}}}")));
+                    assert!(!x.same_item(&y), "{name} {a} and {b}");
+                }
+                let (x, y) = (
+                    stack(&format!(r#"{{entity_data:{{id:"pig",n:{a}}}}}"#)),
+                    stack(&format!(r#"{{block_entity_data:{{id:"minecraft:chest",n:{b}}}}}"#)),
+                );
+                assert!(!x.same_item(&y));
+            }
+        }
+        let long = |v: &str| stack(&format!("{{custom_data:{{n:{v}}}}}"));
+        assert!(!long("9007199254740993L").same_item(&long("9007199254740992L")));
+        // The same NBT spelled another way, as an SNBT string, or with the
+        // id's namespace left out, is the same.
+        assert!(stack("{custom_data:{n:0x01,t:TRUE}}").same_item(&stack(r#"{custom_data:"{t:1b,n:1}"}"#)));
+        assert!(
+            stack(r#"{entity_data:{id:"pig",a:1b}}"#).same_item(&stack(r#"{entity_data:{id:"minecraft:pig",a:1ub}}"#))
+        );
+        // Components a codec decodes read numbers by value.
+        assert!(stack("{damage:1b}").same_item(&stack("{damage:1}")));
+        assert!(stack("{damage:1}").same_item(&stack("{\"minecraft:damage\":1.0d}")));
+        assert!(!stack("{damage:1}").same_item(&stack("{damage:2}")));
+    }
+
+    #[test]
+    fn saved_data_reads_back_to_the_same_entity() {
+        let mut level = Level::new(Rules::for_version("26.3").unwrap());
+        level.simulate_entities = true;
+        let at = Vec3::new(0.5, 100.0, 0.5);
+        let cases: [(&str, &str, &[&str]); 6] = [
+            (
+                "item",
+                r#"{Item:{id:"stone",count:3,components:{"minecraft:custom_name":"01",custom_data:{n:1b,l:[I;1,2]}}},Owner:[I;1,-2,3,4],Health:3s,PickupDelay:7s,Age:12s,Invulnerable:1b,UUID:[I;9,8,7,6],CustomName:"x",CustomNameVisible:1b,Tags:["a"],Glowing:1b,Silent:1b,data:{k:1L},Thrower:[I;5,6,7,8],Rotation:[10.0f,5.0f]}"#,
+                &[
+                    r#"components:{custom_data:{l:[I;1,2],n:1b},"minecraft:custom_name":"01"}"#,
+                    "UUID:[I;9,8,7,6]",
+                    r#"CustomName:"x""#,
+                    "CustomNameVisible:1b",
+                    r#"Tags:["a"]"#,
+                    "Glowing:1b",
+                    "Silent:1b",
+                    "data:{k:1L}",
+                    "Thrower:[I;5,6,7,8]",
+                    "Rotation:[10f,5f]",
+                ],
+            ),
+            (
+                "tnt",
+                r#"{fuse:33s,explosion_power:2.5f,block_state:{Name:"minecraft:tnt"},owner:[I;1,2,3,4]}"#,
+                &["fuse:33s", "explosion_power:2.5f", r#"block_state:{Name:"minecraft:tnt"}"#, "owner:[I;1,2,3,4]"],
+            ),
+            (
+                "falling_block",
+                r#"{BlockState:{Name:"minecraft:sand"},Time:4,DropItem:0b,HurtEntities:1b,FallHurtAmount:2.0f,TileEntityData:{x:1}}"#,
+                &["Time:4", "DropItem:0b", "HurtEntities:1b", "FallHurtAmount:2f", "TileEntityData:{x:1}"],
+            ),
+            (
+                "hopper_minecart",
+                r#"{Enabled:0b,Rotation:[450.0f,3.0f],FlippedRotation:1b,Items:[{Slot:2b,id:"stone",count:5,components:{custom_name:"x"}}],DisplayState:{Name:"minecraft:stone"},DisplayOffset:6,CustomName:"c",Tags:["t"],UUID:[I;1,1,1,1],HasTicked:1b}"#,
+                &[
+                    // `Entity.load` takes the rotation modulo 360.
+                    "Rotation:[90f,3f]",
+                    r#"Items:[{Slot:2b,components:{custom_name:"x"},count:5,id:"minecraft:stone"}]"#,
+                    r#"DisplayState:{Name:"minecraft:stone"}"#,
+                    "DisplayOffset:6",
+                    r#"CustomName:"c""#,
+                    r#"Tags:["t"]"#,
+                    "UUID:[I;1,1,1,1]",
+                    "HasTicked:1b",
+                ],
+            ),
+            (
+                "arrow",
+                "{pickup:1b,damage:3.5d,crit:1b,PierceLevel:2b}",
+                &["pickup:1b", "damage:3.5d", "crit:1b", "PierceLevel:2b"],
+            ),
+            (
+                "arrow",
+                r#"{inGround:1b,life:40s,shake:3b,inBlockState:{id:"minecraft:lever",properties:{face:"wall",facing:"east",powered:"true"}}}"#,
+                &[
+                    "inGround:1b",
+                    "life:40s",
+                    "shake:3b",
+                    r#"inBlockState:{id:"minecraft:lever",properties:{face:"wall",facing:"east",powered:"true"}}"#,
+                ],
+            ),
+        ];
+        for (entity, nbt, kept) in cases {
+            summon(&mut level, entity, at, Some(Vec3::new(0.25, -0.5, 0.125)), Some(nbt)).unwrap();
+            let first = level.entities.last().unwrap().saved_nbt(&level);
+            place_start_entity(&mut level, entity, at, None, Some(&first), None).unwrap();
+            let again = level.entities.last().unwrap().saved_nbt(&level);
+            assert_eq!(first, again, "{entity}");
+            assert!(first.contains("Motion:[0.25d,-0.5d,0.125d]"), "{first}");
+            for k in kept {
+                assert!(first.contains(k), "{entity}: {k} in {first}");
+            }
+        }
+        assert_eq!(level.unsupported, None);
+        let (e, _) = spawn("arrow", r#"{inGround:1b,inBlockState:"minecraft:stone"}"#, true);
+        assert!(matches!(&e.data, Data::Arrow(a) if a.in_ground && a.last_state.is_some()));
+    }
+
+    #[test]
+    fn an_entity_has_one_data_version() {
+        let mut level = Level::new(Rules::for_version("26.3").unwrap());
+        let at = Vec3::new(0.5, 100.0, 0.5);
+        let nbt = r#"{Items:[{Slot:1b,id:"stone",count:5,components:{custom_name:"x"}}]}"#;
+        place_start_entity(&mut level, "hopper_minecart", at, None, Some(nbt), Some(3900)).unwrap();
+        place_start_entity(&mut level, "minecart", at, None, Some("{}"), Some(3900)).unwrap();
+        assert_eq!(level.entities[0].data_version(), Ok(Some(3900)));
+        assert_eq!(level.entities[1].data_version(), Ok(Some(3900)));
+        // A stack from elsewhere, in 26.3's format, leaves it with none.
+        let data = crate::blocks::container::ItemData::new(Some(r#"{custom_name:"y"}"#), None, None).unwrap();
+        if let Data::Minecart(m) = &mut level.entities[0].data {
+            m.items.as_mut().unwrap()[0] = Stack::new("minecraft:dirt", 1).with_data(data);
+        }
+        assert_eq!(
+            level.entities[0].data_version(),
+            Err("the stack in slot 0 is in 26.3's where its own data is in data version 3900".to_string())
+        );
+    }
+
+    #[test]
+    fn saved_entity_data_is_read_or_refused() {
+        let (e, u) = spawn(
+            "item",
+            r#"{Item:{id:"stone"},Owner:[I;1,2,3,4],Health:3s,Invulnerable:1b,OnGround:1b,Thrower:[I;5,6,7,8],CustomName:'"x"'}"#,
+            true,
+        );
+        assert_eq!(u, None);
+        assert_eq!(item(&e).health, 3);
+        assert!(item(&e).invulnerable && item(&e).target.is_some() && e.on_ground);
+        let (e, _) = spawn("tnt", "{fuse:20s,explosion_power:2.5f,block_state:{Name:\"minecraft:tnt\"}}", true);
+        assert!(matches!(&e.data, Data::Tnt(t) if t.fuse == 20 && t.power == 2.5));
+        let (e, _) = spawn("hopper_minecart", "{Enabled:0b,Rotation:[-450.0f,0.0f],FlippedRotation:1b}", true);
+        assert!(matches!(&e.data, Data::Minecart(m) if !m.enabled && m.y_rot == -90.0 && m.flipped));
+        // `ItemStack.CODEC` takes counts from 1 to 99; any other reads as
+        // an empty stack, which the item entity drops on its first tick.
+        for (count, read) in [("0", 0), ("100", 0), ("99", 99), ("1.5d", 1), ("\"2\"", 0)] {
+            let (e, _) = spawn("item", &format!(r#"{{Item:{{id:"stone",count:{count}}}}}"#), true);
+            assert_eq!(item(&e).stack.count, read, "{count}");
+        }
+        // Sand that hurts entities or carries block data does nothing more:
+        // only living entities are hurt, and only a block with a block
+        // entity takes the data.
+        assert_eq!(spawn("falling_block", "{HurtEntities:1b,FallHurtAmount:2.0f,TileEntityData:{x:1}}", true).1, None);
+        for (entity, nbt, what) in [
+            ("item", r#"{Item:{id:"stone"},NoGravity:1b}"#, "an item entity without gravity (NoGravity)"),
+            ("tnt", "{Fire:40s}", "a primed TNT on fire (Fire)"),
+            ("minecart", r#"{Passengers:[{id:"minecraft:item"}]}"#, "a minecart carrying passengers (Passengers)"),
+            (
+                "falling_block",
+                r#"{BlockState:{Name:"minecraft:chest"},TileEntityData:{Items:[{Slot:0b,id:"stone"}]}}"#,
+                "a falling block carrying block entity data (TileEntityData)",
+            ),
+            ("furnace_minecart", "{PushX:0.5d,PushZ:0.0d}", "a furnace minecart being pushed (PushX, PushZ)"),
+            (
+                "small_fireball",
+                "{acceleration_power:0.1f}",
+                "a small fireball with an acceleration_power other than 0.1",
+            ),
+            (
+                "chest_minecart",
+                r#"{LootTable:"minecraft:chests/simple_dungeon"}"#,
+                "a chest minecart holding an unopened loot table (LootTable)",
+            ),
+            ("furnace_minecart", "{Fuel:100s}", "a furnace minecart with fuel (Fuel)"),
+        ] {
+            assert_eq!(spawn(entity, nbt, true).1.as_deref(), Some(what), "{entity}");
+            assert_eq!(spawn(entity, nbt, false).1.as_deref(), Some(what), "{entity}");
+        }
+        // Keys the game doesn't know are ignored, as the game ignores them.
+        assert_eq!(spawn("tnt", "{Fuse:20s,Unknown:1b}", false).1, None);
     }
 }

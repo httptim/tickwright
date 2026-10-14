@@ -79,6 +79,17 @@ pub struct EntityView {
     /// What else the trace records about it: an item's stack
     /// (`minecraft:stone*3`), a TNT's `fuse=N`, a falling block's state.
     pub detail: Option<String>,
+    /// Its data as SNBT that a build's start entity carries and the engine
+    /// reads back to the same entity (`Entity::saved_nbt`): the data it was
+    /// made from, every key kept, with the engine's live values over it.
+    pub nbt: String,
+    /// The data version `nbt` is in, when older than the game's: that of
+    /// the file the entity came from (a start entity's `data_version`).
+    pub data_version: Option<i32>,
+    /// Why the entity has no one data version, if it holds item stacks in
+    /// another version than its own; such an entity can't be saved to one
+    /// file as it is.
+    pub mixed_versions: Option<String>,
 }
 
 /// What a position reads as, for the power views.
@@ -590,6 +601,9 @@ impl Session {
                 kind: e.type_name().to_string(),
                 pos: [e.pos.x, e.pos.y, e.pos.z],
                 detail: e.detail(&self.level),
+                nbt: e.saved_nbt(&self.level),
+                data_version: e.data_version().unwrap_or(None),
+                mixed_versions: e.data_version().err(),
             })
             .collect()
     }
@@ -635,7 +649,14 @@ impl Session {
                     .iter()
                     .enumerate()
                     .filter(|(_, s)| !s.is_empty())
-                    .map(|(slot, s)| ItemSlot { slot: slot as u32, id: s.id.clone(), count: s.count as u32 })
+                    .map(|(slot, s)| ItemSlot {
+                        slot: slot as u32,
+                        id: s.id.clone(),
+                        count: s.count as u32,
+                        components: s.data.as_ref().and_then(|d| d.components.clone()),
+                        tag: s.data.as_ref().and_then(|d| d.tag.clone()),
+                        data_version: s.data.as_ref().and_then(|d| d.data_version),
+                    })
                     .collect();
                 (!items.is_empty()).then_some(Container { pos: [pos.x, pos.y, pos.z], items })
             })
@@ -855,6 +876,7 @@ mod tests {
             at: [0.5, 1.0, 0.5],
             motion: None,
             nbt: nbt.map(str::to_string),
+            data_version: None,
         };
         let fixture = ResolvedFixture {
             format: 1,
@@ -906,6 +928,7 @@ mod tests {
             at: [2.5, 1.0, 0.5],
             motion: None,
             nbt: Some(r#"{Item:{id:"minecraft:stone",count:1}}"#.into()),
+            data_version: None,
         };
         let fixture = ResolvedFixture {
             format: 1,
@@ -1311,7 +1334,7 @@ mod tests {
         f.blocks.sort_by_key(|&(x, y, z, _)| (y, z, x));
         f.containers = vec![Container {
             pos: [1, 1, 2],
-            items: vec![ItemSlot { slot: 0, id: "minecraft:redstone".into(), count: 10 }],
+            items: vec![ItemSlot { slot: 0, id: "minecraft:redstone".into(), count: 10, ..Default::default() }],
         }];
         f.lecterns = vec![Lectern { pos: [5, 1, 2], pages: 10, page: 0 }];
         f

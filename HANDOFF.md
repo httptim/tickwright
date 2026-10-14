@@ -9,7 +9,7 @@ picking the work up.
 
 - The engine targets Java Edition 26.3. Every behaviour is checked against
   traces captured from the real 26.3 server (`traces/26.3`).
-- There are 269 fixtures (`fixtures/`) and 2231 traces: one per fixture
+- There are 274 fixtures (`fixtures/`) and 2271 traces: one per fixture
   and orientation, and 100 more seeds of `phase4/tnt_cannon`. Every trace
   matches at the strictest level ("order"), and no fixture is refused.
   The fixtures listed in `crates/engine/tests/expected.txt` must keep
@@ -23,7 +23,39 @@ picking the work up.
     sculk sensors.
   - **Containers:** chests, barrels, hoppers, droppers, dispensers,
     crafters and shelves. Droppers and dispensers pick a filled slot with
-    the level's random source, as the game does.
+    the level's random source, as the game does. Every item stacks as high
+    as the game's item data says (64, 16 or 1, from
+    `data/26.3/materials.json`), in containers and minecarts, in
+    comparator readings, and when item entities merge. Explosion drops
+    merge by the same rule in the game's code (`addOrAppendStack`), but no
+    capture covers that yet.
+  - **Item components:** a stack keeps its component patch (a custom
+    name, say) through containers, entities, sessions and saved files, and
+    stacks merge only when their patches match, as
+    `isSameItemSameComponents` decides. The engine models no component
+    itself; one that changes behaviour it simulates (`max_stack_size`,
+    `damage_resistant`) marks the build unsupported, by name, as does an
+    item `tag` from a file saved before 1.20.5. Components that hold NBT
+    (`custom_data`, `entity_data`, `bucket_entity_data`,
+    `block_entity_data`) compare tag for tag, types included, as the game
+    compares them; the rest compare as a codec reads them, numbers by
+    value. Two limits: a text component spelled two ways
+    (`custom_name:"A"` and `custom_name:{text:"A"}`) differs, and so does
+    a component set to its default value, which the game drops from the
+    patch. The game writes a given value one way, so both come from data
+    written by hand or by commands. SNBT is read by one parser
+    (`crates/trace/src/snbt.rs`) that follows 26.3's `SnbtGrammar`, typed
+    numbers, arrays, escapes and all, but for named characters
+    (`\N{...}`), which it refuses.
+  - **Saved data:** an entity keeps the data it was summoned or placed
+    with, and saving it writes that back with the engine's live values
+    over it, so keys the engine doesn't read survive. Everything from a
+    file older than 26.3 keeps that file's data version, and an export
+    takes it, so the game brings it up to date when it loads the file.
+    Data in two versions (a stack moved into an old minecart, an entity
+    summoned beside old ones) can't share a file: export refuses it,
+    naming both, and the editor's entity view says which stack is out of
+    step (`mixed_versions`).
   - **Rails:** plain, powered, activator and detector rails.
   - **Fluids:** water.
   - **Entities (phase 4):**
@@ -79,16 +111,14 @@ picking the work up.
 4. **Fire beyond fireballs.** Fire on flammable blocks, and fire beside
    obsidian (portals), are refused. Captures never spread fire because no
    player is nearby, so the engine only reschedules it.
-5. **Stack sizes from data.** `container::max_stack_size` should read
-   `data/26.3/materials.json` (`stack_sizes`) instead of a heuristic.
-6. **Performance.** The bench went from about 540 to more than 2000 ticks
+5. **Performance.** The bench went from about 540 to more than 2000 ticks
    a second. The next hotspots are `Registry::value` name comparisons,
    wire `update_power_strength` and `run_updates`. Profile with
    `valgrind --tool=callgrind target/release/tickwright bench`, because
    wall-clock timings are noisy.
-7. **Minecart Improvements** (an opt-in experiment in 26.3). The engine
+6. **Minecart Improvements** (an opt-in experiment in 26.3). The engine
    runs the default `OldMinecartBehavior` only.
-8. **New game versions.** Add a rule module under
+7. **New game versions.** Add a rule module under
    `crates/engine/src/rules/` layered on 26.3, set `MC_VERSION` in the
    oracle workflow, and capture a new `traces/<version>`.
 

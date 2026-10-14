@@ -106,7 +106,10 @@ impl Table {
         }
         for c in containers {
             for slot in &c.items {
-                *held.entry(full_id(&slot.id)).or_default() += u64::from(slot.count);
+                // A slot holds at most a stack: filling a container cuts a
+                // bigger count down (`Container.setItem`).
+                let n = slot.count.min(self.stack_size(&slot.id));
+                *held.entry(full_id(&slot.id)).or_default() += u64::from(n);
             }
         }
 
@@ -297,11 +300,11 @@ mod tests {
         let chest = Container {
             pos: [0, 0, 0],
             items: vec![
-                ItemSlot { slot: 0, id: "ender_pearl".into(), count: 16 },
-                ItemSlot { slot: 1, id: "ender_pearl".into(), count: 16 },
-                ItemSlot { slot: 2, id: "ender_pearl".into(), count: 8 },
-                ItemSlot { slot: 3, id: "minecraft:redstone".into(), count: 64 },
-                ItemSlot { slot: 4, id: "diamond_sword".into(), count: 1 },
+                ItemSlot { slot: 0, id: "ender_pearl".into(), count: 16, ..Default::default() },
+                ItemSlot { slot: 1, id: "ender_pearl".into(), count: 16, ..Default::default() },
+                ItemSlot { slot: 2, id: "ender_pearl".into(), count: 8, ..Default::default() },
+                ItemSlot { slot: 3, id: "minecraft:redstone".into(), count: 64, ..Default::default() },
+                ItemSlot { slot: 4, id: "diamond_sword".into(), count: 1, ..Default::default() },
             ],
         };
         let l = list_with(&["chest[facing=north,type=single,waterlogged=false]", "redstone_wire"], &[chest]);
@@ -313,6 +316,21 @@ mod tests {
         assert_eq!(get("diamond_sword").stack_size, 1);
         assert_eq!(l.slots, 3 + 2 + 1 + 1);
         assert_eq!(l.shulker_boxes, 1);
+    }
+
+    #[test]
+    fn a_slot_holds_at_most_a_stack() {
+        let chest = Container {
+            pos: [0, 0, 0],
+            items: vec![
+                ItemSlot { slot: 0, id: "ender_pearl".into(), count: 20, ..Default::default() },
+                ItemSlot { slot: 1, id: "diamond_sword".into(), count: 3, ..Default::default() },
+                ItemSlot { slot: 2, id: "stone".into(), count: 64, ..Default::default() },
+            ],
+        };
+        let l = list_with(&["chest[facing=north,type=single,waterlogged=false]"], &[chest]);
+        let held = |id: &str| l.items.iter().find(|m| m.item == format!("minecraft:{id}")).unwrap().from_containers;
+        assert_eq!((held("ender_pearl"), held("diamond_sword"), held("stone")), (16, 1, 64));
     }
 
     #[test]

@@ -55,7 +55,7 @@ fn front(level: &Level, state: StateId) -> Dir {
 
 /// `canPlaceItem`: a slot takes an item unless it is full or a later slot
 /// holds a smaller stack of the same item (or nothing), so items spread out.
-pub fn can_place_item(level: &Level, pos: Pos, slot: usize, stack: &Stack) -> bool {
+pub fn can_place_item(level: &Level, pos: Pos, slot: usize) -> bool {
     let Some(c) = crafter(level, pos) else { return false };
     let current = &c.items[slot];
     if current.count >= current.max_stack_size() {
@@ -64,9 +64,8 @@ pub fn can_place_item(level: &Level, pos: Pos, slot: usize, stack: &Stack) -> bo
     if current.is_empty() {
         return true;
     }
-    let smaller = c.items[slot + 1..]
-        .iter()
-        .any(|s| s.is_empty() || (s.count < current.count && s.id == current.id && s.id == stack.id));
+    // `smallerStackExist`, against the stack already in the slot.
+    let smaller = c.items[slot + 1..].iter().any(|s| s.is_empty() || (s.count < current.count && s.same_item(current)));
     !smaller
 }
 
@@ -126,7 +125,8 @@ fn dispense_item(level: &mut Level, pos: Pos, state: StateId, stack: Stack) {
             || stack.count > stack.max_stack_size().min(99);
         if one_by_one {
             while !stack.is_empty() {
-                let left = container::add_item(level, Some(pos.into()), dest, Stack::new(&stack.id, 1));
+                // `copyWithCount(1)`, components and all.
+                let left = container::add_item(level, Some(pos.into()), dest, Stack { count: 1, ..stack.clone() });
                 if !left.is_empty() {
                     break;
                 }

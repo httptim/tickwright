@@ -67,7 +67,15 @@ pub fn run_partial(fixture: &ResolvedFixture, mc_version: &str) -> Result<Trace>
     if fixture.entities {
         rng.push((0, level.random.internal()));
     }
+    // A build refused as it is placed (an item component the engine doesn't
+    // model, say) records no ticks at all.
+    if let Some(what) = &level.unsupported {
+        unsupported = Some(Unsupported { tick: 1, message: format!("{what} is not simulated by the engine yet") });
+    }
     for t in 1..=fixture.ticks {
+        if unsupported.is_some() {
+            break;
+        }
         if let Some(Recorder::Trace(r)) = level.recorder.as_mut() {
             r.tick = t;
         }
@@ -216,7 +224,23 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
             if level.kind_at(pos) == Kind::Dispenser && !blocks::dispenser::supported_item(&item.id) {
                 bail!("{}: dispensing {} is not supported by the engine yet", fixture.id, item.id);
             }
-            let stack = blocks::container::Stack::new(&item.id, item.count as i32);
+            let data =
+                blocks::container::ItemData::new(item.components.as_deref(), item.tag.as_deref(), item.data_version)
+                    .with_context(|| format!("{}: the item in slot {} at {:?}", fixture.id, item.slot, c.pos))?;
+            // Refused the same way as on an entity: the build still opens,
+            // marked unsupported from the start.
+            if let Some(d) = &data {
+                let block = reg.name(level.get(pos));
+                let block = block.strip_prefix("minecraft:").unwrap_or(block).replace('_', " ");
+                let place = format!("in slot {} of the {block} at {} {} {}", item.slot, c.pos[0], c.pos[1], c.pos[2]);
+                if let Some(component) = d.refused_component() {
+                    level.unsupported(format!("the item component {component} ({place})"));
+                }
+                if d.tag.is_some() {
+                    level.unsupported(format!("an item tag saved before 1.20.5 ({place})"));
+                }
+            }
+            let stack = blocks::container::Stack::new(&item.id, item.count as i32).with_data(data);
             blocks::container::set_item(&mut level, pos, item.slot as usize, stack);
         }
     }
@@ -242,7 +266,7 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
     for e in &fixture.start_entities {
         let at = Vec3::new(ox as f64 + e.at[0], oy as f64 + e.at[1], oz as f64 + e.at[2]);
         let motion = e.motion.map(|m| Vec3::new(m[0], m[1], m[2]));
-        entity::place_start_entity(&mut level, &e.entity, at, motion, e.nbt.as_deref())
+        entity::place_start_entity(&mut level, &e.entity, at, motion, e.nbt.as_deref(), e.data_version)
             .with_context(|| format!("{}: entity {}", fixture.id, e.entity))?;
     }
     Ok(level)
@@ -339,6 +363,23 @@ mod tests {
         let fixture = source.resolve(Transform::IDENTITY).unwrap();
         let u = super::run_partial(&fixture, "26.3").unwrap().unsupported.unwrap();
         assert_eq!(u.message, "dropping minecraft:shulker_box with what it holds is not simulated by the engine yet");
+    }
+
+    #[test]
+    fn a_refused_stack_size_keeps_its_count() {
+        let source = FixtureSource::from_json(
+            r#"{"name": "t", "ticks": 1, "palette": {"c": "chest[facing=north,type=single,waterlogged=false]"},
+                "layers": [["c"]],
+                "containers": [{"pos": [0, 0, 0], "items": [
+                    {"slot": 0, "id": "snowball", "count": 20, "components": "{\"minecraft:max_stack_size\":64}"},
+                    {"slot": 1, "id": "snowball", "count": 20}]}]}"#,
+        )
+        .unwrap();
+        let fixture = source.resolve(Transform::IDENTITY).unwrap();
+        let level = super::place(&fixture, crate::rules::Rules::for_version("26.3").unwrap()).unwrap();
+        let items = crate::blocks::container::items(&level, crate::pos::Pos::new(0, 100, 0)).unwrap();
+        assert_eq!((items[0].count, items[1].count), (20, 16));
+        assert!(level.unsupported.as_deref().unwrap().contains("max_stack_size"));
     }
 
     #[test]

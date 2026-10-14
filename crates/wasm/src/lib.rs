@@ -254,7 +254,17 @@ enum Command {
         pos: [i32; 3],
     },
     /// The entities in the world now, in the order they tick:
-    /// `{"entities": [{"id", "type", "pos": [x, y, z], "detail"}]}`.
+    /// `{"entities": [{"id", "type", "pos": [x, y, z], "detail", "nbt",
+    /// "data_version", "mixed_versions"}]}`. `nbt` is the entity's data as
+    /// SNBT: what it was summoned or placed with, every key kept with its
+    /// type, and the engine's live values (motion, an item's stack, a
+    /// minecart's items and so on) over it. A build's start entity takes it
+    /// as its `nbt` and `type` as its `entity` to come back the same, and
+    /// its `at` is relative to the fixture's origin: `pos`, which is in
+    /// world coordinates, less that origin; `data_version` goes with it, null unless the entity came from
+    /// an older file. `mixed_versions` is null, or says which of its item
+    /// stacks is in another data version than the entity, which a file
+    /// can't hold.
     Entities {
         session: u32,
     },
@@ -456,7 +466,17 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                 let entities: Vec<_> = get(sessions, session)?
                     .entities()
                     .into_iter()
-                    .map(|e| json!({ "id": e.id, "type": e.kind, "pos": e.pos, "detail": e.detail }))
+                    .map(|e| {
+                        json!({
+                            "id": e.id,
+                            "type": e.kind,
+                            "pos": e.pos,
+                            "detail": e.detail,
+                            "nbt": e.nbt,
+                            "data_version": e.data_version,
+                            "mixed_versions": e.mixed_versions,
+                        })
+                    })
                     .collect();
                 json!({ "entities": entities })
             }
@@ -740,5 +760,66 @@ mod tests {
             serde_json::json!({"slot": 3, "id": "minecraft:redstone", "count": 64})
         );
         assert_eq!(contents["comparators"], serde_json::json!([{"pos": [1, 0, 0], "output": 1}]), "{contents}");
+    }
+
+    /// An imported build whose items carry components opens, as the
+    /// website opens it: names are kept, and a component the engine doesn't
+    /// model is reported rather than stopping the build from opening.
+    #[test]
+    fn a_build_with_item_components_opens_and_keeps_them() {
+        use tickwright_schematic::nbt::{Tag, compound};
+        use tickwright_schematic::{BlockEntity, DATA_VERSION_26_3, Entity, Format, Schematic};
+        let name = |n: &str| compound(vec![("minecraft:custom_name", Tag::String(n.into()))]);
+        let stack = |slot: i8, id: &str, components: Tag| {
+            compound(vec![
+                ("Slot", Tag::Byte(slot)),
+                ("id", Tag::String(id.into())),
+                ("count", Tag::Int(1)),
+                ("components", components),
+            ])
+        };
+        let chest = tickwright_trace::BlockState::parse("chest[facing=north,type=single,waterlogged=false]").unwrap();
+        let s = Schematic {
+            size: [1, 2, 1],
+            blocks: vec![([0, 0, 0], chest)],
+            block_entities: vec![BlockEntity {
+                pos: [0, 0, 0],
+                data: compound(vec![(
+                    "Items",
+                    Tag::List(
+                        10,
+                        vec![
+                            stack(0, "minecraft:stone", name("Filler")),
+                            stack(1, "minecraft:snowball", compound(vec![("minecraft:max_stack_size", Tag::Int(64))])),
+                        ],
+                    ),
+                )]),
+            }],
+            entities: vec![Entity {
+                id: "minecraft:item".into(),
+                pos: [0.5, 1.0, 0.5],
+                data: compound(vec![(
+                    "Item",
+                    compound(vec![("id", Tag::String("minecraft:stone".into())), ("components", name("Rock"))]),
+                )]),
+            }],
+            data_version: Some(DATA_VERSION_26_3),
+        };
+        let bytes = s.write(Format::Litematic);
+        let mut fixture = Schematic::read(&bytes).unwrap().to_fixture("t", 0).unwrap();
+        fixture.entities = true;
+        let resolved = fixture.resolve(tickwright_trace::Transform::IDENTITY).unwrap();
+        let open = serde_json::json!({"op": "open", "version": "26.3", "fixture": resolved});
+        let id = ok(&open.to_string())["session"].as_u64().unwrap();
+        let what = ok(&format!(r#"{{"op":"unsupported","session":{id}}}"#));
+        assert_eq!(
+            what["unsupported"],
+            "the item component minecraft:max_stack_size (in slot 1 of the chest at 0 0 0) is not simulated by the engine yet"
+        );
+        let contents = ok(&format!(r#"{{"op":"contents","session":{id}}}"#));
+        let filler = &contents["containers"][0]["items"][0];
+        assert_eq!(filler["components"], r#"{"minecraft:custom_name":"Filler"}"#, "{contents}");
+        let entities = ok(&format!(r#"{{"op":"entities","session":{id}}}"#));
+        assert_eq!(entities["entities"][0]["detail"], "minecraft:stone*1", "{entities}");
     }
 }

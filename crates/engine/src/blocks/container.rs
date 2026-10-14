@@ -10,6 +10,12 @@
 //! `removeItem` call it themselves; the hopper's versions do not, which is
 //! why a hopper marks itself changed once per transfer.
 
+use std::collections::BTreeMap;
+use std::sync::Arc;
+
+use anyhow::{Context, Result, bail};
+
+use crate::entity::snbt;
 use crate::level::{Level, flags};
 use crate::physics::{Aabb, Vec3};
 use crate::pos::Pos;
@@ -44,22 +50,206 @@ fn cart_items(level: &Level, k: usize) -> Option<&Vec<Stack>> {
 pub struct Stack {
     pub id: String,
     pub count: i32,
+    /// What the stack carries beyond its item: its component patch (a name,
+    /// say), or `None` for a plain stack.
+    pub data: Option<Arc<ItemData>>,
+}
+
+/// A stack's component patch (`DataComponentPatch`), and a pre-1.20.5
+/// item `tag` a file may still hold. The engine models no component, but
+/// it keeps them, so a save writes them back, and compares them, since
+/// stacks only merge with stacks whose components are the same
+/// (`ItemStack.isSameItemSameComponents`).
+#[derive(Clone, Debug)]
+pub struct ItemData {
+    /// The patch as it was given, in SNBT.
+    pub components: Option<String>,
+    /// The legacy tag as it was given, in SNBT.
+    pub tag: Option<String>,
+    /// The data version of the file they came from, when older than the
+    /// game's: they are in that version's format. It doesn't take part in
+    /// comparing.
+    pub data_version: Option<i32>,
+    /// What compares: each component as the game holds it once decoded
+    /// (see [`component_key`]), and the legacy tag with its types.
+    key: String,
+    /// Whether the patch sets or removes `max_stack_size`.
+    sets_stack_size: bool,
+    /// The first component in the patch that changes behaviour the engine
+    /// doesn't model.
+    refused: Option<&'static str>,
+}
+
+impl PartialEq for ItemData {
+    fn eq(&self, other: &ItemData) -> bool {
+        self.key == other.key
+    }
+}
+
+impl Eq for ItemData {}
+
+/// Components whose behaviour the engine simulates but doesn't model:
+/// `max_stack_size` sets the stack size, and `damage_resistant` keeps an
+/// item entity from burning or being blown up. Removing one from an item
+/// (`!minecraft:max_stack_size`) counts too.
+pub const REFUSED_COMPONENTS: [&str; 2] = ["minecraft:max_stack_size", "minecraft:damage_resistant"];
+
+/// Components whose value is NBT itself (`CustomData` and
+/// `TypedEntityData`), which the game compares tag for tag, types and all.
+const NBT_COMPONENTS: [&str; 4] =
+    ["minecraft:custom_data", "minecraft:bucket_entity_data", "minecraft:entity_data", "minecraft:block_entity_data"];
+
+impl ItemData {
+    /// The data for a component patch and a legacy tag, each in SNBT;
+    /// `None` when there is neither (an empty patch is no patch). A patch
+    /// the game couldn't decode is an error.
+    pub fn new(
+        components: Option<&str>,
+        tag: Option<&str>,
+        data_version: Option<i32>,
+    ) -> Result<Option<Arc<ItemData>>> {
+        let patch = match components {
+            Some(text) => {
+                let t = snbt::parse(text).with_context(|| format!("item components {text}"))?;
+                let snbt::Tag::Compound(m) = t else { bail!("item components {text} are not a compound") };
+                // `stone` and `minecraft:stone` name the same component.
+                let mut named: BTreeMap<String, snbt::Tag> = BTreeMap::new();
+                for (k, v) in m {
+                    let name = component_name(&k);
+                    let bare = name.trim_start_matches('!');
+                    if named.keys().any(|n| n.trim_start_matches('!') == bare) {
+                        bail!("item components {text} name {bare} twice");
+                    }
+                    named.insert(name, v);
+                }
+                (!named.is_empty()).then_some(named)
+            }
+            None => None,
+        };
+        let legacy = match tag {
+            Some(text) => Some(snbt::parse(text).with_context(|| format!("item tag {text}"))?),
+            None => None,
+        };
+        if patch.is_none() && legacy.is_none() {
+            return Ok(None);
+        }
+        let mut key = String::new();
+        for (name, value) in patch.iter().flatten() {
+            key.push_str(name);
+            key.push('=');
+            if !name.starts_with('!') {
+                key.push_str(&component_key(name, value).with_context(|| format!("item component {name}"))?);
+            }
+            key.push(';');
+        }
+        key.push('|');
+        key.push_str(&legacy.as_ref().map(snbt::write).unwrap_or_default());
+        let bare = |k: &String| k.trim_start_matches('!').to_string();
+        let names: Vec<String> = patch.iter().flat_map(|p| p.keys().map(bare)).collect();
+        Ok(Some(Arc::new(ItemData {
+            components: patch.and(components.map(str::to_string)),
+            tag: legacy.and(tag.map(str::to_string)),
+            data_version,
+            key,
+            sets_stack_size: names.iter().any(|n| n == REFUSED_COMPONENTS[0]),
+            refused: REFUSED_COMPONENTS.into_iter().find(|r| names.iter().any(|n| n == r)),
+        })))
+    }
+
+    /// The data for a component patch read from entity data.
+    pub fn from_tags(
+        components: Option<&snbt::Tag>,
+        tag: Option<&snbt::Tag>,
+        data_version: Option<i32>,
+    ) -> Result<Option<Arc<ItemData>>> {
+        let c = components.map(snbt::write);
+        let t = tag.map(snbt::write);
+        ItemData::new(c.as_deref(), t.as_deref(), data_version)
+    }
+
+    /// The patch as a tag, its types as given.
+    pub fn components_tag(&self) -> Option<snbt::Tag> {
+        snbt::parse(self.components.as_deref()?).ok()
+    }
+
+    /// The legacy tag as a tag, its types as given.
+    pub fn legacy_tag(&self) -> Option<snbt::Tag> {
+        snbt::parse(self.tag.as_deref()?).ok()
+    }
+
+    /// Whether the patch sets or removes `max_stack_size`.
+    pub fn sets_stack_size(&self) -> bool {
+        self.sets_stack_size
+    }
+
+    /// The first component in the patch that changes behaviour the engine
+    /// doesn't model.
+    pub fn refused_component(&self) -> Option<&'static str> {
+        self.refused
+    }
+}
+
+/// How a component's value compares once the game has decoded it. A
+/// component that holds NBT (`custom_data` and the like) compares as that
+/// NBT, every tag's type included, so `1b` and `1`, `[I;1]` and `[1]`, or
+/// `0.1f` and `0.1d` differ; its value may also be given as an SNBT
+/// string, which the game parses (`TagParser.FLATTENED_CODEC`), and the
+/// `id` of `entity_data` and `block_entity_data` is a registry name, so
+/// `pig` is `minecraft:pig`. Every other component is decoded by a codec
+/// that reads numbers by value, so there `1b` and `1.0d` are the same.
+fn component_key(name: &str, value: &snbt::Tag) -> Result<String> {
+    if !NBT_COMPONENTS.contains(&name) {
+        return Ok(snbt::write_value(value));
+    }
+    let mut nbt = match value {
+        snbt::Tag::String(text) => snbt::parse(text)?,
+        v => v.clone(),
+    };
+    let snbt::Tag::Compound(m) = &mut nbt else { bail!("{} is not a compound", snbt::write(value)) };
+    if name == "minecraft:entity_data" || name == "minecraft:block_entity_data" {
+        let id = m.get("id").and_then(|t| t.string()).context("it needs an `id`")?;
+        let id = if id.contains(':') { id.to_string() } else { format!("minecraft:{id}") };
+        m.insert("id".to_string(), snbt::Tag::String(id));
+    }
+    Ok(snbt::write(&nbt))
+}
+
+/// A component's full name, `minecraft:` added, keeping a leading `!`.
+fn component_name(k: &str) -> String {
+    let (bang, name) = match k.strip_prefix('!') {
+        Some(n) => ("!", n),
+        None => ("", k),
+    };
+    if name.contains(':') { format!("{bang}{name}") } else { format!("{bang}minecraft:{name}") }
 }
 
 impl Stack {
     pub fn new(id: &str, count: i32) -> Stack {
-        Stack { id: id.to_string(), count }
+        Stack { id: id.to_string(), count, data: None }
+    }
+
+    pub fn with_data(mut self, data: Option<Arc<ItemData>>) -> Stack {
+        self.data = data;
+        self
     }
 
     pub fn is_empty(&self) -> bool {
         self.count <= 0
     }
 
+    /// `ItemStack.isSameItemSameComponents`.
+    pub fn same_item(&self, other: &Stack) -> bool {
+        fn bare(id: &str) -> &str {
+            id.strip_prefix("minecraft:").unwrap_or(id)
+        }
+        bare(&self.id) == bare(&other.id) && self.data == other.data
+    }
+
     /// `ItemStack.split`.
     pub(super) fn split(&mut self, amount: i32) -> Stack {
         let n = amount.min(self.count);
         self.count -= n;
-        Stack { id: self.id.clone(), count: n }
+        Stack { id: self.id.clone(), count: n, data: self.data.clone() }
     }
 
     pub(super) fn max_stack_size(&self) -> i32 {
@@ -175,8 +365,12 @@ fn is_empty(level: &Level, inv: Inv) -> bool {
 /// `Container.setItem`.
 pub fn set_item(level: &mut Level, inv: impl Into<Inv>, slot: usize, mut stack: Stack) {
     let inv = inv.into();
-    let max = stack.max_stack_size();
-    stack.count = stack.count.min(max);
+    // A stack whose own `max_stack_size` the engine refuses keeps its count,
+    // so a refused build saves what it was given.
+    let own_size = stack.data.as_ref().is_some_and(|d| d.sets_stack_size());
+    if !own_size {
+        stack.count = stack.count.min(stack.max_stack_size());
+    }
     if stack.is_empty() {
         stack = Stack::default();
     }
@@ -359,7 +553,7 @@ fn try_move_in_item(level: &mut Level, source: Option<Inv>, dest: Inv, mut stack
     // (`ShulkerBoxBlockEntity.canPlaceItemThroughFace`).
     if let Inv::Block(d) = dest {
         let refused = match level.kind_at(d) {
-            Kind::Crafter => !super::crafter::can_place_item(level, d, slot, &stack),
+            Kind::Crafter => !super::crafter::can_place_item(level, d, slot),
             Kind::ShulkerBox => is_shulker_box(&stack.id),
             _ => false,
         };
@@ -374,7 +568,7 @@ fn try_move_in_item(level: &mut Level, source: Option<Inv>, dest: Inv, mut stack
         set_item(level, dest, slot, stack);
         stack = Stack::default();
         changed = true;
-    } else if current.id == stack.id && current.count < current.max_stack_size() {
+    } else if current.same_item(&stack) && current.count < current.max_stack_size() {
         let n = stack.count.min(stack.max_stack_size() - current.count);
         stack.count -= n;
         set_count(level, dest, slot, current.count + n);
@@ -468,7 +662,8 @@ pub fn hopper_entity_inside(level: &mut Level, k: usize, pos: Pos) {
 fn add_item_entity(level: &mut Level, dest: Inv, k: usize) -> bool {
     let crate::entity::Data::Item(item) = &level.entities[k].data else { return false };
     // Entities keep bare item ids; containers keep namespaced ones.
-    let stack = Stack::new(&format!("minecraft:{}", item.stack.id), item.stack.count);
+    let stack =
+        Stack::new(&format!("minecraft:{}", item.stack.id), item.stack.count).with_data(item.stack.data.clone());
     let rest = add_item(level, None, dest, stack);
     let e = &mut level.entities[k];
     let crate::entity::Data::Item(item) = &mut e.data else { unreachable!() };
