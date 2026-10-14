@@ -1,0 +1,191 @@
+{
+  "name": "waterlogged_blocks_broken",
+  "description": "The same eight waterlogged blocks are destroyed one after another (Level.destroyBlock), and each leaves its water behind as a source (FluidState.createLegacyBlock), not air. A sculk sensor hears the first few breaks before its own turn. Then a waterlogged dead coral fan loses the block under it and pops, and a waterlogged rail loses its support and goes (Level.removeBlock); both leave water, which falls into the hole below.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "water",
+    "waterlogged",
+    "rail"
+  ],
+  "palette": {
+    "#": "stone",
+    "S": "oak_slab[type=bottom,waterlogged=true]",
+    "T": "oak_trapdoor[facing=north,half=bottom,open=false,powered=false,waterlogged=true]",
+    "C": "chest[facing=north,type=single,waterlogged=true]",
+    "R": "rail[shape=north_south,waterlogged=true]",
+    "Z": "sculk_sensor[power=0,sculk_sensor_phase=inactive,waterlogged=true]",
+    "H": "oak_shelf[facing=east,powered=false,side_chain=unconnected,waterlogged=true]",
+    "F": "dead_brain_coral_fan[waterlogged=true]",
+    "V": "oak_leaves[distance=7,persistent=true,waterlogged=true]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      "#####",
+      "#S###",
+      "#####",
+      "#T###",
+      "#####",
+      "#C###",
+      "#####",
+      "#R###",
+      "#####",
+      "#Z###",
+      "#####",
+      "#H###",
+      "#####",
+      "#F###",
+      "#####",
+      "#V###",
+      "#####",
+      "#F###",
+      "#####",
+      "#R###",
+      "#####"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 3,
+      "action": "destroy",
+      "pos": [
+        1,
+        2,
+        1
+      ]
+    },
+    {
+      "tick": 5,
+      "action": "destroy",
+      "pos": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "tick": 7,
+      "action": "destroy",
+      "pos": [
+        1,
+        2,
+        5
+      ]
+    },
+    {
+      "tick": 9,
+      "action": "destroy",
+      "pos": [
+        1,
+        2,
+        7
+      ]
+    },
+    {
+      "tick": 11,
+      "action": "destroy",
+      "pos": [
+        1,
+        2,
+        9
+      ]
+    },
+    {
+      "tick": 13,
+      "action": "destroy",
+      "pos": [
+        1,
+        2,
+        11
+      ]
+    },
+    {
+      "tick": 15,
+      "action": "destroy",
+      "pos": [
+        1,
+        2,
+        13
+      ]
+    },
+    {
+      "tick": 17,
+      "action": "destroy",
+      "pos": [
+        1,
+        2,
+        15
+      ]
+    },
+    {
+      "tick": 25,
+      "action": "set",
+      "pos": [
+        1,
+        1,
+        17
+      ],
+      "state": "air"
+    },
+    {
+      "tick": 27,
+      "action": "set",
+      "pos": [
+        1,
+        1,
+        19
+      ],
+      "state": "air"
+    }
+  ]
+}

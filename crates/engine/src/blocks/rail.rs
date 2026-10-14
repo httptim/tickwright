@@ -135,8 +135,7 @@ pub fn neighbor_changed(level: &mut Level, pos: Pos, state: StateId, moved_by_pi
         if level.simulate_entities {
             level.drop_resources(pos, state);
         }
-        let f = if moved_by_piston { flags::ALL | flags::MOVE_BY_PISTON } else { flags::ALL };
-        level.set_block(pos, level.air, f);
+        level.remove_block_moving(pos, moved_by_piston);
     } else {
         update_state(level, pos, state);
     }
@@ -149,8 +148,7 @@ pub fn detector_neighbor_changed(level: &mut Level, pos: Pos, state: StateId, mo
         if level.simulate_entities {
             level.drop_resources(pos, state);
         }
-        let f = if moved_by_piston { flags::ALL | flags::MOVE_BY_PISTON } else { flags::ALL };
-        level.set_block(pos, level.air, f);
+        level.remove_block_moving(pos, moved_by_piston);
     }
 }
 
@@ -300,8 +298,7 @@ pub fn plain_neighbor_changed(
         if level.simulate_entities {
             level.drop_resources(pos, state);
         }
-        let f = if moved_by_piston { flags::ALL | flags::MOVE_BY_PISTON } else { flags::ALL };
-        level.set_block(pos, level.air, f);
+        level.remove_block_moving(pos, moved_by_piston);
     } else if super::is_signal_source(level, level.default_state(source))
         && RailState::new(level, pos, state).count_potential_connections(level) == 3
     {
