@@ -179,12 +179,23 @@ impl Parser<'_> {
                     }
                 }
             }
+            // A quoted value is always a string, whatever it spells: "1",
+            // "7b" and "true" are names, not numbers.
+            Some(b'"' | b'\'') => Ok(Tag::String(self.word()?)),
             Some(_) => {
                 let w = self.word()?;
-                let n = w.trim_end_matches(['b', 'B', 's', 'S', 'l', 'L', 'f', 'F', 'd', 'D']);
+                // At most one type suffix, as the game reads it.
+                let (n, suffix) = match w.char_indices().last() {
+                    Some((i, c)) if "bBsSlLfFdD".contains(c) && i > 0 => (&w[..i], Some(c.to_ascii_lowercase())),
+                    _ => (w.as_str(), None),
+                };
                 match n.parse::<f64>() {
-                    Ok(x) if !n.is_empty() => Ok(Tag::Number(x)),
+                    // A float tag holds a float, which Java widens when it
+                    // reads it as a double (`0.1f` is 0.10000000149011612).
+                    Ok(x) if suffix == Some('f') => Ok(Tag::Number(x as f32 as f64)),
+                    Ok(x) if !n.is_empty() && x.is_finite() => Ok(Tag::Number(x)),
                     _ => match w.as_str() {
+                        // Unquoted `true` and `false` are bytes in SNBT.
                         "true" => Ok(Tag::Number(1.0)),
                         "false" => Ok(Tag::Number(0.0)),
                         _ => Ok(Tag::String(w)),
@@ -241,6 +252,24 @@ mod tests {
         assert_eq!(t.get("Motion"), Some(&Tag::List(vec![Tag::Number(0.1), Tag::Number(-2.5), Tag::Number(0.0)])));
         let t = parse("{UUID:[I;1,-2,3,4],Empty:[B;]}").unwrap();
         assert_eq!(t.get("UUID").unwrap(), &Tag::List([1.0, -2.0, 3.0, 4.0].map(Tag::Number).to_vec()));
+    }
+
+    #[test]
+    fn quoted_values_stay_strings() {
+        for (a, b) in [("1", "01"), ("7", "7b"), ("true", "1"), ("1.0", "1"), ("1b", "1")] {
+            let ta = parse(&format!(r#"{{n:"{a}"}}"#)).unwrap();
+            let tb = parse(&format!(r#"{{n:"{b}"}}"#)).unwrap();
+            assert_eq!(ta.get("n").unwrap().string(), Some(a));
+            assert_ne!(write(&ta), write(&tb), "{a} and {b}");
+        }
+        assert_eq!(parse("{n:'7b'}").unwrap().get("n").unwrap().string(), Some("7b"));
+        // Unquoted, they are numbers.
+        assert_eq!(parse("{n:7b}").unwrap().get("n").unwrap().number(), Some(7.0));
+        assert_eq!(parse("{n:true}").unwrap().get("n").unwrap().number(), Some(1.0));
+        assert_eq!(parse("{n:0.1f}").unwrap().get("n").unwrap().number(), Some(0.1f32 as f64));
+        assert_eq!(parse("{n:0.1d}").unwrap().get("n").unwrap().number(), Some(0.1));
+        // A word that only looks like a number with a suffix is a string.
+        assert_eq!(parse("{n:bb}").unwrap().get("n").unwrap().string(), Some("bb"));
     }
 
     #[test]

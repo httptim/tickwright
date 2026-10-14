@@ -66,6 +66,10 @@ pub struct ItemData {
     pub components: Option<String>,
     /// The legacy tag as it was given, in SNBT.
     pub tag: Option<String>,
+    /// The data version of the file they came from, when older than the
+    /// game's: they are in that version's format. It doesn't take part in
+    /// comparing.
+    pub data_version: Option<i32>,
     /// Both in canonical SNBT, which is what compares.
     key: String,
 }
@@ -87,7 +91,11 @@ pub const REFUSED_COMPONENTS: [&str; 2] = ["minecraft:max_stack_size", "minecraf
 impl ItemData {
     /// The data for a component patch and a legacy tag, each in SNBT;
     /// `None` when there is neither (an empty patch is no patch).
-    pub fn new(components: Option<&str>, tag: Option<&str>) -> Result<Option<Arc<ItemData>>> {
+    pub fn new(
+        components: Option<&str>,
+        tag: Option<&str>,
+        data_version: Option<i32>,
+    ) -> Result<Option<Arc<ItemData>>> {
         let patch = match components {
             Some(text) => {
                 let t = snbt::parse(text).with_context(|| format!("item components {text}"))?;
@@ -113,15 +121,27 @@ impl ItemData {
         Ok(Some(Arc::new(ItemData {
             components: patch.and(components.map(str::to_string)),
             tag: legacy.and(tag.map(str::to_string)),
+            data_version,
             key,
         })))
     }
 
     /// The data for a component patch read from entity data.
-    pub fn from_tags(components: Option<&snbt::Tag>, tag: Option<&snbt::Tag>) -> Result<Option<Arc<ItemData>>> {
+    pub fn from_tags(
+        components: Option<&snbt::Tag>,
+        tag: Option<&snbt::Tag>,
+        data_version: Option<i32>,
+    ) -> Result<Option<Arc<ItemData>>> {
         let c = components.map(snbt::write);
         let t = tag.map(snbt::write);
-        ItemData::new(c.as_deref(), t.as_deref())
+        ItemData::new(c.as_deref(), t.as_deref(), data_version)
+    }
+
+    /// Whether the patch sets or removes `max_stack_size`.
+    pub fn sets_stack_size(&self) -> bool {
+        self.components.as_deref().and_then(|c| snbt::parse(c).ok()).is_some_and(|p| {
+            p.keys().into_iter().any(|k| component_name(k).trim_start_matches('!') == REFUSED_COMPONENTS[0])
+        })
     }
 
     /// The first component in the patch that changes behaviour the engine
@@ -161,7 +181,9 @@ impl Stack {
 
     /// `ItemStack.isSameItemSameComponents`.
     pub fn same_item(&self, other: &Stack) -> bool {
-        let bare = |id: &str| id.strip_prefix("minecraft:").unwrap_or(id).to_string();
+        fn bare(id: &str) -> &str {
+            id.strip_prefix("minecraft:").unwrap_or(id)
+        }
         bare(&self.id) == bare(&other.id) && self.data == other.data
     }
 
@@ -285,8 +307,12 @@ fn is_empty(level: &Level, inv: Inv) -> bool {
 /// `Container.setItem`.
 pub fn set_item(level: &mut Level, inv: impl Into<Inv>, slot: usize, mut stack: Stack) {
     let inv = inv.into();
-    let max = stack.max_stack_size();
-    stack.count = stack.count.min(max);
+    // A stack whose own `max_stack_size` the engine refuses keeps its count,
+    // so a refused build saves what it was given.
+    let own_size = stack.data.as_ref().is_some_and(|d| d.sets_stack_size());
+    if !own_size {
+        stack.count = stack.count.min(stack.max_stack_size());
+    }
     if stack.is_empty() {
         stack = Stack::default();
     }

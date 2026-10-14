@@ -125,7 +125,8 @@ fn dispense_item(level: &mut Level, pos: Pos, state: StateId, stack: Stack) {
             || stack.count > stack.max_stack_size().min(99);
         if one_by_one {
             while !stack.is_empty() {
-                let left = container::add_item(level, Some(pos.into()), dest, Stack::new(&stack.id, 1));
+                // `copyWithCount(1)`, components and all.
+                let left = container::add_item(level, Some(pos.into()), dest, Stack { count: 1, ..stack.clone() });
                 if !left.is_empty() {
                     break;
                 }

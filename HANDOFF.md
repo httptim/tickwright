@@ -39,8 +39,11 @@ picking the work up.
     compare as canonical text, not by value, so equivalent spellings
     (`custom_name:"A"` and `custom_name:{text:"A"}`) differ, and so does
     a component set to its default value, which the game drops from the
-    patch. Saves the game writes are canonical, so only hand-written data
-    shows either.
+    patch. The game writes a given value one way, so both come from data
+    written by hand or by commands, or mixed from different versions.
+    Components keep the data version of the file they came from, and an
+    export writes the oldest one present, so the game brings them up to
+    date when it loads the file.
   - **Rails:** plain, powered, activator and detector rails.
   - **Fluids:** water.
   - **Entities (phase 4):**

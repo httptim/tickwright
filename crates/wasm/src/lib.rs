@@ -254,7 +254,12 @@ enum Command {
         pos: [i32; 3],
     },
     /// The entities in the world now, in the order they tick:
-    /// `{"entities": [{"id", "type", "pos": [x, y, z], "detail"}]}`.
+    /// `{"entities": [{"id", "type", "pos": [x, y, z], "detail", "nbt",
+    /// "data_version"}]}`. `nbt` is the entity's data as SNBT, motion
+    /// included, which a build's start entity takes as its `nbt` (with
+    /// `type` as its `entity` and `pos` as its `at`) to come back the
+    /// same; `data_version` goes with it, and is null unless its item
+    /// components came from an older file.
     Entities {
         session: u32,
     },
@@ -456,7 +461,16 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                 let entities: Vec<_> = get(sessions, session)?
                     .entities()
                     .into_iter()
-                    .map(|e| json!({ "id": e.id, "type": e.kind, "pos": e.pos, "detail": e.detail }))
+                    .map(|e| {
+                        json!({
+                            "id": e.id,
+                            "type": e.kind,
+                            "pos": e.pos,
+                            "detail": e.detail,
+                            "nbt": e.nbt,
+                            "data_version": e.data_version,
+                        })
+                    })
                     .collect();
                 json!({ "entities": entities })
             }

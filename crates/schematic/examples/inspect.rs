@@ -12,7 +12,7 @@ fn main() -> anyhow::Result<()> {
             s.size,
             s.blocks.len(),
             s.block_entities.len(),
-            s.containers().len(),
+            s.containers()?.len(),
             s.comparators().len(),
             s.data_version
         );

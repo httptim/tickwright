@@ -87,10 +87,16 @@ pub struct ItemSlot {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub components: Option<String>,
     /// An item `tag` from a file saved before 1.20.5's item components
-    /// (data version 3837), in SNBT. The game would turn it into
+    /// (data version 3819), in SNBT. The game would turn it into
     /// components; the engine refuses it by name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tag: Option<String>,
+    /// The data version of the file the stack's `components` or `tag` came
+    /// from, when that is older than the game version the build is for:
+    /// they are in that version's format, so an export writes the file as
+    /// that version for the game to bring up to date.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_version: Option<i32>,
 }
 
 /// What a container block (chest, barrel, hopper, dropper, dispenser) holds when the fixture is
@@ -170,6 +176,11 @@ pub struct SummonInput {
     /// it is passed through unchanged in every orientation.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub nbt: Option<String>,
+    /// The data version of the file the entity came from, when that is
+    /// older than the game version the build is for (see
+    /// [`ItemSlot::data_version`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_version: Option<i32>,
 }
 
 impl SummonInput {
@@ -179,6 +190,7 @@ impl SummonInput {
             at: t.point(self.at, size),
             motion: self.motion.map(|m| t.vector(m)),
             nbt: self.nbt.clone(),
+            data_version: self.data_version,
         }
     }
 }
