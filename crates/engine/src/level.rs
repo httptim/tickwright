@@ -166,6 +166,8 @@ pub struct Level {
     /// `PistonMovingBlockEntity.NOCLIP`: while a moving block pushes an
     /// entity, blocks moving the same way don't collide with it.
     pub piston_noclip: Option<crate::pos::Dir>,
+    /// Buffers entity moves reuse (`entity::Scratch`).
+    pub(crate) entity_scratch: crate::entity::Scratch,
 }
 
 impl Level {
@@ -210,6 +212,7 @@ impl Level {
             simulate_entities: false,
             unsupported: None,
             piston_noclip: None,
+            entity_scratch: Default::default(),
         }
     }
 
