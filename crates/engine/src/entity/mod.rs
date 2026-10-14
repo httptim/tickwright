@@ -465,7 +465,9 @@ impl Clone for Scratch {
 /// in the level's list: `Entity.move(MoverType.PISTON, ...)` with blocks
 /// moving toward `noclip` passing through it, then the blocks it is in
 /// feel it (`applyEffectsFromBlocks`), every time, even when the push came
-/// to nothing.
+/// to nothing. A minecart's own `move` has them feel it first as well, so
+/// a cart feels them twice on every push, a push the limit cut to nothing
+/// included.
 pub fn move_by_piston(level: &mut Level, index: usize, noclip: crate::pos::Dir, movement: Vec3) {
     let mut e = level.take_entity(index);
     let from = e.pos;
@@ -482,6 +484,10 @@ pub fn move_by_piston(level: &mut Level, index: usize, noclip: crate::pos::Dir, 
                 level.unsupported("a piston pushing an entity stuck in a block");
             }
             move_entity(level, &mut e, m);
+        } else if let Data::Minecart(_) = e.data {
+            // `Entity.move` returns at once, but `AbstractMinecart.move`
+            // still goes on to feel the blocks.
+            minecart_after_move(level, &mut e);
         }
     }
     let to = e.pos;
@@ -642,7 +648,7 @@ fn check_inside_blocks(
         }
         iterations = iteration;
         let state = level.get(p);
-        if level.is_air(state) || visited.contains(&p) {
+        if level.is_air(state) || visited.contains(&p) || !moved_into(level, e, p, state, from, to) {
             return true;
         }
         visited.push(p);
@@ -653,6 +659,37 @@ fn check_inside_blocks(
     });
     level.entity_scratch.seen = seen;
     iterations + 1
+}
+
+/// Whether the entity moving from `from` to `to` touches the block's
+/// `getEntityInsideCollisionShape`. That is the whole block for every
+/// block but tripwire (and blocks the engine doesn't simulate), so the
+/// walk reaching it is enough; string is felt only if the box sweeps
+/// through its thin shape (`collidedWithShapeMovingFrom`). A block the
+/// entity misses is not counted as visited, so a later move can still
+/// reach it.
+fn moved_into(level: &Level, e: &Entity, p: Pos, state: StateId, from: Vec3, to: Vec3) -> bool {
+    match level.kind(state) {
+        Kind::Tripwire => {
+            let shape = crate::blocks::tripwire::shape(level, state).offset(p.x as f64, p.y as f64, p.z as f64);
+            collided_along_vector(e.box_at(from), to - from, &[shape])
+        }
+        _ => true,
+    }
+}
+
+/// `AABB.collidedAlongVector`: whether box `b` moving by `v` touches any of
+/// `shapes`, tracing its centre against each shape grown by half the box.
+fn collided_along_vector(b: Aabb, v: Vec3, shapes: &[Aabb]) -> bool {
+    // `AABB.getCenter`, by `Mth.lerp`.
+    let from: [f64; 3] = std::array::from_fn(|a| b.min[a] + 0.5 * (b.max[a] - b.min[a]));
+    let to = [from[0] + v.x, from[1] + v.y, from[2] + v.z];
+    let half: [f64; 3] = std::array::from_fn(|a| (b.max[a] - b.min[a]) * 0.5 - 1.0E-7);
+    let contains = |s: &Aabb, p: [f64; 3]| (0..3).all(|a| p[a] >= s.min[a] && p[a] < s.max[a]);
+    shapes.iter().any(|s| {
+        let grown = s.inflate(half[0], half[1], half[2]);
+        contains(&grown, to) || contains(&grown, from) || grown.clip(from, to).is_some()
+    })
 }
 
 /// `Direction.axisStepOrder`: y first, then the larger of x and z.
@@ -907,12 +944,17 @@ pub fn move_entity(level: &mut Level, e: &mut Entity, mut movement: Vec3) {
         e.motion = e.motion.multiply(f as f64, 1.0, f as f64);
     }
     if let Data::Minecart(_) = e.data {
-        // `AbstractMinecart.move`: a cart feels the blocks where it ends up
-        // after every move, and forgets the move.
-        let at = e.pos;
-        apply_effects_between(level, e, at, at);
-        e.movements.clear();
+        minecart_after_move(level, e);
     }
+}
+
+/// The end of `AbstractMinecart.move` (`OldMinecartBehavior`): after
+/// `Entity.move`, a cart feels the blocks where it is, and forgets its
+/// moves.
+fn minecart_after_move(level: &mut Level, e: &mut Entity) {
+    let at = e.pos;
+    apply_effects_between(level, e, at, at);
+    e.movements.clear();
 }
 
 /// The vertical motion a falling entity bounces off slime with (still

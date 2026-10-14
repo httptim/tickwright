@@ -5,6 +5,7 @@
 
 use crate::game_event::GameEvent;
 use crate::level::{Level, flags};
+use crate::physics::Aabb;
 use crate::pos::{Dir, Pos};
 use crate::registry::StateId;
 
@@ -46,10 +47,23 @@ pub fn affect_neighbors_after_removal(level: &mut Level, pos: Pos, state: StateI
     }
 }
 
-/// `TripWireBlock.entityInside`: an unpowered string checks at once.
+/// `TripWireBlock.getShape`, which is also the shape an entity must sweep
+/// through to press the string: a thin band when attached to hooks.
+pub fn shape(level: &Level, state: StateId) -> Aabb {
+    if level.flag(state, "attached") {
+        Aabb::new(0.0, 1.0 / 16.0, 0.0, 1.0, 2.5 / 16.0, 1.0)
+    } else {
+        Aabb::new(0.0, 0.0, 0.0, 1.0, 0.5, 1.0)
+    }
+}
+
+/// `TripWireBlock.entityInside`: an entity that swept through an unpowered
+/// string with no tick waiting presses it, wherever it ends up
+/// (`checkPressed(level, pos, List.of(entity))`). Every entity the engine
+/// simulates counts (none is `isIgnoringBlockTriggers`).
 pub fn entity_inside(level: &mut Level, pos: Pos, state: StateId) {
-    if !level.flag(state, "powered") {
-        check_pressed(level, pos);
+    if !level.flag(state, "powered") && !level.has_scheduled_tick(pos, level.block(state)) {
+        set_pressed(level, pos, true);
     }
 }
 
@@ -60,15 +74,20 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
     }
 }
 
-/// `TripWireBlock.checkPressed`: any entity in the string's shape holds it.
+/// `TripWireBlock.checkPressed(level, pos)`: any entity in the string's
+/// shape holds it.
 fn check_pressed(level: &mut Level, pos: Pos) {
-    let state = level.get(pos);
-    let powered = level.flag(state, "powered");
-    let top = if level.flag(state, "attached") { 2.5 / 16.0 } else { 0.5 };
-    let bottom = if level.flag(state, "attached") { 1.0 / 16.0 } else { 0.0 };
-    let b = crate::physics::Aabb::new(0.0, bottom, 0.0, 1.0, top, 1.0).offset(pos.x as f64, pos.y as f64, pos.z as f64);
+    let b = shape(level, level.get(pos)).offset(pos.x as f64, pos.y as f64, pos.z as f64);
     let now = level.entities.iter().any(|e| !e.removed && e.bounding_box().intersects(&b));
-    let mut state = state;
+    set_pressed(level, pos, now);
+}
+
+/// The rest of `TripWireBlock.checkPressed`: the string turns on or off,
+/// and checks again in ten ticks while pressed, or on the next tick after
+/// it lets go, which also keeps entities from pressing it until then.
+fn set_pressed(level: &mut Level, pos: Pos, now: bool) {
+    let mut state = level.get(pos);
+    let powered = level.flag(state, "powered");
     if now != powered {
         state = level.with_bool(state, "powered", now);
         level.set_block(pos, state, crate::level::flags::ALL);
@@ -77,8 +96,6 @@ fn check_pressed(level: &mut Level, pos: Pos) {
     if now {
         level.schedule_tick(pos, level.block(state), 10, 0);
     } else if powered {
-        // Fitted from 26.3 captures: a string that lets go checks once
-        // more on the next tick.
         level.schedule_tick(pos, level.block(state), 1, 0);
     }
 }

@@ -20,10 +20,17 @@ enum PushReaction {
     Block,
 }
 
+/// `BlockState.getPistonPushReaction`. What 26.3 calls `POPPED` (older
+/// versions `DESTROY`) breaks the block, with drops, in a piston's way.
 fn push_reaction(level: &Level, state: StateId) -> PushReaction {
     match level.kind(state) {
+        Kind::Carpet if level.reg.name(state) == "minecraft:moss_carpet" => PushReaction::Destroy,
         Kind::Lever
         | Kind::Button
+        | Kind::Torch
+        | Kind::WallTorch
+        | Kind::PressurePlate
+        | Kind::WeightedPlate
         | Kind::RedstoneWire
         | Kind::RedstoneTorch
         | Kind::RedstoneWallTorch

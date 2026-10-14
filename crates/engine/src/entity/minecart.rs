@@ -181,7 +181,8 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
 fn behavior_tick(level: &mut Level, e: &mut Entity) {
     let old = e.pos;
     let y_rot_o = cart(e).y_rot;
-    apply_gravity(e, 0.04);
+    // `AbstractMinecart.getDefaultGravity`: a cart in water falls slowly.
+    apply_gravity(e, if e.was_touching_water { 0.005 } else { 0.04 });
     let r = rail_pos(level, e.pos);
     let state = level.get(r);
     if is_rail_state(level, state) {

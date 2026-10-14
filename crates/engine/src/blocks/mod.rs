@@ -36,7 +36,7 @@ pub(crate) mod plain;
 pub(crate) mod rail;
 mod repeater;
 mod torch;
-mod tripwire;
+pub(crate) mod tripwire;
 pub mod water;
 mod wire;
 
@@ -530,6 +530,7 @@ pub fn update_shape(
     neighbor: Pos,
     neighbor_state: StateId,
 ) -> StateId {
+    water::tick_if_waterlogged(level, pos, state);
     match level.kind(state) {
         Kind::RedstoneWire => wire::update_shape(level, pos, state, dir, neighbor, neighbor_state),
         Kind::Repeater => repeater::update_shape(level, pos, state, dir, neighbor, neighbor_state),

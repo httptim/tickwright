@@ -47,7 +47,11 @@ fn stack(item: &str, count: i32) -> Stack {
 /// evaluate exactly mark the run unsupported and drop nothing.
 pub fn block_drops(level: &mut Level, state: StateId) -> Vec<Stack> {
     let name = level.reg.name(state).to_string();
-    match LOOT_26_3.get(&name) {
+    // A wall variant (`Blocks.wallVariant`) drops by its standing block's
+    // table, which the data has under the standing block's name:
+    // `wall_torch` by `torch`, `redstone_wall_torch` by `redstone_torch`.
+    let table = LOOT_26_3.get(&name).or_else(|| LOOT_26_3.get(&name.replacen("wall_", "", 1)));
+    match table {
         None => Vec::new(),
         Some(Table::Item(item)) => match item.as_str() {
             "" => Vec::new(),
@@ -88,6 +92,19 @@ mod tests {
         // Silk touch only, and stone falls back to cobblestone.
         assert!(drops(&mut level, "glass").is_empty());
         assert_eq!(drops(&mut level, "stone"), [("cobblestone".to_string(), 1)]);
+        assert!(level.unsupported.is_none());
+    }
+
+    #[test]
+    fn wall_variants_drop_as_their_standing_block() {
+        let mut level = Level::new(Rules::for_version("26.3").unwrap());
+        assert_eq!(drops(&mut level, "wall_torch[facing=north]"), [("torch".to_string(), 1)]);
+        assert_eq!(
+            drops(&mut level, "redstone_wall_torch[facing=north,lit=true]"),
+            [("redstone_torch".to_string(), 1)]
+        );
+        // A wall of its own keeps its own table.
+        assert_eq!(drops(&mut level, "cobblestone_wall"), [("cobblestone_wall".to_string(), 1)]);
         assert!(level.unsupported.is_none());
     }
 }

@@ -1,0 +1,119 @@
+{
+  "name": "piston_pops_torches_and_plates",
+  "description": "Six pistons fire together, each into a block 26.3 pops rather than pushes (PushReaction.POPPED): a torch, a wall torch, stone, oak and heavy weighted pressure plates, and moss carpet. Each breaks and drops as an item, placed and thrown by draws from the level random in the order the pistons fire.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "piston[extended=false,facing=east]",
+    "0": "torch",
+    "1": "wall_torch[facing=south]",
+    "2": "stone_pressure_plate[powered=false]",
+    "3": "oak_pressure_plate[powered=false]",
+    "4": "heavy_weighted_pressure_plate[power=0]",
+    "5": "moss_carpet"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".....",
+      ".P0..",
+      "..#..",
+      ".P1..",
+      ".....",
+      ".P2..",
+      ".....",
+      ".P3..",
+      ".....",
+      ".P4..",
+      ".....",
+      ".P5..",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        3
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        5
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        7
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        9
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        11
+      ],
+      "state": "redstone_block"
+    }
+  ],
+  "entities": true
+}

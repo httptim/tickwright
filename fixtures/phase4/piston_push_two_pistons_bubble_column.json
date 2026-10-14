@@ -1,0 +1,190 @@
+{
+  "name": "piston_push_two_pistons_bubble_column",
+  "description": "The two-piston push of piston_push_minecart_two_pistons, twice, in a pool of water where the entity ends the first push over a soul sand bubble column with air above it. A minecart feels the blocks around it twice on every push, because its own move does so too, even on the second push, which the 0.51 limit cuts to nothing: the column lifts it four times that tick. Primed TNT in the same place feels them once a push, so twice. Each lift draws from the level random for the bubbles.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "minecart",
+    "tnt",
+    "water",
+    "bubble_column"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "soul_sand",
+    "P": "piston[extended=false,facing=east]",
+    "w": "water[level=0]",
+    "C": "bubble_column[drag=false]"
+  },
+  "layers": [
+    [
+      "#######",
+      "###A###",
+      "#######",
+      "#######",
+      "#######",
+      "#######",
+      "###A###",
+      "#######",
+      "#######"
+    ],
+    [
+      "#######",
+      "#PwCww#",
+      "#wPwww#",
+      "#######",
+      ".......",
+      "#######",
+      "#PwCww#",
+      "#wPwww#",
+      "#######"
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "......."
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "......."
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "......."
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "......."
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "......."
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "......."
+    ],
+    [
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      ".......",
+      "......."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        2.49,
+        1.0,
+        2.02
+      ]
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        2.49,
+        1.0,
+        7.02
+      ],
+      "nbt": "{fuse:200}"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        2,
+        1,
+        3
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        6
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        2,
+        1,
+        8
+      ],
+      "state": "redstone_block"
+    }
+  ],
+  "entities": true
+}
