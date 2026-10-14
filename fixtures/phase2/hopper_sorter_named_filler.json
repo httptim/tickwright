@@ -1,0 +1,94 @@
+{
+  "name": "hopper_sorter_named_filler",
+  "description": "The filter hopper of an item sorter: a hopper under a hopper chain, holding ten cobblestone and four renamed stone fillers, one per slot. Plain stone and cobblestone come out of a chest along the chain. The filter takes the cobblestone, but the plain stone passes by into the chest at the end, because a plain stack never merges into a renamed one (isSameItemSameComponents).",
+  "ticks": 60,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "hopper",
+    "container",
+    "components"
+  ],
+  "palette": {
+    "#": "stone",
+    "C": "chest[facing=north,type=single,waterlogged=false]",
+    "h": "hopper[enabled=true,facing=east]",
+    "f": "hopper[enabled=true,facing=down]"
+  },
+  "layers": [
+    [
+      "###"
+    ],
+    [
+      "f.."
+    ],
+    [
+      "hhC"
+    ],
+    [
+      "C.."
+    ]
+  ],
+  "containers": [
+    {
+      "pos": [
+        0,
+        3,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "stone",
+          "count": 4
+        },
+        {
+          "slot": 1,
+          "id": "cobblestone",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "cobblestone",
+          "count": 10
+        },
+        {
+          "slot": 1,
+          "id": "stone",
+          "count": 1,
+          "components": "{\"minecraft:custom_name\":\"Filler\"}"
+        },
+        {
+          "slot": 2,
+          "id": "stone",
+          "count": 1,
+          "components": "{\"minecraft:custom_name\":\"Filler\"}"
+        },
+        {
+          "slot": 3,
+          "id": "stone",
+          "count": 1,
+          "components": "{\"minecraft:custom_name\":\"Filler\"}"
+        },
+        {
+          "slot": 4,
+          "id": "stone",
+          "count": 1,
+          "components": "{\"minecraft:custom_name\":\"Filler\"}"
+        }
+      ]
+    }
+  ]
+}

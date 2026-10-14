@@ -54,7 +54,11 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ComparatorBlockEntity;
 import net.minecraft.world.level.block.entity.LecternBlockEntity;
+import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.TagParser;
 import net.minecraft.server.network.Filterable;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.WritableBookContent;
@@ -342,8 +346,19 @@ public final class Capture {
                 }
                 for (JsonElement ie : c.getAsJsonArray("items")) {
                     JsonObject i = ie.getAsJsonObject();
-                    container.setItem(i.get("slot").getAsInt(),
-                            new ItemStack(item(i.get("id").getAsString()), i.get("count").getAsInt()));
+                    ItemStack stack = new ItemStack(item(i.get("id").getAsString()), i.get("count").getAsInt());
+                    if (i.has("components")) {
+                        // The patch as 26.3 saves it, read the way a save is.
+                        CompoundTag patch = TagParser.parseCompoundFully(i.get("components").getAsString());
+                        stack.applyComponents(DataComponentPatch.CODEC
+                                .parse(level.registryAccess().createSerializationContext(NbtOps.INSTANCE), patch)
+                                .getOrThrow());
+                    }
+                    if (i.has("tag")) {
+                        throw new IllegalStateException(id + ": an item tag saved before 1.20.5 can't be placed in "
+                                + mcVersion);
+                    }
+                    container.setItem(i.get("slot").getAsInt(), stack);
                 }
             }
         }

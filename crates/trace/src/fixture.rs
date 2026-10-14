@@ -75,13 +75,22 @@ pub enum Action {
 }
 
 /// One stack in a container: `count` of item `id` in `slot`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ItemSlot {
     pub slot: u32,
     /// An item id such as `stone`; `minecraft:` is implied.
     pub id: String,
     pub count: u32,
+    /// The stack's component patch in SNBT, as 26.3 saves it, such as
+    /// `{"minecraft:custom_name":"Filler"}`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub components: Option<String>,
+    /// An item `tag` from a file saved before 1.20.5's item components
+    /// (data version 3837), in SNBT. The game would turn it into
+    /// components; the engine refuses it by name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
 }
 
 /// What a container block (chest, barrel, hopper, dropper, dispenser) holds when the fixture is
@@ -582,11 +591,7 @@ impl FixtureSource {
             .iter()
             .map(|c| Container {
                 pos: t.pos(c.pos, size),
-                items: c
-                    .items
-                    .iter()
-                    .map(|i| ItemSlot { slot: i.slot, id: full_item_id(&i.id), count: i.count })
-                    .collect(),
+                items: c.items.iter().map(|i| ItemSlot { id: full_item_id(&i.id), ..i.clone() }).collect(),
             })
             .collect();
         let comparators =

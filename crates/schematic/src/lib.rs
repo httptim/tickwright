@@ -28,6 +28,10 @@ use nbt::Tag;
 /// exported files.
 pub const DATA_VERSION_26_3: i32 = 5023;
 
+/// The data version of 1.20.5, whose item stacks keep `count` and
+/// `components` where older files kept `Count` and `tag`.
+pub const ITEM_COMPONENTS_DATA_VERSION: i32 = 3837;
+
 /// The largest box a schematic may span, in blocks. Editor builds are far
 /// smaller; this stops a stress-test file from exhausting memory.
 pub const MAX_VOLUME: u64 = 64 << 20;
@@ -108,10 +112,22 @@ impl Entity {
     }
 
     /// The entity as a fixture's start entity: `Motion` becomes `motion`
-    /// and everything else stays in `nbt`.
-    pub fn to_summon(&self) -> SummonInput {
+    /// and everything else stays in `nbt`. Item stacks saved before 1.20.5
+    /// (`data_version`) are brought up to date the way the game's data fixer
+    /// starts to: `Count` becomes `count`. Their `tag` stays, for the engine
+    /// to refuse by name.
+    pub fn to_summon(&self, data_version: Option<i32>) -> SummonInput {
         let motion = self.data.get("Motion").and_then(doubles).filter(|m| m.iter().any(|&v| v != 0.0));
-        let rest = strip_keys(&self.data, &["Motion"]);
+        let mut rest = strip_keys(&self.data, &["Motion"]);
+        if let Tag::Compound(entries) = &mut rest {
+            for (k, v) in entries.iter_mut() {
+                match (k.as_str(), v) {
+                    ("Item", item) => fix_stack(item, data_version),
+                    ("Items", Tag::List(_, items)) => items.iter_mut().for_each(|i| fix_stack(i, data_version)),
+                    _ => {}
+                }
+            }
+        }
         SummonInput {
             entity: self.id.strip_prefix("minecraft:").unwrap_or(&self.id).to_string(),
             at: self.pos,
@@ -132,6 +148,33 @@ impl Entity {
         }
         let id = if e.entity.contains(':') { e.entity.clone() } else { format!("minecraft:{}", e.entity) };
         Ok(Entity { id, pos: e.at, data })
+    }
+}
+
+/// Whether an item stack was saved before 1.20.5. A file that gives no
+/// data version is judged by the stack: `Count` without `count`.
+fn legacy_stack(stack: &Tag, data_version: Option<i32>) -> bool {
+    match data_version {
+        Some(v) => v < ITEM_COMPONENTS_DATA_VERSION,
+        None => stack.get("count").is_none() && stack.get("Count").is_some(),
+    }
+}
+
+/// `ItemStackComponentizationFix`, as far as the engine needs it: a legacy
+/// stack's `Count` (a byte) becomes `count` (an int).
+fn fix_stack(stack: &mut Tag, data_version: Option<i32>) {
+    if !legacy_stack(stack, data_version) {
+        return;
+    }
+    if let Tag::Compound(entries) = stack {
+        for (k, v) in entries.iter_mut() {
+            if k == "Count" {
+                *k = "count".to_string();
+                if let Some(n) = v.as_i64() {
+                    *v = Tag::Int(n as i32);
+                }
+            }
+        }
     }
 }
 
@@ -199,7 +242,11 @@ impl Schematic {
             .map_or_else(|_| BlockState::air(), |i| self.blocks[i].1.clone())
     }
 
-    /// Container contents from the block entities' `Items`.
+    /// Container contents from the block entities' `Items`, with each
+    /// stack's component patch. A stack saved before 1.20.5 reads its
+    /// `Count`, and keeps its `tag` for the engine to refuse by name; a
+    /// newer one reads `count` (1 if it has none, as the game reads it) and
+    /// ignores keys the game doesn't know.
     pub fn containers(&self) -> Vec<Container> {
         let mut out = Vec::new();
         for be in &self.block_entities {
@@ -209,12 +256,26 @@ impl Schematic {
                 .iter()
                 .filter_map(|i| {
                     let id = i.get("id")?.as_str()?;
-                    let count = i.get("count").or_else(|| i.get("Count"))?.as_i64()?;
+                    let legacy = legacy_stack(i, self.data_version);
+                    let count = match legacy {
+                        true => i.get("Count")?.as_i64()?,
+                        false => i.get("count").map_or(Some(1), Tag::as_i64)?,
+                    };
                     let slot = i.get("Slot")?.as_i64()?;
+                    let components = match i.get("components") {
+                        Some(c) if !legacy && !c.entries().is_empty() => Some(snbt::write(c)),
+                        _ => None,
+                    };
+                    let tag = match i.get("tag") {
+                        Some(t) if legacy => Some(snbt::write(t)),
+                        _ => None,
+                    };
                     (count > 0).then(|| ItemSlot {
                         slot: slot as u32,
                         id: id.strip_prefix("minecraft:").unwrap_or(id).to_string(),
                         count: count as u32,
+                        components,
+                        tag,
                     })
                 })
                 .collect();
@@ -284,7 +345,7 @@ impl Schematic {
             day_time: None,
             max_chained_updates: None,
             entities: false,
-            start_entities: self.entities.iter().map(Entity::to_summon).collect(),
+            start_entities: self.entities.iter().map(|e| e.to_summon(self.data_version)).collect(),
         };
         Ok(fixture)
     }
@@ -303,13 +364,23 @@ impl Schematic {
                 .iter()
                 .map(|i| {
                     let id = if i.id.contains(':') { i.id.clone() } else { format!("minecraft:{}", i.id) };
-                    nbt::compound(vec![
+                    let mut entries = vec![
                         ("Slot", Tag::Byte(i.slot as i8)),
                         ("id", Tag::String(id)),
                         ("count", Tag::Int(i.count as i32)),
-                    ])
+                    ];
+                    if let Some(c) = &i.components {
+                        entries
+                            .push(("components", snbt::parse(c).with_context(|| format!("{}: components {c}", f.id))?));
+                    }
+                    // A legacy tag is written back as it came, though 26.3
+                    // will not read it, so nothing in the build is lost.
+                    if let Some(t) = &i.tag {
+                        entries.push(("tag", snbt::parse(t).with_context(|| format!("{}: tag {t}", f.id))?));
+                    }
+                    Ok(nbt::compound(entries))
                 })
-                .collect();
+                .collect::<Result<Vec<_>>>()?;
             let id = s.block(c.pos).id;
             s.block_entities.push(BlockEntity {
                 pos: c.pos,
@@ -384,6 +455,7 @@ fn palette(s: &Schematic) -> (Vec<BlockState>, Vec<u32>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tickwright_trace::Transform;
 
     pub(crate) fn sample() -> Schematic {
         let b = |s: &str| BlockState::parse(s).unwrap();
@@ -470,6 +542,87 @@ mod tests {
         let resolved = FixtureSource::from_json(&text).unwrap().resolve("r0".parse().unwrap()).unwrap();
         let back = Schematic::from_fixture(&resolved).unwrap();
         assert_eq!(back.entities, s.entities);
+    }
+
+    /// A chest at the origin holding `items`, saved with `data_version`.
+    fn chest_with(items: Vec<Tag>, data_version: Option<i32>) -> Schematic {
+        let b = |s: &str| BlockState::parse(s).unwrap();
+        Schematic {
+            size: [1, 1, 1],
+            blocks: vec![([0, 0, 0], b("chest[facing=north,type=single,waterlogged=false]"))],
+            block_entities: vec![BlockEntity {
+                pos: [0, 0, 0],
+                data: nbt::compound(vec![
+                    ("id", Tag::String("minecraft:chest".into())),
+                    ("Items", Tag::List(10, items)),
+                ]),
+            }],
+            entities: Vec::new(),
+            data_version,
+        }
+    }
+
+    fn stack(entries: Vec<(&str, Tag)>) -> Tag {
+        nbt::compound(entries)
+    }
+
+    #[test]
+    fn legacy_stacks_read_count_and_keep_their_tag() {
+        let name = stack(vec![("display", stack(vec![("Name", Tag::String(r#"{"text":"Filler"}"#.into()))]))]);
+        let items = vec![
+            stack(vec![("Slot", Tag::Byte(0)), ("id", Tag::String("minecraft:stone".into())), ("Count", Tag::Byte(5))]),
+            stack(vec![
+                ("Slot", Tag::Byte(1)),
+                ("id", Tag::String("minecraft:stone".into())),
+                ("Count", Tag::Byte(1)),
+                ("tag", name.clone()),
+            ]),
+        ];
+        for dv in [Some(3700), None] {
+            let c = chest_with(items.clone(), dv).containers();
+            assert_eq!((c[0].items[0].count, &c[0].items[0].tag), (5, &None), "{dv:?}");
+            assert_eq!(c[0].items[1].count, 1);
+            assert_eq!(c[0].items[1].tag.as_deref(), Some(snbt::write(&name).as_str()));
+            assert_eq!(c[0].items[1].components, None);
+        }
+        // From 1.20.5 on the game reads `count` and ignores `Count`, so a
+        // stack with only `Count` holds one.
+        let c = chest_with(items, Some(DATA_VERSION_26_3)).containers();
+        assert_eq!((c[0].items[0].count, &c[0].items[1].tag), (1, &None));
+    }
+
+    #[test]
+    fn components_round_trip_through_fixtures_and_files() {
+        let named = stack(vec![("minecraft:custom_name", Tag::String("Filler".into()))]);
+        let items = vec![stack(vec![
+            ("Slot", Tag::Byte(2)),
+            ("id", Tag::String("minecraft:stone".into())),
+            ("count", Tag::Int(1)),
+            ("components", named.clone()),
+        ])];
+        let s = chest_with(items, Some(DATA_VERSION_26_3));
+        let c = s.containers();
+        assert_eq!(c[0].items[0].components.as_deref(), Some(snbt::write(&named).as_str()));
+        let f = s.to_fixture("t", 1).unwrap().resolve(Transform::IDENTITY).unwrap();
+        let back = Schematic::from_fixture(&f).unwrap();
+        for format in [Format::Litematic, Format::Sponge, Format::Structure] {
+            assert_eq!(Schematic::read(&back.write(format)).unwrap().containers(), c, "{format:?}");
+        }
+    }
+
+    #[test]
+    fn legacy_entities_count_their_items() {
+        let mut s = chest_with(Vec::new(), Some(3700));
+        s.entities.push(Entity {
+            id: "minecraft:item".into(),
+            pos: [0.5, 1.0, 0.5],
+            data: stack(vec![(
+                "Item",
+                stack(vec![("id", Tag::String("minecraft:stone".into())), ("Count", Tag::Byte(3))]),
+            )]),
+        });
+        let f = s.to_fixture("t", 1).unwrap();
+        assert_eq!(f.start_entities[0].nbt.as_deref(), Some(r#"{Item:{id:"minecraft:stone",count:3}}"#));
     }
 
     #[test]

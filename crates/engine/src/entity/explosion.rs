@@ -119,7 +119,9 @@ fn hurt_entities(level: &mut Level, source: Option<&Entity>, center: Vec3, radiu
         y /= len;
         z /= len;
         let seen = seen_percent(level, center, e.bounding_box());
-        if let Data::Item(_) = e.data {
+        // `hurtServer`: an invulnerable item takes no harm, but is still
+        // knocked back.
+        if matches!(&e.data, Data::Item(i) if !i.invulnerable) {
             let a = (1.0 - d) * seen as f64;
             let damage = ((a * a + a) / 2.0 * 7.0 * f + 1.0) as f32;
             let e = &mut level.entities[k];
@@ -320,7 +322,7 @@ fn interact_with_blocks(level: &mut Level, mut blocks: Vec<Pos>) {
 fn add_or_append(drops: &mut Vec<(Pos, item::Stack)>, mut stack: item::Stack, p: Pos) {
     for (_, s) in drops.iter_mut() {
         let max = crate::items::max_stack_size(&s.id);
-        if s.id == stack.id && s.count + stack.count <= max {
+        if s.count + stack.count <= max && s.same_item(&stack) {
             let moved = (max.min(16) - s.count).min(stack.count);
             s.count += moved;
             stack.count -= moved;

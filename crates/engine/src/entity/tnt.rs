@@ -10,13 +10,15 @@ use crate::pos::Pos;
 #[derive(Clone, Debug)]
 pub struct Tnt {
     pub fuse: i32,
+    /// `explosionPower`, 4 unless its data says otherwise.
+    pub power: f32,
 }
 
 /// `new PrimedTnt(level, x, y, z, owner)`: a small hop in a random
 /// direction.
 pub fn new_primed(level: &mut Level, at: Vec3) -> Entity {
     let d = level.random.next_double() * 6.2831854820251465;
-    let mut e = Entity::new(level, Data::Tnt(Tnt { fuse: 80 }), at);
+    let mut e = Entity::new(level, Data::Tnt(Tnt { fuse: 80, power: 4.0 }), at);
     e.motion = Vec3::new(-math::sin(d) * 0.02, 0.2f32 as f64, -math::cos(d) * 0.02);
     e
 }
@@ -49,9 +51,10 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
     let Data::Tnt(t) = &mut e.data else { unreachable!() };
     t.fuse -= 1;
     if t.fuse <= 0 {
+        let power = t.power;
         e.discard();
         let center = Vec3::new(e.pos.x, e.pos.y + (0.98f32 as f64) * 0.0625, e.pos.z);
-        explosion::explode(level, Some(e), center, 4.0, false);
+        explosion::explode(level, Some(e), center, power, false);
     } else {
         // `updateFluidInteraction`: water currents push it, as they push
         // items, but only while it has fuse left.

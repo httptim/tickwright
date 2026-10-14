@@ -42,6 +42,62 @@ impl Tag {
     }
 }
 
+/// Canonical SNBT: every key and string quoted, a compound's keys in
+/// order, numbers as plain decimals without a type. Tags that read the same
+/// write the same, whatever spacing, quoting or number suffixes they were
+/// written with.
+pub fn write(t: &Tag) -> String {
+    let mut out = String::new();
+    write_into(t, &mut out);
+    out
+}
+
+fn write_into(t: &Tag, out: &mut String) {
+    match t {
+        Tag::Number(n) => {
+            if n.fract() == 0.0 && n.abs() < 1e15 {
+                out.push_str(&format!("{}", *n as i64));
+            } else {
+                out.push_str(&format!("{n}"));
+            }
+        }
+        Tag::String(s) => quote(s, out),
+        Tag::Compound(m) => {
+            out.push('{');
+            for (i, (k, v)) in m.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                quote(k, out);
+                out.push(':');
+                write_into(v, out);
+            }
+            out.push('}');
+        }
+        Tag::List(v) => {
+            out.push('[');
+            for (i, x) in v.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                write_into(x, out);
+            }
+            out.push(']');
+        }
+    }
+}
+
+fn quote(s: &str, out: &mut String) {
+    out.push('"');
+    for c in s.chars() {
+        if c == '"' || c == '\\' {
+            out.push('\\');
+        }
+        out.push(c);
+    }
+    out.push('"');
+}
+
 pub fn parse(text: &str) -> Result<Tag> {
     let mut p = Parser { s: text.as_bytes(), i: 0 };
     let t = p.value()?;
@@ -185,5 +241,14 @@ mod tests {
         assert_eq!(t.get("Motion"), Some(&Tag::List(vec![Tag::Number(0.1), Tag::Number(-2.5), Tag::Number(0.0)])));
         let t = parse("{UUID:[I;1,-2,3,4],Empty:[B;]}").unwrap();
         assert_eq!(t.get("UUID").unwrap(), &Tag::List([1.0, -2.0, 3.0, 4.0].map(Tag::Number).to_vec()));
+    }
+
+    #[test]
+    fn canonical_text_ignores_spelling() {
+        let a = parse(r#"{b: 1b, "a": 'x"y', c: [0.5d, 2s]}"#).unwrap();
+        let b = parse(r#"{a:"x\"y",c:[0.5,2],b:1}"#).unwrap();
+        assert_eq!(write(&a), r#"{"a":"x\"y","b":1,"c":[0.5,2]}"#);
+        assert_eq!(write(&a), write(&b));
+        assert_eq!(parse(&write(&a)).unwrap(), a);
     }
 }

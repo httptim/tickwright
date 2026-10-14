@@ -635,7 +635,13 @@ impl Session {
                     .iter()
                     .enumerate()
                     .filter(|(_, s)| !s.is_empty())
-                    .map(|(slot, s)| ItemSlot { slot: slot as u32, id: s.id.clone(), count: s.count as u32 })
+                    .map(|(slot, s)| ItemSlot {
+                        slot: slot as u32,
+                        id: s.id.clone(),
+                        count: s.count as u32,
+                        components: s.data.as_ref().and_then(|d| d.components.clone()),
+                        tag: s.data.as_ref().and_then(|d| d.tag.clone()),
+                    })
                     .collect();
                 (!items.is_empty()).then_some(Container { pos: [pos.x, pos.y, pos.z], items })
             })
@@ -1311,7 +1317,7 @@ mod tests {
         f.blocks.sort_by_key(|&(x, y, z, _)| (y, z, x));
         f.containers = vec![Container {
             pos: [1, 1, 2],
-            items: vec![ItemSlot { slot: 0, id: "minecraft:redstone".into(), count: 10 }],
+            items: vec![ItemSlot { slot: 0, id: "minecraft:redstone".into(), count: 10, ..Default::default() }],
         }];
         f.lecterns = vec![Lectern { pos: [5, 1, 2], pages: 10, page: 0 }];
         f

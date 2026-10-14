@@ -18,12 +18,24 @@ pub struct Item {
     pub pickup_delay: i32,
     pub age: i32,
     pub health: i32,
+    /// `target`, the player only who may pick it up (saved as `Owner`), in
+    /// canonical SNBT. Items merge only with items of the same target.
+    pub target: Option<std::sync::Arc<str>>,
+    /// `Entity.invulnerable`: explosions don't hurt it.
+    pub invulnerable: bool,
 }
 
 impl Item {
     pub fn new(stack: Stack) -> Item {
         let id = stack.id.strip_prefix("minecraft:").unwrap_or(&stack.id).to_string();
-        Item { stack: Stack::new(&id, stack.count), pickup_delay: 0, age: 0, health: 5 }
+        Item {
+            stack: Stack::new(&id, stack.count).with_data(stack.data),
+            pickup_delay: 0,
+            age: 0,
+            health: 5,
+            target: None,
+            invulnerable: false,
+        }
     }
 
     fn mergable(&self) -> bool {
@@ -164,10 +176,15 @@ fn merge_with_neighbours(level: &mut Level, e: &mut Entity) {
     }
 }
 
-/// `ItemEntity.tryToMerge`.
+/// `ItemEntity.tryToMerge`: only items with the same target, whose stacks
+/// fit in one (`areMergable`) and are the same item with the same
+/// components.
 fn try_to_merge(e: &mut Entity, o: &mut Entity) {
+    if item(e).target != item(o).target {
+        return;
+    }
     let (a, b) = (item(e).stack.clone(), item(o).stack.clone());
-    if a.id != b.id || a.count + b.count > crate::items::max_stack_size(&b.id) {
+    if a.count + b.count > crate::items::max_stack_size(&b.id) || !a.same_item(&b) {
         return;
     }
     if b.count < a.count { merge(e, o) } else { merge(o, e) }

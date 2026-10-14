@@ -27,7 +27,15 @@ picking the work up.
     Every item stacks as high as the game's item
     data says (64, 16 or 1, from `data/26.3/materials.json`), in
     containers and minecarts, in comparator readings, and when item
-    entities or explosion drops merge.
+    entities merge. Explosion drops merge by the same rule in the game's
+    code (`addOrAppendStack`), but no capture covers that yet.
+  - **Item components:** a stack keeps its component patch (a custom
+    name, say) through containers, entities, sessions and saved files, and
+    stacks merge only when their patches match, as
+    `isSameItemSameComponents` decides. The engine models no component
+    itself; one that changes behaviour it simulates (`max_stack_size`,
+    `damage_resistant`) marks the build unsupported, by name, as does an
+    item `tag` from a file saved before 1.20.5.
   - **Rails:** plain, powered, activator and detector rails.
   - **Fluids:** water.
   - **Entities (phase 4):**

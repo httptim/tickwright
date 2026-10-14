@@ -300,11 +300,11 @@ mod tests {
         let chest = Container {
             pos: [0, 0, 0],
             items: vec![
-                ItemSlot { slot: 0, id: "ender_pearl".into(), count: 16 },
-                ItemSlot { slot: 1, id: "ender_pearl".into(), count: 16 },
-                ItemSlot { slot: 2, id: "ender_pearl".into(), count: 8 },
-                ItemSlot { slot: 3, id: "minecraft:redstone".into(), count: 64 },
-                ItemSlot { slot: 4, id: "diamond_sword".into(), count: 1 },
+                ItemSlot { slot: 0, id: "ender_pearl".into(), count: 16, ..Default::default() },
+                ItemSlot { slot: 1, id: "ender_pearl".into(), count: 16, ..Default::default() },
+                ItemSlot { slot: 2, id: "ender_pearl".into(), count: 8, ..Default::default() },
+                ItemSlot { slot: 3, id: "minecraft:redstone".into(), count: 64, ..Default::default() },
+                ItemSlot { slot: 4, id: "diamond_sword".into(), count: 1, ..Default::default() },
             ],
         };
         let l = list_with(&["chest[facing=north,type=single,waterlogged=false]", "redstone_wire"], &[chest]);
@@ -323,9 +323,9 @@ mod tests {
         let chest = Container {
             pos: [0, 0, 0],
             items: vec![
-                ItemSlot { slot: 0, id: "ender_pearl".into(), count: 20 },
-                ItemSlot { slot: 1, id: "diamond_sword".into(), count: 3 },
-                ItemSlot { slot: 2, id: "stone".into(), count: 64 },
+                ItemSlot { slot: 0, id: "ender_pearl".into(), count: 20, ..Default::default() },
+                ItemSlot { slot: 1, id: "diamond_sword".into(), count: 3, ..Default::default() },
+                ItemSlot { slot: 2, id: "stone".into(), count: 64, ..Default::default() },
             ],
         };
         let l = list_with(&["chest[facing=north,type=single,waterlogged=false]"], &[chest]);
