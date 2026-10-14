@@ -58,9 +58,9 @@ fn session_matches_fixture_runs() {
                     Action::Use => session.use_block(pos),
                     Action::Set => {
                         let how = if s.quiet { Placement::Quiet } else { Placement::Updates };
-                        session.set_block(pos, s.state.as_deref().unwrap(), how).unwrap()
+                        session.set_block_as(pos, s.state.as_deref().unwrap(), how, s.discard_contents).unwrap()
                     }
-                    Action::Destroy => session.destroy(pos),
+                    Action::Destroy => session.destroy_as(pos, s.discard_contents),
                     Action::Place => {
                         let p = s.place.as_ref().unwrap();
                         session.place(&p.item, tickwright_engine::run::click(pos, p).unwrap()).unwrap();
