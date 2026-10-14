@@ -266,3 +266,4 @@ item_stuck_beside_moving_piston order
 piston_pops_torches_and_plates order
 tnt_fast_walk_limit_rising order
 piston_moves_waterlogged_blocks order
+tnt_breaks_double_slabs order

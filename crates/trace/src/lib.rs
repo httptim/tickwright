@@ -1,8 +1,8 @@
 //! Fixture and trace formats for Tickwright's ground-truth tests.
 //!
-//! A [fixture](fixture) is a small build plus the inputs applied to it. The
+//! A [fixture] is a small build plus the inputs applied to it. The
 //! capture harness runs each fixture in the real game and writes a
-//! [trace](trace); the engine runs the same fixture and writes its own; and
+//! [trace]; the engine runs the same fixture and writes its own; and
 //! [`diff::compare`] decides whether they match. "Accurate" in Tickwright
 //! means: matches every captured trace.
 
