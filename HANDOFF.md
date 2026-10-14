@@ -9,7 +9,7 @@ picking the work up.
 
 - The engine targets Java Edition 26.3. Every behaviour is checked against
   traces captured from the real 26.3 server (`traces/26.3`).
-- There are 250 fixtures (`fixtures/`) and 2086 traces: one per fixture
+- There are 253 fixtures (`fixtures/`) and 2110 traces: one per fixture
   and orientation, and 100 more seeds of `phase4/tnt_cannon`. Every trace
   matches at the strictest level ("order"), and no fixture is refused.
   The fixtures listed in `crates/engine/tests/expected.txt` must keep
@@ -187,8 +187,15 @@ differs from the committed traces. That keeps them honest.
   random source in both, but the harness seeds that source only for
   entity fixtures, so a build that fires one with several filled slots
   can only be captured as an entity fixture.
+- **Editor edits remove block entities as `/setblock` does:** session
+  edits add `flags::SKIP_BLOCK_ENTITY_SIDEEFFECTS` (`set_block` logs it
+  with the edit; a break uses `Level::destroy_block_with`), so a
+  container's items and a lectern's book go with the block. A fixture
+  stimulus says the same with `"discard_contents": true`, which the
+  harness maps to the same flag. Without it, removing a filled container
+  (or a lectern with its book) in an entity run is refused, since the game
+  spills them as item entities (`preRemoveSideEffects`).
 - **Some refused cases are close to supported:** an arrow is refused once
-  the block it is stuck in goes, and in an entity run a container that
-  still holds items (or a lectern with its book) is refused when it is
-  removed, since the game spills them as item entities
-  (`preRemoveSideEffects`). The full list is in the code.
+  the block it is stuck in goes, and a dispenser firing an item whose own
+  behaviour the engine lacks (TNT a hopper brought in, say). The full
+  list is in the code.

@@ -1342,7 +1342,8 @@ mod tests {
         // The editor's edits remove a block entity as `/setblock` does, so
         // what it holds goes with it: nothing to refuse, in any edit, made
         // before the first tick or after some have run.
-        let edits: [(&str, fn(&mut Session, Pos)); 4] = [
+        type Change = fn(&mut Session, Pos);
+        let edits: [(&str, Change); 4] = [
             ("set air with updates", |s, p| s.set_block(p, "air", Placement::Updates).unwrap()),
             ("set air quietly", |s, p| s.set_block(p, "air", Placement::Quiet).unwrap()),
             ("paste stone over it", |s, p| s.set_block(p, "stone", Placement::Quiet).unwrap()),
