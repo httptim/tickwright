@@ -9,6 +9,12 @@
 //! is worked out in double-double arithmetic, about 100 bits, and rounded
 //! once. Arguments are the angles the game draws, below 2π; larger ones
 //! would need a longer reduction.
+//!
+//! Known difference: the game's server (HotSpot on x86-64) is not always
+//! correctly rounded either. For about 1 kick angle in 400 its sine or
+//! cosine differs from these in the last bit. The committed captures happen
+//! not to draw such an angle. `harness/kick-trig.sh` measures how many
+//! differ on every oracle run; see HANDOFF.md.
 
 /// A value as an unevaluated sum `hi + lo`, with `|lo|` at most half an ulp
 /// of `hi`.
