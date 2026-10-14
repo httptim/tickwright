@@ -94,6 +94,12 @@ the game produces, which also catches a capture that is not deterministic.
 After changing fixtures or the harness, run the workflow by hand with
 `commit_data` to commit fresh copies to the branch.
 
+The workflow's `kick-trig` job runs `harness/kick-trig.sh` on the same
+runner and Java. It checks the engine's `Math.sin` and `Math.cos`
+(`crates/engine/src/math.rs`) against the JVM's, bit for bit, on a
+million of the angles newly primed TNT kicks at, interpreted and
+compiled.
+
 ## Writing a fixture
 
 ```json
