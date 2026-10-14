@@ -382,21 +382,7 @@ fn spawn(level: &mut Level, name: &str, tag: &snbt::Tag, at: Vec3, motion: Optio
         }
         "tnt" => Data::Tnt(tnt::Tnt { fuse: num("fuse").unwrap_or(80.0) as i32 }),
         "falling_block" => {
-            // `FallingBlockEntity.readAdditionalSaveData`: sand unless told.
-            let state = match tag.get("BlockState") {
-                Some(b) => {
-                    let name = b.get("Name").and_then(|t| t.string()).context("BlockState.Name")?;
-                    let props: Vec<String> = match b.get("Properties") {
-                        Some(snbt::Tag::Compound(m)) => {
-                            m.iter().map(|(k, v)| format!("{k}={}", v.string().unwrap_or_default())).collect()
-                        }
-                        _ => Vec::new(),
-                    };
-                    let text = if props.is_empty() { name.to_string() } else { format!("{name}[{}]", props.join(",")) };
-                    level.reg.parse(&text)?
-                }
-                None => level.default_state(level.block_id("sand")),
-            };
+            let state = falling::saved_state(level, tag.get("BlockState"));
             if level.kind(state) == Kind::Other {
                 bail!("a falling {} is not supported by the engine yet", level.reg.name(state));
             }

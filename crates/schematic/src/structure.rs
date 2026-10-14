@@ -4,7 +4,8 @@
 use anyhow::{Context, Result};
 
 use crate::nbt::{self, Tag};
-use crate::{BlockEntity, Entity, Schematic, doubles, palette, state_from_nbt, state_to_nbt};
+use crate::states::{self, Keys};
+use crate::{BlockEntity, Entity, Schematic, doubles, palette};
 
 pub fn from_nbt(root: &Tag) -> Result<Schematic> {
     let size = root.req("size")?.ints().context("`size` is not three ints")?;
@@ -14,12 +15,9 @@ pub fn from_nbt(root: &Tag) -> Result<Schematic> {
         None => root.req("palettes")?.list().first().context("`palettes` is empty")?,
     };
     crate::check_volume([size[0], size[1], size[2]])?;
-    let states: Vec<_> = pal.list().iter().map(state_from_nbt).collect::<Result<_>>()?;
-    let mut out = Schematic {
-        size: [size[0], size[1], size[2]],
-        data_version: root.get("DataVersion").and_then(Tag::as_i64).map(|v| v as i32),
-        ..Default::default()
-    };
+    let data_version = root.get("DataVersion").and_then(Tag::as_i64).map(|v| v as i32);
+    let states: Vec<_> = pal.list().iter().map(|t| states::read(t, data_version)).collect::<Result<_>>()?;
+    let mut out = Schematic { size: [size[0], size[1], size[2]], data_version, ..Default::default() };
     for b in root.req("blocks")?.list() {
         let p = b.req("pos")?.ints().context("a block's `pos` is not three ints")?;
         let i = b.int("state")? as usize;
@@ -44,6 +42,7 @@ pub fn from_nbt(root: &Tag) -> Result<Schematic> {
 /// structure clears what was there, as a saved structure does.
 pub fn write(s: &Schematic) -> Vec<u8> {
     let (states, cells) = palette(s);
+    let keys = Keys::of(Some(s.written_version()));
     let [sx, sy, sz] = s.size;
     let mut blocks = Vec::with_capacity(cells.len());
     for y in 0..sy {
@@ -62,9 +61,9 @@ pub fn write(s: &Schematic) -> Vec<u8> {
         }
     }
     let root = nbt::compound(vec![
-        ("DataVersion", Tag::Int(s.data_version.unwrap_or(crate::DATA_VERSION_26_3))),
+        ("DataVersion", Tag::Int(s.written_version())),
         ("size", nbt::list(vec![Tag::Int(sx), Tag::Int(sy), Tag::Int(sz)])),
-        ("palette", nbt::list(states.iter().map(state_to_nbt).collect())),
+        ("palette", nbt::list(states.iter().map(|st| states::write(st, keys)).collect())),
         ("blocks", Tag::List(10, blocks)),
         (
             "entities",

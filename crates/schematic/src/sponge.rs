@@ -130,7 +130,7 @@ pub fn write(s: &Schematic) -> Vec<u8> {
     ]);
     let schem = nbt::compound(vec![
         ("Version", Tag::Int(3)),
-        ("DataVersion", Tag::Int(s.data_version.unwrap_or(crate::DATA_VERSION_26_3))),
+        ("DataVersion", Tag::Int(s.written_version())),
         ("Width", Tag::Short(w as i16)),
         ("Height", Tag::Short(h as i16)),
         ("Length", Tag::Short(l as i16)),

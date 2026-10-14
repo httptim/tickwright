@@ -9,7 +9,7 @@ picking the work up.
 
 - The engine targets Java Edition 26.3. Every behaviour is checked against
   traces captured from the real 26.3 server (`traces/26.3`).
-- There are 269 fixtures (`fixtures/`) and 2231 traces: one per fixture
+- There are 270 fixtures (`fixtures/`) and 2239 traces: one per fixture
   and orientation, and 100 more seeds of `phase4/tnt_cannon`. Every trace
   matches at the strictest level ("order"), and no fixture is refused.
   The fixtures listed in `crates/engine/tests/expected.txt` must keep
@@ -138,6 +138,15 @@ Traces only come from the real game. Never write or edit one by hand.
 On `main` and on pull requests, the oracle job fails if a fresh capture
 differs from the committed traces. That keeps them honest.
 
+A full capture ends with `harness/schematics.sh` (it also runs on its
+own): every fixture is exported as `.nbt`, `.schem` and `.litematic` and
+loaded into a 26.3 level (structures through the game's own loader and
+data fixer), and the level must hold what the files were written from,
+block for block, with the block entities and entities. The game also saves
+a small structure, which the engine imports and writes again at data
+versions on both sides of 5006. That fresh save must import exactly as
+`crates/schematic/tests/data/game_saved_26.3.nbt` does.
+
 ## Gotchas
 
 - **Determinism:** entity fixtures depend on the harness reseeding the
@@ -247,6 +256,15 @@ differs from the committed traces. That keeps them honest.
   `Containers.dropContents`): every slot, even an empty one, draws from
   the level's random source, and a lectern removed with its book in an
   entity run is refused.
+- **Block states in NBT** say `id` and `properties` from data version
+  5006 on (`BlockStateFieldNamesFix`), and `Name` and `Properties`
+  before; 26.3 reads only the new keys, so a structure palette saying
+  `Name` at 5023 places as air, and a falling block's `{Name:..}` is
+  sand. `crates/schematic/src/states.rs` writes each file in the keys of
+  its own data version, reads either, and keeps a `Schematic`'s entity and
+  block entity data in the new ones. Litematica palettes always say `Name`,
+  as Litematica writes them. A default state may be saved as its block id
+  alone (`BlockState:"minecraft:sand"`), as the game saves it.
 - **Some refused cases are close to supported:** an arrow is refused once
   the block it is stuck in goes, a lectern once it is removed with its
   book, and a dispenser firing an item whose own behaviour the engine

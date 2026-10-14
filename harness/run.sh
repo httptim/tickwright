@@ -124,3 +124,11 @@ if [[ -n "${REPORTS:-}" ]]; then
     fi
     echo "$out"
 fi
+
+# --- schematics in the game ---------------------------------------------------
+# The engine's .nbt, .schem and .litematic exports, loaded in the game, must
+# place what they were written from, and a structure the game saves must
+# import (harness/schematics.sh).
+if [[ $# -eq 0 ]]; then
+    harness/schematics.sh
+fi

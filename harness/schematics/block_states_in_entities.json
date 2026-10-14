@@ -1,0 +1,87 @@
+{
+  "name": "block_states_in_entities",
+  "description": "Not captured: harness/schematics.sh exports it and loads the files in the game. Falling blocks and a minecart whose saved data holds block states, in the forms 26.3 reads: id and properties, a block id alone, and the Name that it reads as sand.",
+  "ticks": 1,
+  "palette": {
+    "#": "stone",
+    "c": "chest[facing=north,type=single,waterlogged=false]",
+    "r": "rail[shape=east_west,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "####c",
+      "#####"
+    ],
+    [
+      "....r",
+      "....."
+    ],
+    [
+      ".....",
+      "....."
+    ]
+  ],
+  "containers": [
+    {
+      "pos": [
+        4,
+        0,
+        0
+      ],
+      "items": [
+        {
+          "slot": 2,
+          "id": "redstone",
+          "count": 9
+        }
+      ]
+    }
+  ],
+  "start_entities": [
+    {
+      "entity": "falling_block",
+      "at": [
+        0.5,
+        2.0,
+        0.5
+      ],
+      "nbt": "{BlockState:{id:\"minecraft:gravel\"},Time:1}"
+    },
+    {
+      "entity": "falling_block",
+      "at": [
+        1.5,
+        2.0,
+        0.5
+      ],
+      "nbt": "{BlockState:\"minecraft:red_sand\",Time:1}"
+    },
+    {
+      "entity": "falling_block",
+      "at": [
+        2.5,
+        2.0,
+        0.5
+      ],
+      "nbt": "{BlockState:{id:\"minecraft:anvil\",properties:{facing:\"east\"}},Time:1}"
+    },
+    {
+      "entity": "falling_block",
+      "at": [
+        3.5,
+        2.0,
+        0.5
+      ],
+      "nbt": "{BlockState:{Name:\"minecraft:gravel\"},Time:1}"
+    },
+    {
+      "entity": "minecart",
+      "at": [
+        4.5,
+        1.0625,
+        0.5
+      ],
+      "nbt": "{DisplayState:{id:\"minecraft:redstone_lamp\",properties:{lit:\"true\"}}}"
+    }
+  ]
+}

@@ -4,7 +4,8 @@
 use anyhow::{Context, Result, bail};
 
 use crate::nbt::{self, Tag};
-use crate::{BlockEntity, Entity, Schematic, palette, state_from_nbt, state_to_nbt, strip_keys};
+use crate::states::{self, LEGACY};
+use crate::{BlockEntity, Entity, Schematic, palette, strip_keys};
 
 /// `LitematicaBitArray` entry width for a palette of `len` states.
 fn bits_for(len: usize) -> u32 {
@@ -46,7 +47,7 @@ pub fn from_nbt(root: &Tag) -> Result<Schematic> {
             .req("BlockStatePalette")?
             .list()
             .iter()
-            .map(state_from_nbt)
+            .map(|t| states::read(t, out.data_version))
             .collect::<Result<_>>()
             .with_context(|| format!("region {name}"))?;
         let longs = match r.req("BlockStates")? {
@@ -125,7 +126,9 @@ pub fn write(s: &Schematic) -> Vec<u8> {
     let region = nbt::compound(vec![
         ("Position", vec3(0, 0, 0)),
         ("Size", vec3(sx, sy, sz)),
-        ("BlockStatePalette", nbt::list(states.iter().map(state_to_nbt).collect())),
+        // Litematica's own palettes say `Name` and `Properties` in every
+        // version; its reader for 26.3 takes those or `id` and `properties`.
+        ("BlockStatePalette", nbt::list(states.iter().map(|st| states::write(st, LEGACY)).collect())),
         ("BlockStates", Tag::LongArray(longs.into_iter().map(|l| l as i64).collect())),
         ("TileEntities", Tag::List(10, tiles)),
         ("Entities", Tag::List(10, s.entities.iter().map(Entity::saved).collect())),
@@ -144,7 +147,7 @@ pub fn write(s: &Schematic) -> Vec<u8> {
         ("EnclosingSize", vec3(sx, sy, sz)),
     ]);
     let root = nbt::compound(vec![
-        ("MinecraftDataVersion", Tag::Int(s.data_version.unwrap_or(crate::DATA_VERSION_26_3))),
+        ("MinecraftDataVersion", Tag::Int(s.written_version())),
         ("Version", Tag::Int(7)),
         ("SubVersion", Tag::Int(1)),
         ("Metadata", metadata),
