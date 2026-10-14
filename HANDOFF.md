@@ -170,9 +170,14 @@ differs from the committed traces. That keeps them honest.
   its block counting as full for an item stuck next to it, and block
   effects on a piston push the limit cut to nothing.
 - **The entity blocks see:** an entity is out of the level's list while
-  it ticks. `Level::with_listed` puts it back while blocks and containers
-  look at it, and block handlers get its index. Don't read
-  `entities.last()` for it: a block can spawn an entity in between, as a
-  pressure plate does when it lights TNT.
+  it ticks or a piston moves it. Take it out with `Level::take_entity`,
+  which leaves an empty entity that counts as removed, so no query finds
+  its slot (a plain `std::mem::take` leaves one at the origin that plates
+  and tripwire would feel). `Level::with_listed` puts the entity back
+  while blocks and containers look at it, and block handlers get its
+  index. Don't read `entities.last()` for it: a block can spawn an entity
+  in between, as a pressure plate does when it lights TNT. While blocks
+  see it, the entity sits at the end of the list rather than in its own
+  slot, so a query that keeps list order sees it last.
 - **Some refused cases are close to supported:** an arrow is refused once
   the block it is stuck in goes. The full list is in the code.

@@ -39,7 +39,8 @@ pub enum Data {
     Minecart(minecart::Minecart),
     SmallFireball,
     Arrow(arrow::Arrow),
-    /// A slot whose entity is being ticked, or one that was removed.
+    /// The empty slot an entity leaves while it is out of the list
+    /// ([`Level::take_entity`]).
     #[default]
     Gone,
 }
@@ -227,13 +228,22 @@ impl Level {
             if self.entities[i].removed {
                 continue;
             }
-            let mut e = std::mem::take(&mut self.entities[i]);
+            let mut e = self.take_entity(i);
             e.old_pos = e.pos;
             e.tick_count += 1;
             tick(self, &mut e);
             self.entities[i] = e;
         }
         self.entities.retain(|e| !e.removed);
+    }
+
+    /// Takes the entity at `i` out of the list to tick or move it, until it
+    /// is put back (`entities[i] = e`). Its slot holds an empty entity that
+    /// counts as removed, so nothing that looks for entities finds it: the
+    /// empty entity sits at the origin with a TNT-sized box, where a
+    /// pressure plate or tripwire would otherwise feel it.
+    pub(crate) fn take_entity(&mut self, i: usize) -> Entity {
+        std::mem::replace(&mut self.entities[i], Entity { removed: true, ..Default::default() })
     }
 
     /// Puts `e`, the entity being ticked, back on the end of the list while
@@ -422,7 +432,7 @@ fn clamp_loaded_motion(m: Vec3) -> Vec3 {
 /// feel it (`applyEffectsFromBlocks`), every time, even when the push came
 /// to nothing.
 pub fn move_by_piston(level: &mut Level, index: usize, noclip: crate::pos::Dir, movement: Vec3) {
-    let mut e = std::mem::take(&mut level.entities[index]);
+    let mut e = level.take_entity(index);
     let from = e.pos;
     level.piston_noclip = Some(noclip);
     if e.no_physics {

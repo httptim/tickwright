@@ -685,6 +685,52 @@ mod tests {
         assert_eq!(e[0].pos[1], 1.0, "the item lies on the plate");
     }
 
+    /// Each change to the block at `at`, on stone, as an item summoned
+    /// `drop` above its base falls in, over 20 ticks.
+    fn changes_under_a_falling_item(at: Pos, block: &str, drop: f64) -> Vec<(u32, String)> {
+        let mut s = Session::new("26.3").unwrap();
+        s.set_block(at.below(), "stone", Placement::Quiet).unwrap();
+        s.set_block(at, block, Placement::Quiet).unwrap();
+        let item = Some(r#"{Item:{id:"minecraft:stone",count:1}}"#);
+        s.summon("item", [at.x as f64 + 0.5, at.y as f64 + drop, at.z as f64 + 0.5], None, item).unwrap();
+        let mut changes = Vec::new();
+        let mut last = s.block(at);
+        for _ in 0..20 {
+            s.step();
+            let now = s.block(at);
+            if now != last {
+                changes.push((s.tick(), now.clone()));
+                last = now;
+            }
+        }
+        changes
+    }
+
+    // While an entity ticks, its slot in the list is empty, and the empty
+    // entity there sits at the origin. Blocks there must not feel it.
+
+    #[test]
+    fn a_weighted_plate_at_the_origin_feels_only_real_entities() {
+        let plate = "light_weighted_pressure_plate[power=0]";
+        let origin = changes_under_a_falling_item(Pos::new(0, 0, 0), plate, 0.5);
+        let elsewhere = changes_under_a_falling_item(Pos::new(3, 0, 3), plate, 0.5);
+        assert!(!elsewhere.is_empty() && elsewhere[0].0 > 1, "the item lands after a few ticks: {elsewhere:?}");
+        assert_eq!(origin, elsewhere);
+    }
+
+    #[test]
+    fn a_tripwire_at_the_origin_feels_only_real_entities() {
+        let string =
+            "tripwire[attached=false,disarmed=false,east=false,north=false,powered=false,south=false,west=false]";
+        let origin = changes_under_a_falling_item(Pos::new(0, 0, 0), string, 0.9);
+        let elsewhere = changes_under_a_falling_item(Pos::new(3, 0, 3), string, 0.9);
+        assert!(
+            !elsewhere.is_empty() && elsewhere[0].0 > 1,
+            "the item reaches the string after a few ticks: {elsewhere:?}"
+        );
+        assert_eq!(origin, elsewhere);
+    }
+
     #[test]
     fn a_build_starts_with_its_simulated_entities() {
         use tickwright_trace::fixture::SummonInput;
