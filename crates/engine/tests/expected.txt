@@ -166,6 +166,7 @@ sculk_destroy_distances order
 sculk_lever_on_off order
 sculk_wool_blocks order
 sculk_hears_blocks order
+falling_block_state_forms order
 falling_gravel_onto_torch order
 falling_sand_drop order
 item_on_ice order
