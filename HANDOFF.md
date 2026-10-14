@@ -9,7 +9,7 @@ picking the work up.
 
 - The engine targets Java Edition 26.3. Every behaviour is checked against
   traces captured from the real 26.3 server (`traces/26.3`).
-- There are 242 fixtures (`fixtures/`) and 2022 traces: one per fixture
+- There are 245 fixtures (`fixtures/`) and 2046 traces: one per fixture
   and orientation, and 100 more seeds of `phase4/tnt_cannon`. Every trace
   matches at the strictest level ("order"), and no fixture is refused.
   The fixtures listed in `crates/engine/tests/expected.txt` must keep
@@ -169,5 +169,10 @@ differs from the committed traces. That keeps them honest.
   item without physics past the 0.51 limit, a moving piston that fills
   its block counting as full for an item stuck next to it, and block
   effects on a piston push the limit cut to nothing.
+- **The entity blocks see:** an entity is out of the level's list while
+  it ticks. `Level::with_listed` puts it back while blocks and containers
+  look at it, and block handlers get its index. Don't read
+  `entities.last()` for it: a block can spawn an entity in between, as a
+  pressure plate does when it lights TNT.
 - **Some refused cases are close to supported:** an arrow is refused once
   the block it is stuck in goes. The full list is in the code.
