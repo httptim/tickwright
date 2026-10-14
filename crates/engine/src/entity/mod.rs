@@ -315,8 +315,9 @@ pub fn summon(level: &mut Level, entity: &str, at: Vec3, motion: Option<Vec3>, n
 
 /// An entity that is part of a build when it is placed. Types the engine
 /// doesn't simulate are left out, and so is saved data it doesn't model
-/// (a saved entity carries its UUID, rotation, air supply and the like).
-/// Returns whether the entity was created.
+/// (a saved entity carries its UUID, rotation, air supply and the like),
+/// except item stacks with more than an id and a count, which are refused
+/// as in summon data. Returns whether the entity was created.
 pub fn place_start_entity(
     level: &mut Level,
     entity: &str,
@@ -364,11 +365,34 @@ fn parse_data(nbt: Option<&str>) -> Result<snbt::Tag> {
     })
 }
 
+/// Refuses an item stack (`ItemStack.CODEC`) that carries more than an id
+/// and a count. The engine's stacks have no components, and components
+/// change how an item stacks: `max_stack_size` sets its stack size, and
+/// stacks merge only with stacks whose components are the same, so even a
+/// custom name keeps two stacks apart.
+fn check_item_stack(entity: &str, path: &str, stack: &snbt::Tag) -> Result<()> {
+    for key in stack.keys() {
+        match key {
+            "id" | "count" => {}
+            "components" => {
+                if let Some(component) = stack.get(key).and_then(|c| c.keys().first().copied()) {
+                    bail!(
+                        "the item component {component} in {entity} data ({path}) is not supported by the engine yet"
+                    );
+                }
+            }
+            _ => bail!("{entity} data {path}.{key} is not supported by the engine yet"),
+        }
+    }
+    Ok(())
+}
+
 fn spawn(level: &mut Level, name: &str, tag: &snbt::Tag, at: Vec3, motion: Option<Vec3>) -> Result<()> {
     let num = |key: &str| tag.get(key).and_then(|t| t.number());
     let data = match name {
         "item" => {
             let it = tag.get("Item").context("an item needs Item")?;
+            check_item_stack(name, "Item", it)?;
             let id = it.get("id").and_then(|t| t.string()).context("Item.id")?;
             let count = it.get("count").and_then(|t| t.number()).unwrap_or(1.0) as i32;
             let mut item = item::Item::new(Stack::new(id, count));
@@ -412,8 +436,13 @@ fn spawn(level: &mut Level, name: &str, tag: &snbt::Tag, at: Vec3, motion: Optio
         _ => {
             let mut cart = minecart::Minecart::new(name);
             if let (Some(items), Some(snbt::Tag::List(list))) = (cart.items.as_mut(), tag.get("Items")) {
-                for it in list {
+                for (i, it) in list.iter().enumerate() {
                     let slot = it.get("Slot").and_then(|t| t.number()).context("Items[].Slot")? as usize;
+                    let mut stack = it.clone();
+                    if let snbt::Tag::Compound(m) = &mut stack {
+                        m.remove("Slot");
+                    }
+                    check_item_stack(name, &format!("Items[{i}]"), &stack)?;
                     let id = it.get("id").and_then(|t| t.string()).context("Items[].id")?;
                     let count = it.get("count").and_then(|t| t.number()).unwrap_or(1.0) as i32;
                     let id = if id.contains(':') { id.to_string() } else { format!("minecraft:{id}") };
@@ -1361,5 +1390,42 @@ mod tests {
         apply_effects_for_last_movements(&mut level, &mut e);
         level.put_entity(e);
         assert!(level.flag(level.get(pos), "powered"));
+    }
+
+    fn try_summon(entity: &str, nbt: &str) -> Result<usize, String> {
+        let mut level = Level::new(Rules::for_version("26.3").unwrap());
+        level.simulate_entities = true;
+        summon(&mut level, entity, Vec3::new(0.5, 100.0, 0.5), None, Some(nbt)).map_err(|e| e.to_string())?;
+        Ok(level.entities.len())
+    }
+
+    #[test]
+    fn item_stacks_with_components_are_refused_by_name() {
+        assert_eq!(try_summon("item", r#"{Item:{id:"ender_pearl",count:10}}"#), Ok(1));
+        // An empty patch is the same as none.
+        assert_eq!(try_summon("item", r#"{Item:{id:"ender_pearl",count:10,components:{}}}"#), Ok(1));
+        assert_eq!(
+            try_summon("item", r#"{Item:{id:"ender_pearl",count:10,components:{"minecraft:max_stack_size":64}}}"#),
+            Err("the item component minecraft:max_stack_size in item data (Item) is not supported by the engine yet"
+                .to_string())
+        );
+        assert_eq!(
+            try_summon("item", r#"{Item:{id:"stone",components:{"minecraft:custom_name":"Rock"}}}"#),
+            Err("the item component minecraft:custom_name in item data (Item) is not supported by the engine yet"
+                .to_string())
+        );
+        assert_eq!(
+            try_summon("item", r#"{Item:{id:"stone",Count:2b}}"#),
+            Err("item data Item.Count is not supported by the engine yet".to_string())
+        );
+        assert_eq!(try_summon("chest_minecart", r#"{Items:[{Slot:0b,id:"stone",count:3}]}"#), Ok(1));
+        assert_eq!(
+            try_summon(
+                "hopper_minecart",
+                r#"{Items:[{Slot:0b,id:"stone",count:3},{Slot:1b,id:"snowball",count:4,components:{"minecraft:max_stack_size":64}}]}"#
+            ),
+            Err("the item component minecraft:max_stack_size in hopper_minecart data (Items[1]) is not supported by the engine yet"
+                .to_string())
+        );
     }
 }

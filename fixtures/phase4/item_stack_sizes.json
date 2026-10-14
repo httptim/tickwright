@@ -1,6 +1,6 @@
 {
   "name": "item_stack_sizes",
-  "description": "Item entities stack only as high as their item does. Ender pearls of 10, 6 and 10 lie side by side: when they look for neighbours to merge with, the first takes in the 6 to make 16, and the last 10 stays apart because 26 would be more than a stack of pearls. Two diamond pickaxes never merge. A hopper holding 10 pearls picks up 10 more, which fill its first slot to 16 and put 4 in the next, and a hopper minecart under a chest takes 20 pearls into two slots.",
+  "description": "Item entities stack only as high as their item does. Ender pearls of 10, 6 and 10 lie side by side: when they look for neighbours to merge with, the first takes in the 6 to make 16, and the last 10 stays apart because 26 would be more than a stack of pearls. Two more stacks of 10 pearls never merge, as 20 would be too many, and two diamond pickaxes never merge. A hopper holding 10 pearls picks up 10 more, which fill its first slot to 16 and put 4 in the next, and a hopper minecart under a chest takes 20 pearls into two slots.",
   "ticks": 50,
   "levels": [
     "state",
@@ -24,15 +24,21 @@
     [
       "######",
       "######",
+      "######",
+      "######",
       "######"
     ],
     [
       "...h.r",
       "......",
+      "......",
+      "......",
       "......"
     ],
     [
       ".....C",
+      "......",
+      "......",
       "......",
       "......"
     ]
@@ -103,6 +109,28 @@
         0.95,
         1.0,
         0.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:ender_pearl\",count:10},PickupDelay:0,Age:0}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        0.35,
+        1.0,
+        4.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:ender_pearl\",count:10},PickupDelay:0,Age:0}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        0.65,
+        1.0,
+        4.5
       ],
       "nbt": "{Item:{id:\"minecraft:ender_pearl\",count:10},PickupDelay:0,Age:0}"
     },

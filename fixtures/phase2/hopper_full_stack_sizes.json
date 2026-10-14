@@ -1,0 +1,239 @@
+{
+  "name": "hopper_full_stack_sizes",
+  "description": "A hopper is full when every slot holds a full stack of its own item. A hopper holding five stacks of 16 ender pearls, under a chest of pearls and facing a chest whose 27 slots each hold 16 pearls, moves nothing: it can't pass a pearl on, and it doesn't try to take one. Beside it a chest is filled with 20 pearls in one slot, which the game cuts to 16 as the slot is filled, and a hopper under it passes them into another chest.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "hopper",
+    "container",
+    "stack_size"
+  ],
+  "palette": {
+    "#": "stone",
+    "C": "chest[facing=north,type=single,waterlogged=false]",
+    "h": "hopper[enabled=true,facing=east]"
+  },
+  "layers": [
+    [
+      "#####"
+    ],
+    [
+      "hC.hC"
+    ],
+    [
+      "C..C."
+    ]
+  ],
+  "containers": [
+    {
+      "pos": [
+        0,
+        2,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "ender_pearl",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "pos": [
+        0,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 1,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 2,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 3,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 4,
+          "id": "ender_pearl",
+          "count": 16
+        }
+      ]
+    },
+    {
+      "pos": [
+        1,
+        1,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 1,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 2,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 3,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 4,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 5,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 6,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 7,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 8,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 9,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 10,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 11,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 12,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 13,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 14,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 15,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 16,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 17,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 18,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 19,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 20,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 21,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 22,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 23,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 24,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 25,
+          "id": "ender_pearl",
+          "count": 16
+        },
+        {
+          "slot": 26,
+          "id": "ender_pearl",
+          "count": 16
+        }
+      ]
+    },
+    {
+      "pos": [
+        3,
+        2,
+        0
+      ],
+      "items": [
+        {
+          "slot": 0,
+          "id": "ender_pearl",
+          "count": 20
+        }
+      ]
+    }
+  ]
+}
