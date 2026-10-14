@@ -119,15 +119,26 @@ fn hurt_entities(level: &mut Level, source: Option<&Entity>, center: Vec3, radiu
         y /= len;
         z /= len;
         let seen = seen_percent(level, center, e.bounding_box());
-        if let Data::Item(_) = e.data {
-            let a = (1.0 - d) * seen as f64;
-            let damage = ((a * a + a) / 2.0 * 7.0 * f + 1.0) as f32;
-            let e = &mut level.entities[k];
-            let Data::Item(i) = &mut e.data else { unreachable!() };
-            i.health = (i.health as f32 - damage) as i32;
-            if i.health <= 0 {
-                e.discard();
+        // `ExplosionDamageCalculator.getEntityDamageAmount`.
+        let a = (1.0 - d) * seen as f64;
+        let damage = ((a * a + a) / 2.0 * 7.0 * f + 1.0) as f32;
+        match &e.data {
+            // `ItemEntity.hurtServer`: an item whose default components resist
+            // explosions (a nether star) takes nothing.
+            Data::Item(i) if crate::items::can_be_hurt_by(&i.stack.id, "minecraft:explosion") => {
+                // `gameEvent(ENTITY_DAMAGE)`.
+                if crate::blocks::could_hear_entity(level, e.pos) {
+                    level.unsupported("a sculk sensor hearing an item hit by an explosion");
+                }
+                let e = &mut level.entities[k];
+                let Data::Item(i) = &mut e.data else { unreachable!() };
+                i.health = (i.health as f32 - damage) as i32;
+                if i.health <= 0 {
+                    e.discard();
+                }
             }
+            Data::Minecart(_) => super::minecart::hurt(level, k, damage),
+            _ => {}
         }
         let r = (1.0 - d) * seen as f64;
         let e = &mut level.entities[k];

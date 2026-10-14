@@ -1,0 +1,105 @@
+{
+  "name": "nether_star_survives_tnt",
+  "description": "TNT goes off beside item entities. The nether star's default components make it resist explosions (damage_resistant, #is_explosion), so it is only knocked away. The stone and the netherite ingot, which resists only fire, are destroyed.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "tnt",
+    "explosion",
+    "components"
+  ],
+  "entities": true,
+  "palette": {
+    "#": "obsidian"
+  },
+  "layers": [
+    [
+      "###########",
+      "###########",
+      "###########",
+      "###########",
+      "###########",
+      "###########",
+      "###########",
+      "###########",
+      "###########",
+      "###########",
+      "###########"
+    ],
+    [
+      "...........",
+      "...........",
+      "...........",
+      "...........",
+      "...........",
+      "...........",
+      "...........",
+      "...........",
+      "...........",
+      "...........",
+      "..........."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        4.5,
+        1.0,
+        5.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:nether_star\",count:1},PickupDelay:0,Age:0}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        6.5,
+        1.0,
+        5.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:netherite_ingot\",count:1},PickupDelay:0,Age:0}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        5.5,
+        1.0,
+        4.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:0,Age:0}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        5.5,
+        1.0,
+        6.5
+      ],
+      "nbt": "{Item:{id:\"minecraft:nether_star\",count:2},PickupDelay:0,Age:0}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        5.5,
+        1.0,
+        5.5
+      ],
+      "nbt": "{fuse:10}"
+    }
+  ]
+}

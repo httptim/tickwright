@@ -1,0 +1,138 @@
+{
+  "name": "tnt_breaks_minecarts",
+  "description": "TNT goes off among minecarts on an obsidian floor. A hit adds ten times the explosion's damage to a cart's damage, which falls by 1 a tick, and past 40 the cart breaks. The four carts two blocks away break: the plain and furnace carts drop their items, and the chest and hopper carts spill what they hold before their own item drops (drawing a place for every slot twice). Two plain carts 7.5 blocks away, on activator rails, take about 28 damage. The one on an unpowered rail is only shaken; the one on a powered rail breaks, since the rail keeps its damage between 41 and 50.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "tnt",
+    "explosion",
+    "minecart"
+  ],
+  "entities": true,
+  "palette": {
+    "#": "obsidian",
+    "R": "redstone_block",
+    "a": "activator_rail[powered=true,shape=north_south,waterlogged=false]",
+    "u": "activator_rail[powered=false,shape=north_south,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "#################",
+      "######R##########",
+      "#################",
+      "#################",
+      "#################",
+      "#################",
+      "#################",
+      "#################",
+      "#################",
+      "#################",
+      "#################",
+      "#################",
+      "#################",
+      "#################",
+      "#################",
+      "#################",
+      "#################"
+    ],
+    [
+      ".................",
+      "......a...u......",
+      ".................",
+      ".................",
+      ".................",
+      ".................",
+      ".................",
+      ".................",
+      ".................",
+      ".................",
+      ".................",
+      ".................",
+      ".................",
+      ".................",
+      ".................",
+      ".................",
+      "................."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        6.5,
+        1.0,
+        8.5
+      ]
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "furnace_minecart",
+      "at": [
+        10.5,
+        1.0,
+        8.5
+      ]
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "chest_minecart",
+      "at": [
+        8.5,
+        1.0,
+        6.5
+      ],
+      "nbt": "{Items:[{Slot:0b,id:\"minecraft:stone\",count:40},{Slot:4b,id:\"minecraft:redstone\",count:5}]}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "hopper_minecart",
+      "at": [
+        8.5,
+        1.0,
+        10.5
+      ],
+      "nbt": "{Items:[{Slot:2b,id:\"minecraft:dirt\",count:3}]}"
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        6.5,
+        1.0625,
+        1.25
+      ]
+    },
+    {
+      "tick": 1,
+      "action": "summon",
+      "entity": "minecart",
+      "at": [
+        10.5,
+        1.0625,
+        1.25
+      ]
+    },
+    {
+      "tick": 4,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        8.5,
+        1.0,
+        8.5
+      ],
+      "nbt": "{fuse:10}"
+    }
+  ]
+}

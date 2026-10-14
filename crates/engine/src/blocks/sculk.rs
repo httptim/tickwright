@@ -59,6 +59,22 @@ fn distance(a: Pos, b: Pos) -> f64 {
     ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt()
 }
 
+/// Whether a sculk sensor is near enough to `at` that it could hear a
+/// vibration there. The engine doesn't post the game events entities make
+/// (`entity_damage`, `entity_die` and the like), so a build where one could
+/// be heard is refused rather than run without it. Occlusion and
+/// frequencies are not checked, so this errs toward refusing.
+pub fn could_hear(level: &Level, at: crate::physics::Vec3) -> bool {
+    level.block_entities.iter().any(|(&p, be)| {
+        if !matches!(be, BlockEntity::Sculk(_)) {
+            return false;
+        }
+        let r = listener_radius(level, level.get(p)) as f64 + 1.0;
+        let c = center(p);
+        (at.x - c[0]).powi(2) + (at.y - c[1]).powi(2) + (at.z - c[2]).powi(2) <= r * r
+    })
+}
+
 /// `CalibratedSculkSensorBlock.getBackSignal`: the input from behind.
 fn calibrated_input(level: &Level, pos: Pos, state: StateId) -> i32 {
     let d = level.dir(state, "facing").opposite();

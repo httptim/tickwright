@@ -123,4 +123,6 @@ if [[ -n "${REPORTS:-}" ]]; then
         exit 1
     fi
     echo "$out"
+    # Default item components the engine reads (damage_resistant).
+    python3 -I tools/item_components.py "$INNER" "$WORK/reports/reports" "data/$MC_VERSION"
 fi
