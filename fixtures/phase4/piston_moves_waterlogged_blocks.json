@@ -1,0 +1,108 @@
+{
+  "name": "piston_moves_waterlogged_blocks",
+  "description": "Pistons move a waterlogged stone slab and a waterlogged trapdoor out of pockets that walled their water in: two are pushed east with the stone in front of them, two are pulled west by sticky pistons. A moved block arrives dry (PistonMovingBlockEntity clears WATERLOGGED as it places it), so the water tick its updateShape schedules finds no water, and nothing floods the open sides.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "water",
+    "piston",
+    "trapdoor"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "piston[extended=false,facing=east]",
+    "Q": "sticky_piston[extended=true,facing=east]",
+    "H": "piston_head[facing=east,short=false,type=sticky]",
+    "R": "redstone_block",
+    "S": "stone_slab[type=bottom,waterlogged=true]",
+    "T": "oak_trapdoor[facing=north,half=bottom,open=false,powered=false,waterlogged=true]"
+  },
+  "layers": [
+    [
+      "######",
+      "######",
+      "######",
+      "######",
+      "######",
+      "######",
+      "######",
+      "######",
+      "######",
+      "######",
+      "######",
+      "######"
+    ],
+    [
+      "..#...",
+      ".PS#..",
+      "..#...",
+      "..#...",
+      ".PT#..",
+      "..#...",
+      "...#..",
+      "RQHS#.",
+      "...#..",
+      "...#..",
+      "RQHT#.",
+      "...#.."
+    ],
+    [
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......",
+      "......"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        4
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 10,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        7
+      ]
+    },
+    {
+      "tick": 10,
+      "action": "destroy",
+      "pos": [
+        0,
+        1,
+        10
+      ]
+    }
+  ]
+}

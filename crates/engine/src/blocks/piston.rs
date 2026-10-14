@@ -499,6 +499,13 @@ pub fn tick_moving(level: &mut Level, pos: Pos) {
                 level.set_block(pos, moved, flags::MOVE_BY_PISTON | flags::KNOWN_SHAPE | flags::INVISIBLE);
                 level.update_or_destroy(moved, s, pos, flags::ALL, crate::level::MAX_RECURSION);
             } else {
+                // A moved block arrives without its water. The water tick
+                // its `updateShape` scheduled above finds it dry.
+                let s = if level.reg.value(s, "waterlogged") == Some("true") {
+                    level.with_bool(s, "waterlogged", false)
+                } else {
+                    s
+                };
                 level.set_block(pos, s, flags::MOVE_BY_PISTON | flags::ALL);
                 level.neighbor_changed(pos, level.block(s));
             }
