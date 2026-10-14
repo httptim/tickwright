@@ -1,0 +1,57 @@
+{
+  "name": "tnt_breaks_double_slabs",
+  "description": "TNT goes off on an obsidian floor among slabs and other blocks whose loot tables set or decay a count. Each double slab drops two slabs (set_count when type=double), a bottom or top slab drops one, the composter at level 8 drops itself and bone meal, and the cobweb drops string. TNT explosions don't decay drops by default (tnt_explosion_drop_decay is off), so every item survives.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "tnt",
+    "explosion",
+    "loot"
+  ],
+  "entities": true,
+  "palette": {
+    "#": "obsidian",
+    "o": "oak_slab[type=double,waterlogged=false]",
+    "s": "stone_slab[type=double,waterlogged=false]",
+    "c": "cobblestone_slab[type=double,waterlogged=false]",
+    "m": "smooth_stone_slab[type=double,waterlogged=false]",
+    "b": "oak_slab[type=bottom,waterlogged=false]",
+    "t": "stone_slab[type=top,waterlogged=false]",
+    "k": "composter[level=8]",
+    "w": "cobweb"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".....",
+      ".bck.",
+      ".o.s.",
+      ".wmt.",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        2.5,
+        1.0,
+        2.5
+      ],
+      "nbt": "{fuse:10}"
+    }
+  ]
+}

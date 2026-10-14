@@ -1,7 +1,14 @@
 //! What blocks drop when they break, from `data/<version>/loot.json`: the
 //! tables a break with no tool settles without drawing a random number.
 //! Each block drops one item, nothing, or per pool the first rule whose
-//! block state matches (doors and beds drop from one half).
+//! block state matches (doors and beds drop from one half, and a double
+//! slab drops two).
+//!
+//! No break the engine simulates is a decaying explosion: TNT destroys
+//! blocks without decay unless the `tnt_explosion_drop_decay` game rule is
+//! on, and it is off by default. So `survives_explosion` always passes and
+//! `explosion_decay` keeps every item, and neither draws a number
+//! (`tools/loot.py`).
 
 use std::collections::HashMap;
 use std::sync::LazyLock;
@@ -46,6 +53,25 @@ fn stack(item: &str, count: i32) -> Stack {
 /// `BlockState.getDrops` for a break with no tool. Tables the engine can't
 /// evaluate exactly mark the run unsupported and drop nothing.
 pub fn block_drops(level: &mut Level, state: StateId) -> Vec<Stack> {
+    let mut out = Vec::new();
+    for s in table_drops(level, state) {
+        split_stack(s, &mut out);
+    }
+    out
+}
+
+/// `LootTable.createStackSplitter`: a count over the item's stack size
+/// comes out as several stacks, and nothing comes out of an empty one.
+fn split_stack(mut s: Stack, out: &mut Vec<Stack>) {
+    let max = crate::items::max_stack_size(&s.id);
+    while s.count > 0 {
+        let n = s.count.min(max);
+        out.push(Stack::new(&s.id, n));
+        s.count -= n;
+    }
+}
+
+fn table_drops(level: &mut Level, state: StateId) -> Vec<Stack> {
     let name = level.reg.name(state).to_string();
     // A wall variant (`Blocks.wallVariant`) drops by its standing block's
     // table, which the data has under the standing block's name:
@@ -106,5 +132,31 @@ mod tests {
         // A wall of its own keeps its own table.
         assert_eq!(drops(&mut level, "cobblestone_wall"), [("cobblestone_wall".to_string(), 1)]);
         assert!(level.unsupported.is_none());
+    }
+
+    #[test]
+    fn counts_come_from_the_tables_item_functions() {
+        let mut level = Level::new(Rules::for_version("26.3").unwrap());
+        let slab = |t: &str| format!("oak_slab[type={t},waterlogged=false]");
+        assert_eq!(drops(&mut level, &slab("double")), [("oak_slab".to_string(), 2)]);
+        assert_eq!(drops(&mut level, &slab("bottom")), [("oak_slab".to_string(), 1)]);
+        assert_eq!(drops(&mut level, &slab("top")), [("oak_slab".to_string(), 1)]);
+        assert_eq!(drops(&mut level, "stone_slab[type=double,waterlogged=false]"), [("stone_slab".to_string(), 2)]);
+        // set_count, whatever block the engine simulates.
+        assert_eq!(drops(&mut level, "snow_block"), [("snowball".to_string(), 4)]);
+        assert_eq!(drops(&mut level, "bookshelf"), [("book".to_string(), 3)]);
+        assert!(level.unsupported.is_none());
+        // A count drawn at random is refused.
+        assert!(drops(&mut level, "glowstone").is_empty());
+        assert_eq!(level.unsupported.as_deref(), Some("what minecraft:glowstone drops"));
+    }
+
+    #[test]
+    fn a_count_over_a_stack_splits() {
+        let mut out = Vec::new();
+        super::split_stack(crate::entity::Stack::new("ender_pearl", 20), &mut out);
+        super::split_stack(crate::entity::Stack::new("stone", 0), &mut out);
+        let counts: Vec<i32> = out.iter().map(|s| s.count).collect();
+        assert_eq!(counts, [16, 4]);
     }
 }

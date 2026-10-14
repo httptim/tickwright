@@ -15,6 +15,18 @@ writes <out dir>/loot.json, one block per line:
   engine doesn't model (fortune chances, random counts, block entity
   data), which the engine refuses rather than guessing.
 
+26.x tables give each entry, pool and table its item functions under
+"modifier" (one function or a list), and each function or entry its
+conditions under "condition". Functions run entry first, then pool, then
+table, as LootPool and LootTable decorate their output. A count that
+depends on the block's state (a double slab drops two) becomes one rule per
+case, the more specific first.
+
+No break the engine simulates passes an explosion radius: TNT explosions
+destroy without decay unless the tnt_explosion_drop_decay game rule is on,
+and it is off by default. So survives_explosion always passes and
+explosion_decay leaves the count alone, and neither draws a number.
+
 Blocks without a table drop nothing and are left out.
 """
 
@@ -70,6 +82,15 @@ def condition(c, block):
     t = c.get("type") or c.get("condition")
     if t == "minecraft:survives_explosion":
         return True
+    if t in ("minecraft:table_bonus", "minecraft:random_chance"):
+        # Both draw a number even when the chance settles the answer, but
+        # from the table's own random sequence, not the level's.
+        chance = c["chances"][0] if t == "minecraft:table_bonus" else constant(c.get("chance"))
+        if chance >= 1:
+            return True
+        if chance <= 0:
+            return False
+        raise Complex(t)
     if t == "minecraft:inverted":
         r = condition(c["term"], block)
         if isinstance(r, dict):
@@ -98,37 +119,93 @@ def condition(c, block):
     raise Complex(t)
 
 
-def count(functions):
-    n = 1
+def constant(v):
+    """A number provider that is a fixed number."""
+    if isinstance(v, (int, float)):
+        return v
+    if isinstance(v, dict) and v.get("type") == "minecraft:constant":
+        return v["value"]
+    raise Complex("a random number")
+
+
+# Components that copy_components may take from a block entity and that the
+# engine's block entities never have, so copying them leaves the item bare.
+NAMES_ONLY = {
+    "minecraft:custom_name",
+    "minecraft:item_name",
+    "minecraft:tooltip_display",
+    "minecraft:rarity",
+    "minecraft:banner_patterns",
+    "minecraft:lock",
+    "minecraft:profile",
+    "minecraft:note_block_sound",
+}
+
+
+def apply(functions, alts, block):
+    """Run item functions over the counts an item can have, `alts`: a list of
+    (required state, count) where the first matching state wins."""
     for f in functions:
         t = f.get("type") or f.get("function")
-        if t == "minecraft:explosion_decay":
+        when = all_of([condition(c, block) for c in listed(f, "condition", "conditions")])
+        if when is False:
             continue
-        if t == "minecraft:set_count" and isinstance(f.get("count"), (int, float)):
-            if f.get("conditions") or f.get("condition"):
-                raise Complex("a conditional count")
-            n = n + int(f["count"]) if f.get("add") else int(f["count"])
-        elif t == "minecraft:limit_count" and all(isinstance(v, (int, float)) for v in f.get("limit", {}).values()):
+        if t == "minecraft:explosion_decay":
+            continue  # only in a decaying explosion; see the top of the file
+        if t == "minecraft:copy_components":
+            if f.get("source") != "block_entity" or not set(f.get("include", [])) <= NAMES_ONLY:
+                raise Complex(t)
+            continue
+        if t == "minecraft:apply_bonus":
+            # With no tool the enchantment level is 0: ore_drops keeps the
+            # count, uniform_bonus_count adds nextInt(1), which is 0.
+            if f.get("formula") not in ("minecraft:ore_drops", "minecraft:uniform_bonus_count"):
+                raise Complex(t)
+            continue
+        if t == "minecraft:set_count":
+            n = int(constant(f["count"]))
+            add = f.get("add", False)
+            fn = (lambda old, n=n, add=add: old + n if add else n)
+        elif t == "minecraft:limit_count":
             lim = f["limit"]
-            n = max(int(lim.get("min", n)), min(int(lim.get("max", n)), n))
+            lo = constant(lim["min"]) if "min" in lim else None
+            hi = constant(lim["max"]) if "max" in lim else None
+            fn = (lambda old, lo=lo, hi=hi: max(lo if lo is not None else old, min(hi if hi is not None else old, old)))
         else:
             raise Complex(t)
-    return n
+        out = []
+        for w, n in alts:
+            if when is True:
+                out.append((w, fn(n)))
+                continue
+            both = all_of([w, when])
+            if both is not False:
+                out.append((both, fn(n)))
+            out.append((w, n))
+        alts = out
+    return alts
 
 
-def rules(entry, block, inherited):
-    """The first-match rules an entry gives: (required state, item, count)."""
+def rules(entry, block, outer):
+    """The first-match rules an entry gives: (required state, item, count).
+    `outer` holds the pool's and then the table's functions, which run after
+    the entry's own."""
     when = all_of([condition(c, block) for c in listed(entry, "condition", "conditions")])
     if when is False:
         return []
     t = entry.get("type")
     if t == "minecraft:item":
-        n = count(inherited + listed(entry, "function", "functions"))
-        return [(when, entry["name"], n)]
+        functions = listed(entry, "modifier", "functions") + outer
+        out = []
+        for w, n in apply(functions, [(True, 1)], block):
+            w = all_of([when, w])
+            if w is not False:
+                out.append((w, entry["name"], n))
+        return out
     if t == "minecraft:alternatives":
         out = []
         for child in entry["children"]:
-            for w, item, n in rules(child, block, inherited):
+            for w, item, n in rules(child, block, outer):
                 w = all_of([when, w])
                 if w is False:
                     continue
@@ -146,24 +223,29 @@ def evaluate(table, block):
     item always, or {"pools": [[rule, ...], ...]} where each pool drops the
     first rule whose state matches."""
     pools = []
-    table_functions = listed(table, "function", "functions")
+    table_functions = listed(table, "modifier", "functions")
     for pool in table.get("pools", []):
         if pool.get("rolls") != 1 or pool.get("bonus_rolls", 0) != 0:
             raise Complex("rolls")
         when = all_of([condition(c, block) for c in listed(pool, "condition", "conditions")])
         if when is False:
             continue
-        inherited = table_functions + listed(pool, "function", "functions")
+        outer = listed(pool, "modifier", "functions") + table_functions
         out = []
         for e in pool.get("entries", []):
-            out.extend(rules(e, block, inherited))
+            out.extend(rules(e, block, outer))
         if len(pool.get("entries", [])) > 1:
             raise Complex("several entries")
         pool_rules = []
         for w, item, n in out:
             w = all_of([when, w])
-            if w is not False and n > 0:
-                pool_rules.append({k: v for k, v in (("when", w if w is not True else None), ("item", item), ("count", n if n != 1 else None)) if v is not None})
+            if w is False:
+                continue
+            # A rule that drops nothing stays, so the states it matches don't
+            # fall through to a later rule.
+            pool_rules.append({k: v for k, v in (("when", w if w is not True else None), ("item", item), ("count", n if n != 1 else None)) if v is not None})
+        while pool_rules and pool_rules[-1].get("count") == 0:
+            pool_rules.pop()
         if pool_rules:
             pools.append(pool_rules)
     if not pools:
