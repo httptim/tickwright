@@ -117,14 +117,18 @@ impl Entity {
     /// (`data_version`) are brought up to date the way the game's data fixer
     /// starts to: `Count` becomes `count`, and their `tag` stays, for the
     /// engine to refuse by name. A newer stack's stray `tag`, which the game
-    /// ignores, is left out. When a stack carries components or a tag from
-    /// an older file, the start entity records the file's data version.
+    /// ignores, is left out. The rest of its data is in the file's format,
+    /// so an entity from a file older than the game records the file's data
+    /// version (or, from a file that doesn't say, the version before item
+    /// components when its stacks are that old).
     pub fn to_summon(&self, data_version: Option<i32>) -> SummonInput {
         let motion = self.data.get("Motion").and_then(doubles).filter(|m| m.iter().any(|&v| v != 0.0));
         let mut rest = strip_keys(&self.data, &["Motion"]);
-        let mut versioned: Option<i32> = None;
+        let mut versioned = data_version.filter(|&v| v < DATA_VERSION_26_3);
         for stack in item_stacks(&mut rest) {
-            if let Some(dv) = fix_stack(stack, data_version) {
+            if let Some(dv) = fix_stack(stack, data_version)
+                && data_version.is_none()
+            {
                 versioned = Some(versioned.map_or(dv, |v| v.min(dv)));
             }
         }
@@ -221,7 +225,8 @@ fn fix_stack(stack: &mut Tag, data_version: Option<i32>) -> Option<i32> {
 }
 
 /// The way back for a file from before 1.20.5: `count` becomes a `Count`
-/// byte. A stack with components can't be written so.
+/// byte. A stack with components can't be written so, nor can a count
+/// outside 1 to 99, which the game doesn't read.
 fn unfix_stack(stack: &mut Tag) -> Result<()> {
     if stack.get("components").is_some_and(|c| !c.entries().is_empty()) {
         let id = stack.get("id").and_then(Tag::as_str).unwrap_or("an item");
@@ -233,7 +238,7 @@ fn unfix_stack(stack: &mut Tag) -> Result<()> {
         for (k, v) in entries.iter_mut() {
             if k == "count" {
                 *k = "Count".to_string();
-                *v = Tag::Byte(v.as_i64().unwrap_or(1) as i8);
+                *v = Tag::Byte(file_count(v.as_i64().unwrap_or(1))? as i8);
                 has_count = true;
             }
         }
@@ -242,6 +247,15 @@ fn unfix_stack(stack: &mut Tag) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// A stack's count as a file may hold it: the game's `ItemStack.CODEC`
+/// reads 1 to 99 and nothing else.
+fn file_count(count: i64) -> Result<i32> {
+    if !(1..=99).contains(&count) {
+        bail!("a count of {count}, which the game can't read: a stack holds 1 to 99");
+    }
+    Ok(count as i32)
 }
 
 /// Three numbers from a list of doubles (or floats).
@@ -313,9 +327,9 @@ impl Schematic {
     /// `Count`, and keeps its `tag` for the engine to refuse by name; a
     /// newer one reads `count` (1 if it has none, as the game reads it) and
     /// ignores keys the game doesn't know. A stack the game would read as
-    /// empty (a count of 0 or less, or a legacy stack with no `Count`) is
-    /// left out; one it can't read at all is an error, never quietly
-    /// dropped.
+    /// empty (a count outside 1 to 99, which `ItemStack.CODEC` rejects, or a
+    /// legacy stack with no `Count`) is left out; one without an id or slot
+    /// is an error, never quietly dropped.
     pub fn containers(&self) -> Result<Vec<Container>> {
         let mut out = Vec::new();
         for be in &self.block_entities {
@@ -333,7 +347,7 @@ impl Schematic {
                     None => 1,
                     Some(c) => c.as_i64().with_context(|| format!("{id} at {at:?}: its count is not a number"))?,
                 };
-                if count <= 0 {
+                if !(1..=99).contains(&count) {
                     continue;
                 }
                 let components = match i.get("components") {
@@ -434,16 +448,38 @@ impl Schematic {
             blocks.push(([*x, *y, *z], BlockState::parse(s).with_context(|| format!("{}: {s}", f.id))?));
         }
         let mut s = Schematic::from_blocks(f.size, blocks);
-        // Components and tags are written in the format they came in, so the
-        // file takes the oldest data version among them, and the game brings
-        // the whole file up to date. Before 1.20.5 every stack is written the
-        // old way (`Count`), and a stack with components can't be.
-        let oldest = f
+        // Components, tags and entity data are written in the format they
+        // came in, and a file holds one data version, which the game's data
+        // fixer brings up to date. So they must all share one; the engine
+        // can't convert between versions. Before 1.20.5 every stack is
+        // written the old way (`Count`), and a stack with components can't
+        // be.
+        let mut common: Option<(Option<i32>, String)> = None;
+        let shown = |v: Option<i32>| {
+            v.map_or(format!("26.3's data version {DATA_VERSION_26_3}"), |v| format!("data version {v}"))
+        };
+        let carried = f
             .containers
             .iter()
-            .flat_map(|c| c.items.iter().filter_map(|i| i.data_version))
-            .chain(f.start_entities.iter().filter_map(|e| e.data_version))
-            .min();
+            .flat_map(|c| {
+                c.items.iter().filter(|i| i.components.is_some() || i.tag.is_some()).map(move |i| {
+                    (i.data_version, format!("the {} in slot {} of the container at {:?}", i.id, i.slot, c.pos))
+                })
+            })
+            .chain(f.start_entities.iter().map(|e| (e.data_version, format!("the {} entity at {:?}", e.entity, e.at))));
+        for (version, place) in carried {
+            match &common {
+                None => common = Some((version, place)),
+                Some((v, first)) if *v != version => bail!(
+                    "{}: {place} is in {} but {first} is in {}, and a file holds one data version; save the build in one version first",
+                    f.id,
+                    shown(version),
+                    shown(*v)
+                ),
+                Some(_) => {}
+            }
+        }
+        let oldest = common.and_then(|(v, _)| v);
         let legacy = oldest.is_some_and(|v| v < ITEM_COMPONENTS_DATA_VERSION);
         for c in &f.containers {
             let block = s.block(c.pos).id;
@@ -453,7 +489,9 @@ impl Schematic {
                 .map(|i| {
                     let id = if i.id.contains(':') { i.id.clone() } else { format!("minecraft:{}", i.id) };
                     let place = || format!("{}: {id} in slot {} of the {block} at {:?}", f.id, i.slot, c.pos);
-                    let mut entries = vec![("Slot", Tag::Byte(i.slot as i8)), ("id", Tag::String(id.clone()))];
+                    let slot = i8::try_from(i.slot).with_context(|| format!("{}: a slot past 127", place()))?;
+                    let count = file_count(i.count as i64).with_context(place)?;
+                    let mut entries = vec![("Slot", Tag::Byte(slot)), ("id", Tag::String(id.clone()))];
                     if legacy {
                         if i.components.is_some() {
                             bail!(
@@ -462,9 +500,9 @@ impl Schematic {
                                 oldest.unwrap_or_default()
                             );
                         }
-                        entries.push(("Count", Tag::Byte(i.count as i8)));
+                        entries.push(("Count", Tag::Byte(count as i8)));
                     } else {
-                        entries.push(("count", Tag::Int(i.count as i32)));
+                        entries.push(("count", Tag::Int(count)));
                     }
                     if let Some(c) = &i.components {
                         entries.push((
@@ -599,7 +637,8 @@ mod tests {
                     pos: [0.5, 1.0, 1.5],
                     data: nbt::compound(vec![(
                         "Item",
-                        nbt::compound(vec![("id", Tag::String("minecraft:stone".into())), ("count", Tag::Int(1))]),
+                        // In key order, as SNBT gives a compound back.
+                        nbt::compound(vec![("count", Tag::Int(1)), ("id", Tag::String("minecraft:stone".into()))]),
                     )]),
                 },
             ],
@@ -764,11 +803,58 @@ mod tests {
             Schematic::read(&back.write(Format::Sponge)).unwrap().containers().unwrap(),
             s.containers().unwrap()
         );
-        // A stack with components can't go into such a file.
+        // A stack with components in 26.3's format can't share a file with
+        // the older tag, and one in the older format can't go into it.
         let mut f = f;
         f.containers[0].items[1].components = Some(r#"{"minecraft:custom_name":"x"}"#.into());
         let err = Schematic::from_fixture(&f).unwrap_err().to_string();
+        assert!(err.contains("the minecraft:dirt in slot 1 of the container at [0, 0, 0] is in 26.3's"), "{err}");
+        f.containers[0].items[1].data_version = Some(3700);
+        let err = Schematic::from_fixture(&f).unwrap_err().to_string();
         assert!(err.contains("can't hold"), "{err}");
+    }
+
+    #[test]
+    fn entities_keep_their_files_data_version() {
+        // An armor stand's name from a 1.20.2 file is in that file's format.
+        let mut s = chest_with(Vec::new(), Some(3578));
+        s.entities.push(Entity {
+            id: "minecraft:armor_stand".into(),
+            pos: [0.5, 1.0, 0.5],
+            data: stack(vec![("CustomName", Tag::String(r#"{"text":"Stand"}"#.into()))]),
+        });
+        let mut f = s.to_fixture("t", 1).unwrap().resolve(Transform::IDENTITY).unwrap();
+        assert_eq!(f.start_entities[0].data_version, Some(3578));
+        assert_eq!(Schematic::from_fixture(&f).unwrap().data_version, Some(3578));
+        // An entity in 26.3's format can't join it.
+        let mut fresh = f.start_entities[0].clone();
+        fresh.entity = "tnt".into();
+        fresh.data_version = None;
+        f.start_entities.push(fresh);
+        let err = Schematic::from_fixture(&f).unwrap_err().to_string();
+        assert!(err.contains("the tnt entity at [0.5, 1.0, 0.5] is in 26.3's"), "{err}");
+    }
+
+    #[test]
+    fn counts_the_game_cant_read_are_left_out_or_refused() {
+        let at = |slot: i8, count: i32| {
+            stack(vec![
+                ("Slot", Tag::Byte(slot)),
+                ("id", Tag::String("minecraft:stone".into())),
+                ("count", Tag::Int(count)),
+            ])
+        };
+        let s = chest_with(vec![at(0, 0), at(1, 100), at(2, 99)], Some(DATA_VERSION_26_3));
+        let c = s.containers().unwrap();
+        assert_eq!(c[0].items.iter().map(|i| (i.slot, i.count)).collect::<Vec<_>>(), [(2, 99)]);
+        let mut f = s.to_fixture("t", 1).unwrap().resolve(Transform::IDENTITY).unwrap();
+        f.containers[0].items[0].count = 100;
+        let err = format!("{:#}", Schematic::from_fixture(&f).unwrap_err());
+        assert!(err.contains("a count of 100"), "{err}");
+        f.containers[0].items[0].count = 1;
+        f.containers[0].items[0].slot = 200;
+        let err = format!("{:#}", Schematic::from_fixture(&f).unwrap_err());
+        assert!(err.contains("a slot past 127"), "{err}");
     }
 
     #[test]
@@ -785,7 +871,7 @@ mod tests {
             data: stack(vec![("Item", item)]),
         });
         let e = &s.to_fixture("t", 1).unwrap().start_entities[0];
-        assert_eq!(e.nbt.as_deref(), Some(r#"{Item:{id:"minecraft:stone",count:2}}"#));
+        assert_eq!(e.nbt.as_deref(), Some(r#"{Item:{count:2,id:"minecraft:stone"}}"#));
         assert_eq!(e.data_version, None);
     }
 
@@ -820,7 +906,7 @@ mod tests {
             )]),
         });
         let f = s.to_fixture("t", 1).unwrap();
-        assert_eq!(f.start_entities[0].nbt.as_deref(), Some(r#"{Item:{id:"minecraft:stone",count:3}}"#));
+        assert_eq!(f.start_entities[0].nbt.as_deref(), Some(r#"{Item:{count:3,id:"minecraft:stone"}}"#));
     }
 
     #[test]

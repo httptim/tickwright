@@ -255,11 +255,16 @@ enum Command {
     },
     /// The entities in the world now, in the order they tick:
     /// `{"entities": [{"id", "type", "pos": [x, y, z], "detail", "nbt",
-    /// "data_version"}]}`. `nbt` is the entity's data as SNBT, motion
-    /// included, which a build's start entity takes as its `nbt` (with
-    /// `type` as its `entity` and `pos` as its `at`) to come back the
-    /// same; `data_version` goes with it, and is null unless its item
-    /// components came from an older file.
+    /// "data_version", "mixed_versions"}]}`. `nbt` is the entity's data as
+    /// SNBT: what it was summoned or placed with, every key kept with its
+    /// type, and the engine's live values (motion, an item's stack, a
+    /// minecart's items and so on) over it. A build's start entity takes it
+    /// as its `nbt` and `type` as its `entity` to come back the same, and
+    /// its `at` is relative to the fixture's origin: `pos`, which is in
+    /// world coordinates, less that origin; `data_version` goes with it, null unless the entity came from
+    /// an older file. `mixed_versions` is null, or says which of its item
+    /// stacks is in another data version than the entity, which a file
+    /// can't hold.
     Entities {
         session: u32,
     },
@@ -469,6 +474,7 @@ fn command(input: &[u8]) -> anyhow::Result<Value> {
                             "detail": e.detail,
                             "nbt": e.nbt,
                             "data_version": e.data_version,
+                            "mixed_versions": e.mixed_versions,
                         })
                     })
                     .collect();

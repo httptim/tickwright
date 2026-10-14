@@ -70,8 +70,14 @@ pub struct ItemData {
     /// game's: they are in that version's format. It doesn't take part in
     /// comparing.
     pub data_version: Option<i32>,
-    /// Both in canonical SNBT, which is what compares.
+    /// What compares: each component as the game holds it once decoded
+    /// (see [`component_key`]), and the legacy tag with its types.
     key: String,
+    /// Whether the patch sets or removes `max_stack_size`.
+    sets_stack_size: bool,
+    /// The first component in the patch that changes behaviour the engine
+    /// doesn't model.
+    refused: Option<&'static str>,
 }
 
 impl PartialEq for ItemData {
@@ -88,9 +94,15 @@ impl Eq for ItemData {}
 /// (`!minecraft:max_stack_size`) counts too.
 pub const REFUSED_COMPONENTS: [&str; 2] = ["minecraft:max_stack_size", "minecraft:damage_resistant"];
 
+/// Components whose value is NBT itself (`CustomData` and
+/// `TypedEntityData`), which the game compares tag for tag, types and all.
+const NBT_COMPONENTS: [&str; 4] =
+    ["minecraft:custom_data", "minecraft:bucket_entity_data", "minecraft:entity_data", "minecraft:block_entity_data"];
+
 impl ItemData {
     /// The data for a component patch and a legacy tag, each in SNBT;
-    /// `None` when there is neither (an empty patch is no patch).
+    /// `None` when there is neither (an empty patch is no patch). A patch
+    /// the game couldn't decode is an error.
     pub fn new(
         components: Option<&str>,
         tag: Option<&str>,
@@ -101,8 +113,16 @@ impl ItemData {
                 let t = snbt::parse(text).with_context(|| format!("item components {text}"))?;
                 let snbt::Tag::Compound(m) = t else { bail!("item components {text} are not a compound") };
                 // `stone` and `minecraft:stone` name the same component.
-                let named: BTreeMap<String, snbt::Tag> = m.into_iter().map(|(k, v)| (component_name(&k), v)).collect();
-                (!named.is_empty()).then_some(snbt::Tag::Compound(named))
+                let mut named: BTreeMap<String, snbt::Tag> = BTreeMap::new();
+                for (k, v) in m {
+                    let name = component_name(&k);
+                    let bare = name.trim_start_matches('!');
+                    if named.keys().any(|n| n.trim_start_matches('!') == bare) {
+                        bail!("item components {text} name {bare} twice");
+                    }
+                    named.insert(name, v);
+                }
+                (!named.is_empty()).then_some(named)
             }
             None => None,
         };
@@ -113,16 +133,26 @@ impl ItemData {
         if patch.is_none() && legacy.is_none() {
             return Ok(None);
         }
-        let key = format!(
-            "{}|{}",
-            patch.as_ref().map(snbt::write).unwrap_or_default(),
-            legacy.as_ref().map(snbt::write).unwrap_or_default()
-        );
+        let mut key = String::new();
+        for (name, value) in patch.iter().flatten() {
+            key.push_str(name);
+            key.push('=');
+            if !name.starts_with('!') {
+                key.push_str(&component_key(name, value).with_context(|| format!("item component {name}"))?);
+            }
+            key.push(';');
+        }
+        key.push('|');
+        key.push_str(&legacy.as_ref().map(snbt::write).unwrap_or_default());
+        let bare = |k: &String| k.trim_start_matches('!').to_string();
+        let names: Vec<String> = patch.iter().flat_map(|p| p.keys().map(bare)).collect();
         Ok(Some(Arc::new(ItemData {
             components: patch.and(components.map(str::to_string)),
             tag: legacy.and(tag.map(str::to_string)),
             data_version,
             key,
+            sets_stack_size: names.iter().any(|n| n == REFUSED_COMPONENTS[0]),
+            refused: REFUSED_COMPONENTS.into_iter().find(|r| names.iter().any(|n| n == r)),
         })))
     }
 
@@ -137,23 +167,51 @@ impl ItemData {
         ItemData::new(c.as_deref(), t.as_deref(), data_version)
     }
 
+    /// The patch as a tag, its types as given.
+    pub fn components_tag(&self) -> Option<snbt::Tag> {
+        snbt::parse(self.components.as_deref()?).ok()
+    }
+
+    /// The legacy tag as a tag, its types as given.
+    pub fn legacy_tag(&self) -> Option<snbt::Tag> {
+        snbt::parse(self.tag.as_deref()?).ok()
+    }
+
     /// Whether the patch sets or removes `max_stack_size`.
     pub fn sets_stack_size(&self) -> bool {
-        self.components.as_deref().and_then(|c| snbt::parse(c).ok()).is_some_and(|p| {
-            p.keys().into_iter().any(|k| component_name(k).trim_start_matches('!') == REFUSED_COMPONENTS[0])
-        })
+        self.sets_stack_size
     }
 
     /// The first component in the patch that changes behaviour the engine
     /// doesn't model.
     pub fn refused_component(&self) -> Option<&'static str> {
-        let patch = snbt::parse(self.components.as_deref()?).ok()?;
-        patch
-            .keys()
-            .into_iter()
-            .map(component_name)
-            .find_map(|k| REFUSED_COMPONENTS.into_iter().find(|r| k.trim_start_matches('!') == *r))
+        self.refused
     }
+}
+
+/// How a component's value compares once the game has decoded it. A
+/// component that holds NBT (`custom_data` and the like) compares as that
+/// NBT, every tag's type included, so `1b` and `1`, `[I;1]` and `[1]`, or
+/// `0.1f` and `0.1d` differ; its value may also be given as an SNBT
+/// string, which the game parses (`TagParser.FLATTENED_CODEC`), and the
+/// `id` of `entity_data` and `block_entity_data` is a registry name, so
+/// `pig` is `minecraft:pig`. Every other component is decoded by a codec
+/// that reads numbers by value, so there `1b` and `1.0d` are the same.
+fn component_key(name: &str, value: &snbt::Tag) -> Result<String> {
+    if !NBT_COMPONENTS.contains(&name) {
+        return Ok(snbt::write_value(value));
+    }
+    let mut nbt = match value {
+        snbt::Tag::String(text) => snbt::parse(text)?,
+        v => v.clone(),
+    };
+    let snbt::Tag::Compound(m) = &mut nbt else { bail!("{} is not a compound", snbt::write(value)) };
+    if name == "minecraft:entity_data" || name == "minecraft:block_entity_data" {
+        let id = m.get("id").and_then(|t| t.string()).context("it needs an `id`")?;
+        let id = if id.contains(':') { id.to_string() } else { format!("minecraft:{id}") };
+        m.insert("id".to_string(), snbt::Tag::String(id));
+    }
+    Ok(snbt::write(&nbt))
 }
 
 /// A component's full name, `minecraft:` added, keeping a leading `!`.

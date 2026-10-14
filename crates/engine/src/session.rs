@@ -80,12 +80,16 @@ pub struct EntityView {
     /// (`minecraft:stone*3`), a TNT's `fuse=N`, a falling block's state.
     pub detail: Option<String>,
     /// Its data as SNBT that a build's start entity carries and the engine
-    /// reads back to the same entity (`Entity::saved_nbt`), motion
-    /// included.
+    /// reads back to the same entity (`Entity::saved_nbt`): the data it was
+    /// made from, every key kept, with the engine's live values over it.
     pub nbt: String,
-    /// The data version its item components came from, when older than the
-    /// game's (a start entity's `data_version`).
+    /// The data version `nbt` is in, when older than the game's: that of
+    /// the file the entity came from (a start entity's `data_version`).
     pub data_version: Option<i32>,
+    /// Why the entity has no one data version, if it holds item stacks in
+    /// another version than its own; such an entity can't be saved to one
+    /// file as it is.
+    pub mixed_versions: Option<String>,
 }
 
 /// What a position reads as, for the power views.
@@ -598,7 +602,8 @@ impl Session {
                 pos: [e.pos.x, e.pos.y, e.pos.z],
                 detail: e.detail(&self.level),
                 nbt: e.saved_nbt(&self.level),
-                data_version: e.data_version(),
+                data_version: e.data_version().unwrap_or(None),
+                mixed_versions: e.data_version().err(),
             })
             .collect()
     }

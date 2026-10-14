@@ -12,8 +12,11 @@ mod fireball;
 mod fluid;
 pub mod item;
 mod minecart;
-pub mod snbt;
+pub use tickwright_trace::snbt;
 mod tnt;
+
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use anyhow::{Context, Result, bail};
 
@@ -83,6 +86,19 @@ pub struct Entity {
     /// While the entity is out of the level's list, the index of the slot
     /// it left (`Level::take_entity`).
     slot: Option<usize>,
+    /// The data it was summoned or placed with, if it wasn't made by the
+    /// engine.
+    pub source: Option<Arc<Source>>,
+}
+
+/// What an entity was made from: the data it was summoned or saved with,
+/// which a save writes back with the engine's live values over it, so keys
+/// the engine doesn't read survive; and the data version that data is in,
+/// when it came from a file older than the game.
+#[derive(Clone, Debug)]
+pub struct Source {
+    pub tag: snbt::Tag,
+    pub data_version: Option<i32>,
 }
 
 impl Entity {
@@ -167,82 +183,116 @@ impl Entity {
     }
 
     /// The entity's data as SNBT that `place_start_entity` reads back to
-    /// the same entity: every key the engine reads for its type, with its
-    /// motion, and item stacks with their component patches as given. Its
-    /// type and position are not part of it.
+    /// the same entity: the data it was made from, every key kept with its
+    /// type, and over it every value the engine keeps for its type as it is
+    /// now (an item's stack, age and pickup delay, a TNT's fuse, a falling
+    /// block's time, a minecart's rotation and items, an arrow's time in
+    /// the ground, motion, and so on). Its type and position are not part
+    /// of it.
     pub fn saved_nbt(&self, level: &Level) -> String {
-        let mut keys: Vec<String> = Vec::new();
+        use snbt::Tag as T;
+        let mut m = match self.source.as_deref().map(|s| &s.tag) {
+            Some(T::Compound(m)) => m.clone(),
+            _ => BTreeMap::new(),
+        };
+        let mut set = |k: &str, v: Option<T>| match v {
+            Some(v) => m.insert(k.to_string(), v),
+            None => m.remove(k),
+        };
         match &self.data {
             Data::Item(i) => {
-                keys.push(format!("Item:{}", saved_stack(&i.stack, None)));
-                keys.push(format!("PickupDelay:{}s", i.pickup_delay));
-                keys.push(format!("Age:{}s", i.age));
-                keys.push(format!("Health:{}s", i.health));
-                if let Some(owner) = &i.target {
-                    keys.push(format!("Owner:{}", int_array(owner)));
-                }
-                if i.invulnerable {
-                    keys.push("Invulnerable:1b".to_string());
-                }
+                // An empty stack isn't saved (`ItemEntity.addAdditionalSaveData`).
+                set("Item", (!i.stack.is_empty()).then(|| saved_stack(&i.stack, None)));
+                set("PickupDelay", Some(T::Short(i.pickup_delay as i16)));
+                set("Age", Some(T::Short(i.age as i16)));
+                set("Health", Some(T::Short(i.health as i16)));
             }
             Data::Tnt(t) => {
-                keys.push(format!("fuse:{}s", t.fuse));
-                keys.push(format!("explosion_power:{}f", t.power));
+                set("fuse", Some(T::Short(t.fuse as i16)));
+                if t.power != 4.0 {
+                    set("explosion_power", Some(T::Float(t.power)));
+                }
             }
             Data::FallingBlock(f) => {
-                let text = level.reg.format(f.state);
-                let (name, props) = match text.split_once('[') {
-                    Some((n, p)) => (n.to_string(), p.trim_end_matches(']').to_string()),
-                    None => (text.clone(), String::new()),
-                };
-                let props: Vec<String> = props
-                    .split(',')
-                    .filter(|p| !p.is_empty())
-                    .map(|p| {
-                        let (k, v) = p.split_once('=').unwrap_or((p, ""));
-                        format!("{k}:{}", quote(v))
-                    })
-                    .collect();
-                let props =
-                    if props.is_empty() { String::new() } else { format!(",Properties:{{{}}}", props.join(",")) };
-                keys.push(format!("BlockState:{{Name:{}{props}}}", quote(&name)));
-                keys.push(format!("Time:{}", f.time));
-                keys.push(format!("DropItem:{}b", f.drop_item as u8));
-                keys.push(format!("CancelDrop:{}b", f.cancel_drop as u8));
-            }
-            Data::Minecart(m) => {
-                keys.push(format!("Rotation:[{}f,0.0f]", m.y_rot));
-                keys.push(format!("FlippedRotation:{}b", m.flipped as u8));
-                if m.hopper {
-                    keys.push(format!("Enabled:{}b", m.enabled as u8));
+                if self.source.as_deref().and_then(|s| s.tag.get("BlockState")).is_none() {
+                    set("BlockState", Some(saved_block_state(level, f.state)));
                 }
-                if let Some(items) = &m.items {
-                    let stacks: Vec<String> = items
+                set("Time", Some(T::Int(f.time)));
+                set("DropItem", Some(T::Byte(f.drop_item as i8)));
+                set("CancelDrop", Some(T::Byte(f.cancel_drop as i8)));
+            }
+            Data::Minecart(c) => {
+                let x_rot = match self.source.as_deref().and_then(|s| s.tag.get("Rotation")) {
+                    Some(T::List(r)) => r.get(1).and_then(|t| t.number()).unwrap_or(0.0) as f32,
+                    _ => 0.0,
+                };
+                set("Rotation", Some(T::List(vec![T::Float(c.y_rot), T::Float(x_rot)])));
+                set("FlippedRotation", Some(T::Byte(c.flipped as i8)));
+                if c.hopper {
+                    set("Enabled", Some(T::Byte(c.enabled as i8)));
+                }
+                if let Some(items) = &c.items {
+                    let stacks = items
                         .iter()
                         .enumerate()
                         .filter(|(_, s)| !s.is_empty())
                         .map(|(slot, s)| saved_stack(s, Some(slot)))
                         .collect();
-                    keys.push(format!("Items:[{}]", stacks.join(",")));
+                    set("Items", Some(T::List(stacks)));
                 }
             }
-            Data::Arrow(a) if a.in_ground => keys.push("inGround:1b".to_string()),
-            Data::SmallFireball | Data::Arrow(_) | Data::Gone => {}
+            Data::Arrow(a) => {
+                set("inGround", Some(T::Byte(a.in_ground as i8)));
+                set("life", Some(T::Short(a.life as i16)));
+                set("shake", Some(T::Byte(a.shake as i8)));
+                if let Some(state) = a.last_state {
+                    set("inBlockState", Some(arrow::saved_state(level, state)));
+                }
+            }
+            Data::SmallFireball | Data::Gone => {}
         }
-        keys.push(format!("Motion:[{}d,{}d,{}d]", self.motion.x, self.motion.y, self.motion.z));
-        keys.push(format!("OnGround:{}b", self.on_ground as u8));
-        format!("{{{}}}", keys.join(","))
+        set(
+            "Motion",
+            Some(T::List(vec![T::Double(self.motion.x), T::Double(self.motion.y), T::Double(self.motion.z)])),
+        );
+        set("OnGround", Some(T::Byte(self.on_ground as i8)));
+        snbt::write(&T::Compound(m))
     }
 
-    /// The data version the entity's item components or tags are in, when
-    /// they came from an older file.
-    pub fn data_version(&self) -> Option<i32> {
-        let version = |s: &Stack| s.data.as_ref().and_then(|d| d.data_version);
-        match &self.data {
-            Data::Item(i) => version(&i.stack),
-            Data::Minecart(m) => m.items.as_ref().and_then(|items| items.iter().filter_map(version).min()),
-            _ => None,
+    /// The data version the entity's data is in, when older than the
+    /// game's: that of the file it came from, which its item stacks share.
+    /// A stack with components or a tag that came from elsewhere, in
+    /// another version (a stack a hopper minecart pulled from a chest, say),
+    /// leaves the entity with no one version, and the error names its slot.
+    pub fn data_version(&self) -> Result<Option<i32>, String> {
+        let mut version: Option<Option<i32>> = self.source.as_deref().map(|s| s.data_version);
+        let mut seen: Option<String> = self.source.as_ref().map(|_| "its own data".to_string());
+        let stacks: Vec<(Option<usize>, &Stack)> = match &self.data {
+            Data::Item(i) => vec![(None, &i.stack)],
+            Data::Minecart(m) => m.items.iter().flatten().enumerate().map(|(k, s)| (Some(k), s)).collect(),
+            _ => Vec::new(),
+        };
+        let shown = |v: Option<i32>| v.map_or("26.3's".to_string(), |v| format!("data version {v}"));
+        for (slot, s) in stacks {
+            let Some(d) = s.data.as_ref().filter(|_| !s.is_empty()) else { continue };
+            let place = slot.map_or("its stack".to_string(), |k| format!("the stack in slot {k}"));
+            match version {
+                None => {
+                    version = Some(d.data_version);
+                    seen = Some(place);
+                }
+                Some(v) if v != d.data_version => {
+                    return Err(format!(
+                        "{place} is in {} where {} is in {}",
+                        shown(d.data_version),
+                        seen.unwrap_or_default(),
+                        shown(v)
+                    ));
+                }
+                Some(_) => {}
+            }
         }
+        Ok(version.flatten())
     }
 
     /// `getOnPos(yOffset)`: the block the entity stands on, or the one
@@ -470,7 +520,8 @@ fn described(name: &str) -> &'static str {
 /// types either is read below or changes nothing the engine simulates
 /// (names, `UUID`, `Air`, `Rotation` but a minecart's, an item's `Thrower`,
 /// a projectile's `Owner`, an arrow's damage and pickup rules, a minecart's
-/// display block, and the like).
+/// display block, and the like). A falling block's `HurtEntities` and
+/// `TileEntityData` are judged by its block, once that is read.
 fn refused_data(name: &str, tag: &snbt::Tag) -> Option<String> {
     let num = |key: &str| tag.get(key).and_then(|t| t.number());
     let who = described(name);
@@ -484,12 +535,6 @@ fn refused_data(name: &str, tag: &snbt::Tag) -> Option<String> {
         return Some(format!("{who} carrying passengers (Passengers)"));
     }
     match name {
-        "falling_block" if num("HurtEntities").is_some_and(|v| v != 0.0) => {
-            Some(format!("{who} that hurts entities (HurtEntities, FallHurtAmount)"))
-        }
-        "falling_block" if !tag.get("TileEntityData").is_none_or(|t| t.keys().is_empty()) => {
-            Some(format!("{who} carrying block entity data (TileEntityData)"))
-        }
         "furnace_minecart" if num("PushX").is_some_and(|v| v != 0.0) || num("PushZ").is_some_and(|v| v != 0.0) => {
             Some(format!("{who} being pushed (PushX, PushZ)"))
         }
@@ -500,58 +545,71 @@ fn refused_data(name: &str, tag: &snbt::Tag) -> Option<String> {
         "small_fireball" if num("acceleration_power").is_some_and(|v| v != fireball::ACCELERATION) => {
             Some(format!("{who} with an acceleration_power other than 0.1"))
         }
-        "arrow" if num("inGround").is_some_and(|v| v != 0.0) => {
-            Some(format!("{who} already stuck in a block (inGround)"))
-        }
         _ => None,
     }
 }
 
 /// A stack as `ItemStack.CODEC` saves it, with its slot when it is in a
-/// container: its component patch and any legacy tag as they were given.
-fn saved_stack(s: &Stack, slot: Option<usize>) -> String {
+/// container: its component patch and any legacy tag with their types as
+/// given.
+fn saved_stack(s: &Stack, slot: Option<usize>) -> snbt::Tag {
+    use snbt::Tag as T;
     let id = if s.id.contains(':') { s.id.clone() } else { format!("minecraft:{}", s.id) };
-    let mut keys = Vec::new();
+    let mut m = BTreeMap::new();
     if let Some(slot) = slot {
-        keys.push(format!("Slot:{slot}b"));
+        m.insert("Slot".to_string(), T::Byte(slot as i8));
     }
-    keys.push(format!("id:{}", quote(&id)));
-    keys.push(format!("count:{}", s.count));
+    m.insert("id".to_string(), T::String(id));
+    m.insert("count".to_string(), T::Int(s.count));
     if let Some(d) = &s.data {
-        if let Some(c) = &d.components {
-            keys.push(format!("components:{c}"));
+        if let Some(c) = d.components_tag() {
+            m.insert("components".to_string(), c);
         }
-        if let Some(t) = &d.tag {
-            keys.push(format!("tag:{t}"));
+        if let Some(t) = d.legacy_tag() {
+            m.insert("tag".to_string(), t);
         }
     }
-    format!("{{{}}}", keys.join(","))
+    T::Compound(m)
 }
 
-/// A quoted SNBT string.
-fn quote(s: &str) -> String {
-    format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
-}
-
-/// A UUID saved as canonical SNBT (a list of four numbers), as the int
-/// array the game writes.
-fn int_array(canonical: &str) -> String {
-    match snbt::parse(canonical) {
-        Ok(snbt::Tag::List(v)) => {
-            let n: Vec<String> = v.iter().filter_map(|t| t.number()).map(|x| (x as i32).to_string()).collect();
-            format!("[I;{}]", n.join(","))
-        }
-        _ => canonical.to_string(),
+/// A falling block's state as its `BlockState` key holds it.
+fn saved_block_state(level: &Level, state: crate::registry::StateId) -> snbt::Tag {
+    use snbt::Tag as T;
+    let text = level.reg.format(state);
+    let (name, props) = match text.split_once('[') {
+        Some((n, p)) => (n.to_string(), p.trim_end_matches(']').to_string()),
+        None => (text.clone(), String::new()),
+    };
+    let props: BTreeMap<String, T> = props
+        .split(',')
+        .filter(|p| !p.is_empty())
+        .map(|p| {
+            let (k, v) = p.split_once('=').unwrap_or((p, ""));
+            (k.to_string(), T::String(v.to_string()))
+        })
+        .collect();
+    let mut m = BTreeMap::from([("Name".to_string(), T::String(name))]);
+    if !props.is_empty() {
+        m.insert("Properties".to_string(), T::Compound(props));
     }
+    T::Compound(m)
 }
 
 /// A saved item stack (`ItemStack.CODEC`): its id, its count (1 when it
-/// has none, as the codec reads it) and its component patch. `place` names
-/// where the stack is, for a refusal. A component the engine doesn't
-/// model, or a legacy `tag` in saved data, marks the level unsupported.
+/// has none, as the codec reads it) and its component patch. A count
+/// outside 1 to 99, which the codec rejects, reads as an empty stack, as
+/// the game reads a stack it can't decode. `place` names where the stack
+/// is, for a refusal. A component the engine doesn't model, or a legacy
+/// `tag` in saved data, marks the level unsupported.
 fn read_stack(level: &mut Level, tag: &snbt::Tag, origin: Origin, place: &str) -> Result<Stack> {
     let id = tag.get("id").and_then(|t| t.string()).with_context(|| format!("{place}: an item stack needs an id"))?;
-    let count = tag.get("count").and_then(|t| t.number()).unwrap_or(1.0) as i32;
+    let count = match tag.get("count") {
+        None => 1,
+        Some(c) => c.int_value().filter(|n| (1..=99).contains(n)).unwrap_or(0),
+    };
+    if count == 0 {
+        return Ok(Stack::default());
+    }
     let (legacy, data_version) = match origin {
         Origin::Saved(v) => (tag.get("tag"), v),
         Origin::Summon => (None, None),
@@ -588,7 +646,8 @@ fn spawn(level: &mut Level, name: &str, tag: &snbt::Tag, at: Vec3, motion: Optio
             if let Some(h) = num("Health") {
                 item.health = h as i32;
             }
-            item.target = tag.get("Owner").map(|o| snbt::write(o).into());
+            // `UUIDUtil.CODEC` reads an int array or a list of ints alike.
+            item.target = tag.get("Owner").map(|o| snbt::write_value(o).into());
             item.invulnerable = num("Invulnerable").is_some_and(|v| v != 0.0);
             Data::Item(item)
         }
@@ -615,6 +674,17 @@ fn spawn(level: &mut Level, name: &str, tag: &snbt::Tag, at: Vec3, motion: Optio
             if level.kind(state) == Kind::Other {
                 bail!("a falling {} is not supported by the engine yet", level.reg.name(state));
             }
+            // Only living entities take fall damage, and the engine has
+            // none; but an anvil that hurts entities may chip itself.
+            if num("HurtEntities").is_some_and(|v| v != 0.0) && level.reg.name(state).ends_with("anvil") {
+                level.unsupported("a falling anvil that hurts entities (HurtEntities)");
+            }
+            // Block entity data applies only to a block with a block entity.
+            if !tag.get("TileEntityData").is_none_or(|t| t.keys().is_empty())
+                && crate::blocks::has_block_entity(level.kind(state))
+            {
+                level.unsupported("a falling block carrying block entity data (TileEntityData)");
+            }
             Data::FallingBlock(falling::Falling {
                 state,
                 time: num("Time").unwrap_or(0.0) as i32,
@@ -623,13 +693,15 @@ fn spawn(level: &mut Level, name: &str, tag: &snbt::Tag, at: Vec3, motion: Optio
             })
         }
         "small_fireball" => Data::SmallFireball,
-        "arrow" => Data::Arrow(Default::default()),
+        "arrow" => Data::Arrow(arrow::Arrow::read(level, tag)),
         _ => {
             let mut cart = minecart::Minecart::new(name);
+            // `Entity.load` reads the rotation through `setRot`, which
+            // takes it modulo 360.
             if let Some(snbt::Tag::List(r)) = tag.get("Rotation")
                 && let Some(y) = r.first().and_then(|t| t.number())
             {
-                cart.y_rot = y as f32;
+                cart.y_rot = y as f32 % 360.0;
             }
             cart.flipped = num("FlippedRotation").is_some_and(|v| v != 0.0);
             if cart.hopper {
@@ -642,7 +714,7 @@ fn spawn(level: &mut Level, name: &str, tag: &snbt::Tag, at: Vec3, motion: Optio
                     let slot = it.get("Slot").and_then(|t| t.number()).context("Items[].Slot")? as usize;
                     let place = format!("in slot {slot} of {}", described(name));
                     let mut stack = read_stack(level, it, origin, &place)?;
-                    if !stack.id.contains(':') {
+                    if !stack.is_empty() && !stack.id.contains(':') {
                         stack.id = format!("minecraft:{}", stack.id);
                     }
                     let items = cart.items.as_mut().unwrap();
@@ -653,6 +725,11 @@ fn spawn(level: &mut Level, name: &str, tag: &snbt::Tag, at: Vec3, motion: Optio
         }
     };
     let mut e = Entity::new(level, data, at);
+    let data_version = match origin {
+        Origin::Saved(v) => v,
+        Origin::Summon => None,
+    };
+    e.source = Some(Arc::new(Source { tag: tag.clone(), data_version }));
     e.on_ground = num("OnGround").is_some_and(|v| v != 0.0);
     let saved_motion = match tag.get("Motion") {
         Some(snbt::Tag::List(m)) if m.len() == 3 => {
@@ -1671,31 +1748,138 @@ mod tests {
     }
 
     #[test]
+    fn components_compare_by_type_where_the_game_does() {
+        let stack = |c: &str| {
+            let (e, u) = spawn("item", &format!(r#"{{Item:{{id:"stone",components:{c}}}}}"#), false);
+            assert_eq!(u, None, "{c}");
+            item(&e).stack.clone()
+        };
+        // NBT components compare tag for tag.
+        let typed = ["1b", "1s", "1", "1L", "1.0f", "1.0d", "[I;1,2]", "[1,2]", "0.1f", "0.10000000149011612d"];
+        for (i, a) in typed.iter().enumerate() {
+            for b in &typed[i + 1..] {
+                for name in ["custom_data", "bucket_entity_data"] {
+                    let (x, y) = (stack(&format!("{{{name}:{{n:{a}}}}}")), stack(&format!("{{{name}:{{n:{b}}}}}")));
+                    assert!(!x.same_item(&y), "{name} {a} and {b}");
+                }
+                let (x, y) = (
+                    stack(&format!(r#"{{entity_data:{{id:"pig",n:{a}}}}}"#)),
+                    stack(&format!(r#"{{block_entity_data:{{id:"minecraft:chest",n:{b}}}}}"#)),
+                );
+                assert!(!x.same_item(&y));
+            }
+        }
+        let long = |v: &str| stack(&format!("{{custom_data:{{n:{v}}}}}"));
+        assert!(!long("9007199254740993L").same_item(&long("9007199254740992L")));
+        // The same NBT spelled another way, as an SNBT string, or with the
+        // id's namespace left out, is the same.
+        assert!(stack("{custom_data:{n:0x01,t:TRUE}}").same_item(&stack(r#"{custom_data:"{t:1b,n:1}"}"#)));
+        assert!(
+            stack(r#"{entity_data:{id:"pig",a:1b}}"#).same_item(&stack(r#"{entity_data:{id:"minecraft:pig",a:1ub}}"#))
+        );
+        // Components a codec decodes read numbers by value.
+        assert!(stack("{damage:1b}").same_item(&stack("{damage:1}")));
+        assert!(stack("{damage:1}").same_item(&stack("{\"minecraft:damage\":1.0d}")));
+        assert!(!stack("{damage:1}").same_item(&stack("{damage:2}")));
+    }
+
+    #[test]
     fn saved_data_reads_back_to_the_same_entity() {
         let mut level = Level::new(Rules::for_version("26.3").unwrap());
         level.simulate_entities = true;
         let at = Vec3::new(0.5, 100.0, 0.5);
-        for (entity, nbt) in [
+        let cases: [(&str, &str, &[&str]); 6] = [
             (
                 "item",
-                r#"{Item:{id:"stone",count:3,components:{"minecraft:custom_name":"01"}},Owner:[I;1,-2,3,4],Health:3s,PickupDelay:7s,Age:12s,Invulnerable:1b}"#,
+                r#"{Item:{id:"stone",count:3,components:{"minecraft:custom_name":"01",custom_data:{n:1b,l:[I;1,2]}}},Owner:[I;1,-2,3,4],Health:3s,PickupDelay:7s,Age:12s,Invulnerable:1b,UUID:[I;9,8,7,6],CustomName:"x",CustomNameVisible:1b,Tags:["a"],Glowing:1b,Silent:1b,data:{k:1L},Thrower:[I;5,6,7,8],Rotation:[10.0f,5.0f]}"#,
+                &[
+                    r#"components:{custom_data:{l:[I;1,2],n:1b},"minecraft:custom_name":"01"}"#,
+                    "UUID:[I;9,8,7,6]",
+                    r#"CustomName:"x""#,
+                    "CustomNameVisible:1b",
+                    r#"Tags:["a"]"#,
+                    "Glowing:1b",
+                    "Silent:1b",
+                    "data:{k:1L}",
+                    "Thrower:[I;5,6,7,8]",
+                    "Rotation:[10f,5f]",
+                ],
             ),
-            ("tnt", "{fuse:33s,explosion_power:2.5f}"),
-            ("falling_block", r#"{BlockState:{Name:"minecraft:sand"},Time:4,DropItem:0b}"#),
+            (
+                "tnt",
+                r#"{fuse:33s,explosion_power:2.5f,block_state:{Name:"minecraft:tnt"},owner:[I;1,2,3,4]}"#,
+                &["fuse:33s", "explosion_power:2.5f", r#"block_state:{Name:"minecraft:tnt"}"#, "owner:[I;1,2,3,4]"],
+            ),
+            (
+                "falling_block",
+                r#"{BlockState:{Name:"minecraft:sand"},Time:4,DropItem:0b,HurtEntities:1b,FallHurtAmount:2.0f,TileEntityData:{x:1}}"#,
+                &["Time:4", "DropItem:0b", "HurtEntities:1b", "FallHurtAmount:2f", "TileEntityData:{x:1}"],
+            ),
             (
                 "hopper_minecart",
-                r#"{Enabled:0b,Rotation:[450.0f,0.0f],FlippedRotation:1b,Items:[{Slot:2b,id:"stone",count:5,components:{custom_name:"x"}}]}"#,
+                r#"{Enabled:0b,Rotation:[450.0f,3.0f],FlippedRotation:1b,Items:[{Slot:2b,id:"stone",count:5,components:{custom_name:"x"}}],DisplayState:{Name:"minecraft:stone"},DisplayOffset:6,CustomName:"c",Tags:["t"],UUID:[I;1,1,1,1],HasTicked:1b}"#,
+                &[
+                    // `Entity.load` takes the rotation modulo 360.
+                    "Rotation:[90f,3f]",
+                    r#"Items:[{Slot:2b,components:{custom_name:"x"},count:5,id:"minecraft:stone"}]"#,
+                    r#"DisplayState:{Name:"minecraft:stone"}"#,
+                    "DisplayOffset:6",
+                    r#"CustomName:"c""#,
+                    r#"Tags:["t"]"#,
+                    "UUID:[I;1,1,1,1]",
+                    "HasTicked:1b",
+                ],
             ),
-            ("arrow", "{}"),
-        ] {
+            (
+                "arrow",
+                "{pickup:1b,damage:3.5d,crit:1b,PierceLevel:2b}",
+                &["pickup:1b", "damage:3.5d", "crit:1b", "PierceLevel:2b"],
+            ),
+            (
+                "arrow",
+                r#"{inGround:1b,life:40s,shake:3b,inBlockState:{id:"minecraft:lever",properties:{face:"wall",facing:"east",powered:"true"}}}"#,
+                &[
+                    "inGround:1b",
+                    "life:40s",
+                    "shake:3b",
+                    r#"inBlockState:{id:"minecraft:lever",properties:{face:"wall",facing:"east",powered:"true"}}"#,
+                ],
+            ),
+        ];
+        for (entity, nbt, kept) in cases {
             summon(&mut level, entity, at, Some(Vec3::new(0.25, -0.5, 0.125)), Some(nbt)).unwrap();
             let first = level.entities.last().unwrap().saved_nbt(&level);
             place_start_entity(&mut level, entity, at, None, Some(&first), None).unwrap();
             let again = level.entities.last().unwrap().saved_nbt(&level);
             assert_eq!(first, again, "{entity}");
             assert!(first.contains("Motion:[0.25d,-0.5d,0.125d]"), "{first}");
+            for k in kept {
+                assert!(first.contains(k), "{entity}: {k} in {first}");
+            }
         }
         assert_eq!(level.unsupported, None);
+        let (e, _) = spawn("arrow", r#"{inGround:1b,inBlockState:"minecraft:stone"}"#, true);
+        assert!(matches!(&e.data, Data::Arrow(a) if a.in_ground && a.last_state.is_some()));
+    }
+
+    #[test]
+    fn an_entity_has_one_data_version() {
+        let mut level = Level::new(Rules::for_version("26.3").unwrap());
+        let at = Vec3::new(0.5, 100.0, 0.5);
+        let nbt = r#"{Items:[{Slot:1b,id:"stone",count:5,components:{custom_name:"x"}}]}"#;
+        place_start_entity(&mut level, "hopper_minecart", at, None, Some(nbt), Some(3900)).unwrap();
+        place_start_entity(&mut level, "minecart", at, None, Some("{}"), Some(3900)).unwrap();
+        assert_eq!(level.entities[0].data_version(), Ok(Some(3900)));
+        assert_eq!(level.entities[1].data_version(), Ok(Some(3900)));
+        // A stack from elsewhere, in 26.3's format, leaves it with none.
+        let data = crate::blocks::container::ItemData::new(Some(r#"{custom_name:"y"}"#), None, None).unwrap();
+        if let Data::Minecart(m) = &mut level.entities[0].data {
+            m.items.as_mut().unwrap()[0] = Stack::new("minecraft:dirt", 1).with_data(data);
+        }
+        assert_eq!(
+            level.entities[0].data_version(),
+            Err("the stack in slot 0 is in 26.3's where its own data is in data version 3900".to_string())
+        );
     }
 
     #[test]
@@ -1710,20 +1894,25 @@ mod tests {
         assert!(item(&e).invulnerable && item(&e).target.is_some() && e.on_ground);
         let (e, _) = spawn("tnt", "{fuse:20s,explosion_power:2.5f,block_state:{Name:\"minecraft:tnt\"}}", true);
         assert!(matches!(&e.data, Data::Tnt(t) if t.fuse == 20 && t.power == 2.5));
-        let (e, _) = spawn("hopper_minecart", "{Enabled:0b,Rotation:[90.0f,0.0f],FlippedRotation:1b}", true);
-        assert!(matches!(&e.data, Data::Minecart(m) if !m.enabled && m.y_rot == 90.0 && m.flipped));
+        let (e, _) = spawn("hopper_minecart", "{Enabled:0b,Rotation:[-450.0f,0.0f],FlippedRotation:1b}", true);
+        assert!(matches!(&e.data, Data::Minecart(m) if !m.enabled && m.y_rot == -90.0 && m.flipped));
+        // `ItemStack.CODEC` takes counts from 1 to 99; any other reads as
+        // an empty stack, which the item entity drops on its first tick.
+        for (count, read) in [("0", 0), ("100", 0), ("99", 99), ("1.5d", 1), ("\"2\"", 0)] {
+            let (e, _) = spawn("item", &format!(r#"{{Item:{{id:"stone",count:{count}}}}}"#), true);
+            assert_eq!(item(&e).stack.count, read, "{count}");
+        }
+        // Sand that hurts entities or carries block data does nothing more:
+        // only living entities are hurt, and only a block with a block
+        // entity takes the data.
+        assert_eq!(spawn("falling_block", "{HurtEntities:1b,FallHurtAmount:2.0f,TileEntityData:{x:1}}", true).1, None);
         for (entity, nbt, what) in [
             ("item", r#"{Item:{id:"stone"},NoGravity:1b}"#, "an item entity without gravity (NoGravity)"),
             ("tnt", "{Fire:40s}", "a primed TNT on fire (Fire)"),
             ("minecart", r#"{Passengers:[{id:"minecraft:item"}]}"#, "a minecart carrying passengers (Passengers)"),
             (
                 "falling_block",
-                "{HurtEntities:1b,FallHurtAmount:2.0f}",
-                "a falling block that hurts entities (HurtEntities, FallHurtAmount)",
-            ),
-            (
-                "falling_block",
-                r#"{TileEntityData:{Items:[]}}"#,
+                r#"{BlockState:{Name:"minecraft:chest"},TileEntityData:{Items:[{Slot:0b,id:"stone"}]}}"#,
                 "a falling block carrying block entity data (TileEntityData)",
             ),
             ("furnace_minecart", "{PushX:0.5d,PushZ:0.0d}", "a furnace minecart being pushed (PushX, PushZ)"),
@@ -1738,7 +1927,6 @@ mod tests {
                 "a chest minecart holding an unopened loot table (LootTable)",
             ),
             ("furnace_minecart", "{Fuel:100s}", "a furnace minecart with fuel (Fuel)"),
-            ("arrow", "{inGround:1b}", "an arrow already stuck in a block (inGround)"),
         ] {
             assert_eq!(spawn(entity, nbt, true).1.as_deref(), Some(what), "{entity}");
             assert_eq!(spawn(entity, nbt, false).1.as_deref(), Some(what), "{entity}");

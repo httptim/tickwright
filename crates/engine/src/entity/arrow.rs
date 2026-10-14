@@ -2,12 +2,15 @@
 //! gravity until a ray along their motion meets a block's collision shape,
 //! then stick just short of the hit. A target block lights up by how near
 //! the middle it was hit, and a wooden button with an arrow in it stays
-//! pressed. Arrows hitting entities, falling out of the ground and flying
-//! through water are refused.
+//! pressed. An arrow saved in the ground (`inGround`, `life`, `shake` and
+//! `inBlockState`) reads back the same. Arrows hitting entities, falling
+//! out of the ground and flying through water are refused.
+
+use std::collections::BTreeMap;
 
 use super::{
     Data, Entity, apply_effects_between, apply_effects_from_blocks, base_tick, collision_shape, floor,
-    no_block_collision,
+    no_block_collision, snbt,
 };
 use crate::blocks::{Kind, plain};
 use crate::level::Level;
@@ -20,9 +23,67 @@ pub struct Arrow {
     pub in_ground: bool,
     /// The state of the block it stuck in (`lastState`). While the block
     /// at the arrow differs from it, the arrow falls once nothing holds it.
-    last_state: Option<StateId>,
+    pub(super) last_state: Option<StateId>,
     /// Ticks spent in the ground; it despawns after 1200.
-    life: i32,
+    pub(super) life: i32,
+    /// `shakeTime`: set to 7 when it sticks, then counted down. Only a
+    /// player picking it up would feel it.
+    pub(super) shake: i32,
+}
+
+impl Arrow {
+    /// `AbstractArrow.readAdditionalSaveData`, for what the engine keeps.
+    /// A block state that doesn't read leaves `lastState` null, as the
+    /// game's lenient read does.
+    pub(super) fn read(level: &Level, tag: &snbt::Tag) -> Arrow {
+        let num = |key: &str| tag.get(key).and_then(|t| t.number());
+        Arrow {
+            in_ground: num("inGround").is_some_and(|v| v != 0.0),
+            last_state: tag.get("inBlockState").and_then(|t| read_state(level, t)),
+            life: num("life").map_or(0, |v| v as i16 as i32),
+            shake: num("shake").map_or(0, |v| v as i8 as u8 as i32),
+        }
+    }
+}
+
+/// A block state as 26.3's `BlockState.CODEC` writes it: the block's id
+/// alone for its default state, else `{id, properties}`.
+pub(super) fn saved_state(level: &Level, state: StateId) -> snbt::Tag {
+    let text = level.reg.format(state);
+    let id = text.split('[').next().unwrap_or(&text).to_string();
+    let default = level.reg.parse(&id).ok();
+    if default == Some(state) {
+        return snbt::Tag::String(id);
+    }
+    let props: BTreeMap<String, snbt::Tag> = text
+        .split_once('[')
+        .map(|(_, p)| p.trim_end_matches(']'))
+        .unwrap_or("")
+        .split(',')
+        .filter_map(|p| p.split_once('='))
+        .map(|(k, v)| (k.to_string(), snbt::Tag::String(v.to_string())))
+        .collect();
+    snbt::Tag::Compound(BTreeMap::from([
+        ("id".to_string(), snbt::Tag::String(id)),
+        ("properties".to_string(), snbt::Tag::Compound(props)),
+    ]))
+}
+
+/// `BlockState.CODEC` read back: an id, or `{id, properties}`.
+fn read_state(level: &Level, tag: &snbt::Tag) -> Option<StateId> {
+    let (id, props) = match tag {
+        snbt::Tag::String(id) => (id.as_str(), None),
+        t => (t.get("id")?.string()?, t.get("properties")),
+    };
+    let props: Vec<String> = props
+        .and_then(|p| p.compound())
+        .into_iter()
+        .flatten()
+        .filter_map(|(k, v)| Some(format!("{k}={}", v.string()?)))
+        .collect();
+    let text = if props.is_empty() { id.to_string() } else { format!("{id}[{}]", props.join(",")) };
+    // Properties that don't read leave the block's default state.
+    level.reg.parse(&text).or_else(|_| level.reg.parse(id)).ok()
 }
 
 /// What a ray met: where, which block, and the face it crossed.
@@ -41,6 +102,26 @@ fn arrow(e: &mut Entity) -> &mut Arrow {
 
 /// `AbstractArrow.tick`.
 pub fn tick(level: &mut Level, e: &mut Entity) {
+    // An arrow inside a block's collision box is in the ground.
+    let p = e.block_position();
+    let state = level.get(p);
+    if !level.is_air(state) {
+        let local = [e.pos.x - p.x as f64, e.pos.y - p.y as f64, e.pos.z - p.z as f64];
+        if collision_shape(level, p, state).iter().any(|b| (0..3).all(|a| b.min[a] <= local[a] && local[a] < b.max[a]))
+        {
+            e.motion = Vec3::ZERO;
+            let first = e.first_tick;
+            let a = arrow(e);
+            if !a.in_ground && !first && a.shake <= 0 {
+                a.shake = 7;
+            }
+            a.in_ground = true;
+        }
+    }
+    let a = arrow(e);
+    if a.shake > 0 {
+        a.shake -= 1;
+    }
     base_tick(level, e);
     if e.was_touching_water {
         level.unsupported("an arrow in water");
@@ -81,6 +162,7 @@ pub fn tick(level: &mut Level, e: &mut Entity) {
             let a = arrow(e);
             a.in_ground = true;
             a.last_state = Some(state);
+            a.shake = 7;
             match level.kind(state) {
                 Kind::Target => plain::target_hit(level, h.pos, state, [h.at.x, h.at.y, h.at.z], h.face, true),
                 Kind::Bell | Kind::Tnt => level.unsupported("an arrow hitting a bell or TNT"),

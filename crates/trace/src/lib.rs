@@ -8,6 +8,7 @@
 
 pub mod diff;
 pub mod fixture;
+pub mod snbt;
 pub mod state;
 pub mod trace;
 pub mod transform;
