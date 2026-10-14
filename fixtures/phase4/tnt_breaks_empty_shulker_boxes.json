@@ -1,0 +1,51 @@
+{
+  "name": "tnt_breaks_empty_shulker_boxes",
+  "description": "TNT breaks two empty shulker boxes on an obsidian floor. Their loot copies what the box holds into its item, and an empty box gives the default, so each drops a plain shulker box item.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "tnt",
+    "explosion",
+    "loot"
+  ],
+  "entities": true,
+  "palette": {
+    "#": "obsidian",
+    "s": "shulker_box[facing=up]",
+    "r": "red_shulker_box[facing=north]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".....",
+      ".....",
+      ".s.r.",
+      ".....",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        2.5,
+        1.0,
+        2.5
+      ],
+      "nbt": "{fuse:10}"
+    }
+  ]
+}

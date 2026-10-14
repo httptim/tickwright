@@ -181,6 +181,11 @@ impl BlockEntity {
     }
 }
 
+/// What the shulker box at `pos` holds, if it holds anything.
+pub fn shulker_box_holds_items(level: &Level, pos: Pos) -> bool {
+    matches!(level.block_entities.get(&pos), Some(BlockEntity::ShulkerBox(items)) if items.iter().any(|s| !s.is_empty()))
+}
+
 pub fn has_block_entity(kind: Kind) -> bool {
     matches!(
         kind,

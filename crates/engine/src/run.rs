@@ -201,7 +201,14 @@ pub(crate) fn place(fixture: &ResolvedFixture, rules: Rules) -> Result<Level> {
         let pos = Pos::new(ox + c.pos[0], oy + c.pos[1], oz + c.pos[2]);
         if !matches!(
             level.kind_at(pos),
-            Kind::Chest | Kind::Barrel | Kind::Hopper | Kind::Dropper | Kind::Dispenser | Kind::Crafter | Kind::Shelf
+            Kind::Chest
+                | Kind::Barrel
+                | Kind::Hopper
+                | Kind::Dropper
+                | Kind::Dispenser
+                | Kind::Crafter
+                | Kind::Shelf
+                | Kind::ShulkerBox
         ) {
             bail!("{}: no container at {:?}", fixture.id, c.pos);
         }
@@ -317,6 +324,21 @@ mod tests {
         let fixture = source.resolve(Transform::IDENTITY).unwrap();
         let err = super::run(&fixture, "26.3").unwrap_err().to_string();
         assert!(err.contains("minecraft:furnace is not supported"), "{err}");
+    }
+
+    #[test]
+    fn a_full_shulker_box_is_refused_when_it_drops() {
+        let source = FixtureSource::from_json(
+            r#"{"name": "t", "ticks": 20, "entities": true,
+                "palette": {"o": "obsidian", "s": "shulker_box[facing=up]"},
+                "layers": [["ooo"], ["s.."]],
+                "containers": [{"pos": [0, 1, 0], "items": [{"slot": 0, "id": "stone", "count": 1}]}],
+                "stimuli": [{"tick": 1, "action": "summon", "entity": "tnt", "at": [1.5, 1.0, 0.5], "nbt": "{fuse:5}"}]}"#,
+        )
+        .unwrap();
+        let fixture = source.resolve(Transform::IDENTITY).unwrap();
+        let u = super::run_partial(&fixture, "26.3").unwrap().unsupported.unwrap();
+        assert_eq!(u.message, "dropping minecraft:shulker_box with what it holds is not simulated by the engine yet");
     }
 
     #[test]
