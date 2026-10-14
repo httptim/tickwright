@@ -577,17 +577,17 @@ pub fn dropper_neighbor_changed(level: &mut Level, pos: Pos, state: StateId) {
     }
 }
 
-/// `DropperBlock.dispenseFrom`. With several filled slots the game picks
-/// one at random; this takes the first, so fixtures fill only one.
+/// `DropperBlock.dispenseFrom`: one item from a slot picked at random, into
+/// the container in front, or else out into the world.
 pub fn dropper_tick(level: &mut Level, pos: Pos, state: StateId) {
-    let Some(slot) = items(level, pos).and_then(|i| i.iter().position(|s| !s.is_empty())) else {
+    // An empty dropper only clicks.
+    let Some(slot) = super::dispenser::random_slot(level, pos) else {
         return;
     };
     let stack = get_item(level, pos, slot);
     let facing = level.dir(state, "facing");
     let remaining = match container_at(level, pos.offset(facing)) {
-        // Dropped as an item entity, which is not simulated.
-        None => Stack { count: stack.count - 1, ..stack.clone() },
+        None => super::dispenser::eject(level, pos, state, stack),
         Some(dest) => {
             let result = add_item(level, Some(Inv::Block(pos)), dest, Stack { count: 1, ..stack.clone() });
             if result.is_empty() { Stack { count: stack.count - 1, ..stack.clone() } } else { stack.clone() }

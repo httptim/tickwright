@@ -3,8 +3,8 @@
 //! A rising edge schedules a tick 4 game ticks later. The tick looks the
 //! 3x3 grid up in the game's crafting recipes; on a match it lights up for 6
 //! ticks, puts the result and then any leftovers (empty buckets) into the
-//! container it faces, and uses up one item from every slot. With nothing in
-//! front the items would drop as entities, which are not simulated.
+//! container it faces, and uses up one item from every slot. What finds no
+//! room flies out as an item entity, in levels that simulate entities.
 //! Disabled slots are not modelled: every slot accepts items.
 
 use crate::items::{self, CraftingInput};
@@ -116,31 +116,35 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
 }
 
 /// `dispenseItem`: into the container in front, one at a time into another
-/// crafter or when the stack is too big for the container, whole otherwise.
+/// crafter or when the stack is too big for the container, whole otherwise;
+/// what is left flies out as an item.
 fn dispense_item(level: &mut Level, pos: Pos, state: StateId, stack: Stack) {
-    let Some(dest) = container::container_at(level, pos.offset(front(level, state))) else {
-        return; // dropped as an item entity
-    };
+    let facing = front(level, state);
     let mut stack = stack;
-    let one_by_one = matches!(dest, container::Inv::Block(d) if level.kind_at(d) == super::Kind::Crafter)
-        || stack.count > stack.max_stack_size().min(99);
-    if one_by_one {
-        while !stack.is_empty() {
-            let left = container::add_item(level, Some(pos.into()), dest, Stack::new(&stack.id, 1));
-            if !left.is_empty() {
-                break;
+    if let Some(dest) = container::container_at(level, pos.offset(facing)) {
+        let one_by_one = matches!(dest, container::Inv::Block(d) if level.kind_at(d) == super::Kind::Crafter)
+            || stack.count > stack.max_stack_size().min(99);
+        if one_by_one {
+            while !stack.is_empty() {
+                let left = container::add_item(level, Some(pos.into()), dest, Stack::new(&stack.id, 1));
+                if !left.is_empty() {
+                    break;
+                }
+                stack.count -= 1;
             }
-            stack.count -= 1;
-        }
-    } else {
-        while !stack.is_empty() {
-            let n = stack.count;
-            stack = container::add_item(level, Some(pos.into()), dest, stack);
-            if stack.count == n {
-                break;
+        } else {
+            while !stack.is_empty() {
+                let n = stack.count;
+                stack = container::add_item(level, Some(pos.into()), dest, stack);
+                if stack.count == n {
+                    break;
+                }
             }
         }
     }
+    // `spawnItem` from 0.7 of a block out of the front face; the sound and
+    // the recipe advancement change nothing.
+    super::dispenser::spawn_item(level, stack, facing, super::dispenser::dispense_position(pos, facing));
 }
 
 /// `serverTick`: the crafting light goes out 6 ticks after a craft.
