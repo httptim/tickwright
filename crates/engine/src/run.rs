@@ -337,4 +337,27 @@ mod tests {
         let err = super::run(&fixture, "26.3").unwrap_err().to_string();
         assert_eq!(err, format!("{}: {}", fixture.id, u.message));
     }
+
+    #[test]
+    fn a_filled_container_removed_among_entities_is_refused() {
+        // The game spills a container's items as entities when it goes
+        // (`preRemoveSideEffects`); an empty one goes quietly.
+        let json = |items: &str| {
+            format!(
+                r###"{{"name": "t", "ticks": 4, "entities": true,
+                    "palette": {{"#": "stone", "c": "chest[facing=north,type=single,waterlogged=false]"}},
+                    "layers": [["##"], ["c."]],
+                    "stimuli": [{{"tick": 2, "action": "set", "pos": [0, 1, 0], "state": "air"}}],
+                    "containers": [{{"pos": [0, 1, 0], "items": [{items}]}}]}}"###
+            )
+        };
+        let fixture = FixtureSource::from_json(&json(r#"{"slot": 0, "id": "stone", "count": 3}"#)).unwrap();
+        let fixture = fixture.resolve(Transform::IDENTITY).unwrap();
+        let trace = super::run_partial(&fixture, "26.3").unwrap();
+        let u = trace.unsupported.as_ref().unwrap();
+        assert_eq!(u.tick, 2);
+        assert_eq!(u.message, "removing minecraft:chest with items in it is not simulated by the engine yet");
+        let fixture = FixtureSource::from_json(&json("")).unwrap().resolve(Transform::IDENTITY).unwrap();
+        assert!(super::run(&fixture, "26.3").is_ok());
+    }
 }

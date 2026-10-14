@@ -9,7 +9,7 @@ picking the work up.
 
 - The engine targets Java Edition 26.3. Every behaviour is checked against
   traces captured from the real 26.3 server (`traces/26.3`).
-- There are 245 fixtures (`fixtures/`) and 2046 traces: one per fixture
+- There are 250 fixtures (`fixtures/`) and 2086 traces: one per fixture
   and orientation, and 100 more seeds of `phase4/tnt_cannon`. Every trace
   matches at the strictest level ("order"), and no fixture is refused.
   The fixtures listed in `crates/engine/tests/expected.txt` must keep
@@ -22,11 +22,12 @@ picking the work up.
     daylight detectors, lecterns, tripwire, and sculk and calibrated
     sculk sensors.
   - **Containers:** chests, barrels, hoppers, droppers, dispensers,
-    crafters and shelves.
+    crafters and shelves. Droppers and dispensers pick a filled slot with
+    the level's random source, as the game does.
   - **Rails:** plain, powered, activator and detector rails.
   - **Fluids:** water.
   - **Entities (phase 4):**
-    - items
+    - items, including those droppers, dispensers and crafters throw out
     - falling blocks
     - primed TNT and explosions
     - minecarts (plain, furnace, chest and hopper)
@@ -179,5 +180,15 @@ differs from the committed traces. That keeps them honest.
   index. Entities a block spawns meanwhile, such as TNT a pressure plate
   lights, go on the end of the list. Don't read `entities.last()` for
   the entity a block feels.
+- **Item entities only exist where entities are simulated:** a fixture
+  with `"entities": true` (or a session built from one). Elsewhere a
+  dropper firing into the air, or a block broken with drops, loses the
+  item, as before. A dropper or dispenser picks its slot with the level's
+  random source in both, but the harness seeds that source only for
+  entity fixtures, so a build that fires one with several filled slots
+  can only be captured as an entity fixture.
 - **Some refused cases are close to supported:** an arrow is refused once
-  the block it is stuck in goes. The full list is in the code.
+  the block it is stuck in goes, and in an entity run a container that
+  still holds items (or a lectern with its book) is refused when it is
+  removed, since the game spills them as item entities
+  (`preRemoveSideEffects`). The full list is in the code.

@@ -221,6 +221,17 @@ pub fn new_block_entity(_level: &Level, _pos: Pos, state: StateId) -> Option<Blo
     }
 }
 
+/// Whether `BlockEntity.preRemoveSideEffects` would spill items for the
+/// block entity at `pos`, whose block was `state`: a container with
+/// anything in it (shulker boxes keep theirs), or a lectern with a book.
+pub fn drops_items_when_removed(level: &Level, pos: Pos, state: StateId) -> bool {
+    match level.kind(state) {
+        Kind::ShulkerBox => false,
+        Kind::Lectern => level.flag(state, "has_book"),
+        _ => container::items(level, pos).is_some_and(|i| i.iter().any(|s| !s.is_empty())),
+    }
+}
+
 pub fn tick_block_entity(level: &mut Level, pos: Pos) {
     match level.block_entities.get(&pos) {
         Some(BlockEntity::Piston(_)) => piston::tick_moving(level, pos),
