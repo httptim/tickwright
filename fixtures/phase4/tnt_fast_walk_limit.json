@@ -1,0 +1,280 @@
+{
+  "name": "tnt_fast_walk_limit",
+  "description": "Primed TNT moving 9.9 blocks east and 9.5 south in one tick, as a large cannon throws it, on four obsidian floors. Its move is felt one axis at a time, the larger first: the east leg takes eleven steps of the walk, leaving the south leg the rest of sixteen (checkInsideBlocks' limit), then the blocks where it ends are felt anyway. A cobweb on the east leg (bottom floor) and one early on the south leg (second) catch the TNT, which crawls on its next move; one late on the south leg (third) is past the limit and missed, so the TNT flies on to the wall; one where the TNT ends (top) is felt again.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "tnt",
+    "cobweb"
+  ],
+  "palette": {
+    "O": "obsidian",
+    "W": "cobweb"
+  },
+  "layers": [
+    [
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO"
+    ],
+    [
+      "........W....O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      "OOOOOOOOOOOOOO"
+    ],
+    [
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      ".............."
+    ],
+    [
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO"
+    ],
+    [
+      ".............O",
+      ".............O",
+      ".............O",
+      "..........W..O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      "OOOOOOOOOOOOOO"
+    ],
+    [
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      ".............."
+    ],
+    [
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO"
+    ],
+    [
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      "..........W..O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      "OOOOOOOOOOOOOO"
+    ],
+    [
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      ".............."
+    ],
+    [
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO"
+    ],
+    [
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      "..........W..O",
+      ".............O",
+      ".............O",
+      "OOOOOOOOOOOOOO"
+    ],
+    [
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      "..............",
+      ".............."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        0.5,
+        1.0,
+        0.5
+      ],
+      "motion": [
+        9.9,
+        0.0,
+        9.5
+      ],
+      "nbt": "{fuse:200}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        0.5,
+        4.0,
+        0.5
+      ],
+      "motion": [
+        9.9,
+        0.0,
+        9.5
+      ],
+      "nbt": "{fuse:200}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        0.5,
+        7.0,
+        0.5
+      ],
+      "motion": [
+        9.9,
+        0.0,
+        9.5
+      ],
+      "nbt": "{fuse:200}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        0.5,
+        10.0,
+        0.5
+      ],
+      "motion": [
+        9.9,
+        0.0,
+        9.5
+      ],
+      "nbt": "{fuse:200}"
+    }
+  ],
+  "entities": true
+}

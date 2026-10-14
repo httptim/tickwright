@@ -36,7 +36,7 @@ pub(crate) mod plain;
 pub(crate) mod rail;
 mod repeater;
 mod torch;
-mod tripwire;
+pub(crate) mod tripwire;
 pub mod water;
 mod wire;
 
@@ -530,6 +530,7 @@ pub fn update_shape(
     neighbor: Pos,
     neighbor_state: StateId,
 ) -> StateId {
+    water::tick_if_waterlogged(level, pos, state);
     match level.kind(state) {
         Kind::RedstoneWire => wire::update_shape(level, pos, state, dir, neighbor, neighbor_state),
         Kind::Repeater => repeater::update_shape(level, pos, state, dir, neighbor, neighbor_state),
@@ -644,6 +645,10 @@ pub fn entity_inside(level: &mut Level, k: usize, pos: Pos, state: StateId, prec
         Kind::Button => button::entity_inside(level, pos, state),
         Kind::Fire => fire::entity_inside(level, k),
         Kind::Honey => plain::honey_entity_inside(level, k, pos),
+        // `PowderSnowBlock`: entities sink into it and stick, and one that
+        // has fallen more than 2.5 blocks meets a shape of its own. The
+        // engine tracks no fall distance.
+        Kind::PowderSnow => level.unsupported("an entity in powder snow"),
         _ => {}
     }
 }

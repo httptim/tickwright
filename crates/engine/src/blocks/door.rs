@@ -19,8 +19,9 @@ pub fn trapdoor_neighbor_changed(level: &mut Level, pos: Pos, state: StateId) {
             play_sound(level);
             level.game_event(open_event(powered), pos);
         }
-        let state = level.with_bool(state, "open", powered);
-        level.set_block(pos, level.with_bool(state, "powered", powered), flags::CLIENTS);
+        let state = level.with_bool(level.with_bool(state, "open", powered), "powered", powered);
+        level.set_block(pos, state, flags::CLIENTS);
+        super::water::tick_if_waterlogged(level, pos, state);
     }
 }
 
@@ -37,7 +38,9 @@ fn open_event(open: bool) -> GameEvent {
 pub fn trapdoor_use(level: &mut Level, pos: Pos, state: StateId) {
     if opens_by_hand(level, state) {
         let open = !level.flag(state, "open");
-        level.set_block(pos, level.with_bool(state, "open", open), flags::CLIENTS);
+        let state = level.with_bool(state, "open", open);
+        level.set_block(pos, state, flags::CLIENTS);
+        super::water::tick_if_waterlogged(level, pos, state);
         play_sound(level);
         level.game_event(open_event(open), pos);
     }

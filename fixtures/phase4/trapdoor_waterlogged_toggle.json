@@ -1,0 +1,113 @@
+{
+  "name": "trapdoor_waterlogged_toggle",
+  "description": "Water held in a waterlogged block flows once the block changes. A closed waterlogged trapdoor over an air pocket is opened by hand and, five ticks later, its water falls into the pocket; closed again, the falling water dries up. A second one opens when a lever powers the wall beside it, which reaches it only as a neighbor update. A waterlogged slab walled in on every side has the wall east of it broken, and its water flows into the gap (updateShape).",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "water",
+    "trapdoor"
+  ],
+  "palette": {
+    "#": "stone",
+    "T": "oak_trapdoor[facing=north,half=bottom,open=false,powered=false,waterlogged=true]",
+    "L": "lever[face=wall,facing=east,powered=false]",
+    "S": "stone_slab[type=bottom,waterlogged=true]"
+  },
+  "layers": [
+    [
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      "#####",
+      "#.###",
+      "#####",
+      "#####",
+      "#.###",
+      "#####",
+      "#####",
+      "#S###",
+      "#####"
+    ],
+    [
+      "#####",
+      "#T###",
+      "#####",
+      "#####",
+      "#T#L#",
+      "#####",
+      "#####",
+      "#####",
+      "#####"
+    ],
+    [
+      ".....",
+      ".....",
+      ".....",
+      ".....",
+      ".....",
+      ".....",
+      ".....",
+      ".....",
+      "....."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 5,
+      "action": "use",
+      "pos": [
+        1,
+        2,
+        1
+      ]
+    },
+    {
+      "tick": 5,
+      "action": "use",
+      "pos": [
+        3,
+        2,
+        4
+      ]
+    },
+    {
+      "tick": 5,
+      "action": "destroy",
+      "pos": [
+        2,
+        1,
+        7
+      ]
+    },
+    {
+      "tick": 20,
+      "action": "use",
+      "pos": [
+        1,
+        2,
+        1
+      ]
+    },
+    {
+      "tick": 20,
+      "action": "use",
+      "pos": [
+        3,
+        2,
+        4
+      ]
+    }
+  ]
+}

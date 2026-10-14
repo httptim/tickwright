@@ -1,0 +1,204 @@
+{
+  "name": "tnt_fast_walk_limit_rising",
+  "description": "Primed TNT moving 9.9 blocks east and 8 up in one tick, under an obsidian ceiling. The vertical leg of a move is felt first and takes nine of checkInsideBlocks' sixteen steps, leaving the east leg seven, and then the blocks where the TNT ends are felt: a cobweb four blocks along catches one TNT, and one eight blocks along, between the limit and the end, is missed by another. TNT moving east alone along the floor is caught by a cobweb eight blocks along, which its east leg reaches within the limit.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "tnt",
+    "cobweb"
+  ],
+  "palette": {
+    "O": "obsidian",
+    "W": "cobweb"
+  },
+  "layers": [
+    [
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO"
+    ],
+    [
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      "........W....O",
+      ".............O"
+    ],
+    [
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O"
+    ],
+    [
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O"
+    ],
+    [
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O"
+    ],
+    [
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O"
+    ],
+    [
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O"
+    ],
+    [
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O"
+    ],
+    [
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O"
+    ],
+    [
+      ".............O",
+      "....W........O",
+      ".............O",
+      ".............O",
+      "........W....O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O"
+    ],
+    [
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O",
+      ".............O"
+    ],
+    [
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO",
+      "OOOOOOOOOOOOOO"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        0.5,
+        1.0,
+        1.5
+      ],
+      "motion": [
+        9.9,
+        8.0,
+        0.0
+      ],
+      "nbt": "{fuse:200}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        0.5,
+        1.0,
+        4.5
+      ],
+      "motion": [
+        9.9,
+        8.0,
+        0.0
+      ],
+      "nbt": "{fuse:200}"
+    },
+    {
+      "tick": 2,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        0.5,
+        1.0,
+        7.5
+      ],
+      "motion": [
+        9.9,
+        0.0,
+        0.0
+      ],
+      "nbt": "{fuse:200}"
+    }
+  ],
+  "entities": true
+}

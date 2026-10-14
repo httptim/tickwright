@@ -1,0 +1,113 @@
+{
+  "name": "tripwire_item_falls_through",
+  "description": "String hangs in the air between two hooks on pillars. Items dropped fast from above pass through its thin band within a tick and end every tick clear of it. The first presses the string, which holds the hooks on for ten ticks; the second passes on the tick the string lets go, while its one-tick recheck is waiting, and presses nothing; the third, ten ticks later, presses it again.",
+  "ticks": 50,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "tripwire"
+  ],
+  "palette": {
+    "#": "stone",
+    "h": "tripwire_hook[attached=false,facing=east,powered=false]",
+    "H": "tripwire_hook[attached=false,facing=west,powered=false]",
+    "s": "tripwire[attached=false,disarmed=false,east=true,north=false,powered=false,south=false,west=true]"
+  },
+  "layers": [
+    [
+      "#######"
+    ],
+    [
+      "#.....#"
+    ],
+    [
+      "#.....#"
+    ],
+    [
+      "#.....#"
+    ],
+    [
+      "#hs.sH#"
+    ],
+    [
+      "......."
+    ],
+    [
+      "......."
+    ],
+    [
+      "......."
+    ],
+    [
+      "......."
+    ],
+    [
+      "......."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 1,
+      "action": "set",
+      "pos": [
+        3,
+        4,
+        0
+      ],
+      "state": "tripwire[attached=false,disarmed=false,east=true,north=false,powered=false,south=false,west=true]"
+    },
+    {
+      "tick": 3,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        3.5,
+        8.5,
+        0.5
+      ],
+      "motion": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 13,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        3.5,
+        8.5,
+        0.5
+      ],
+      "motion": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "nbt": "{Item:{id:\"minecraft:dirt\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 23,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        3.5,
+        8.5,
+        0.5
+      ],
+      "motion": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "nbt": "{Item:{id:\"minecraft:cobblestone\",count:1},PickupDelay:40}"
+    }
+  ],
+  "entities": true
+}

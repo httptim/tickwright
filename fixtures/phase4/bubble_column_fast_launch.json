@@ -1,0 +1,170 @@
+{
+  "name": "bubble_column_fast_launch",
+  "description": "Seven-block bubble column elevators. An item and primed TNT shot up from the bottom of soul sand columns at 2.5 blocks a tick, and an item thrown down into a magma column at 2.5 blocks a tick, pass several column blocks in one move. Each block passed counts (isPrecise for a move of more than a block): up, every block below the top caps the speed at 0.7, and the top one, with air above, adds 0.1; down, the top caps it at -0.9 and the rest at -0.3.",
+  "ticks": 40,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "bubble_column",
+    "tnt"
+  ],
+  "palette": {
+    "#": "stone",
+    "A": "soul_sand",
+    "M": "magma_block",
+    "U": "bubble_column[drag=false]",
+    "D": "bubble_column[drag=true]"
+  },
+  "layers": [
+    [
+      "#########",
+      "#A##A##M#",
+      "#########"
+    ],
+    [
+      "#########",
+      "#U##U##D#",
+      "#########"
+    ],
+    [
+      "#########",
+      "#U##U##D#",
+      "#########"
+    ],
+    [
+      "#########",
+      "#U##U##D#",
+      "#########"
+    ],
+    [
+      "#########",
+      "#U##U##D#",
+      "#########"
+    ],
+    [
+      "#########",
+      "#U##U##D#",
+      "#########"
+    ],
+    [
+      "#########",
+      "#U##U##D#",
+      "#########"
+    ],
+    [
+      "#########",
+      "#U##U##D#",
+      "#########"
+    ],
+    [
+      ".........",
+      ".........",
+      "........."
+    ],
+    [
+      ".........",
+      ".........",
+      "........."
+    ],
+    [
+      ".........",
+      ".........",
+      "........."
+    ],
+    [
+      ".........",
+      ".........",
+      "........."
+    ],
+    [
+      ".........",
+      ".........",
+      "........."
+    ],
+    [
+      ".........",
+      ".........",
+      "........."
+    ],
+    [
+      ".........",
+      ".........",
+      "........."
+    ],
+    [
+      ".........",
+      ".........",
+      "........."
+    ],
+    [
+      ".........",
+      ".........",
+      "........."
+    ],
+    [
+      ".........",
+      ".........",
+      "........."
+    ],
+    [
+      ".........",
+      ".........",
+      "........."
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 3,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.5,
+        1.0,
+        1.5
+      ],
+      "motion": [
+        0.0,
+        2.5,
+        0.0
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 3,
+      "action": "summon",
+      "entity": "tnt",
+      "at": [
+        4.5,
+        1.0,
+        1.5
+      ],
+      "motion": [
+        0.0,
+        2.5,
+        0.0
+      ],
+      "nbt": "{fuse:200}"
+    },
+    {
+      "tick": 3,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        7.5,
+        11.0,
+        1.5
+      ],
+      "motion": [
+        0.0,
+        -2.5,
+        0.0
+      ],
+      "nbt": "{Item:{id:\"minecraft:dirt\",count:1},PickupDelay:40}"
+    }
+  ],
+  "entities": true
+}

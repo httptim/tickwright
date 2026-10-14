@@ -137,6 +137,16 @@ mod tests {
     }
 
     #[test]
+    fn plant_stems_are_not_logs() {
+        let rules = Rules::for_version("26.3").unwrap();
+        let kind = |n: &str| rules.kind(rules.reg.block_id(n).unwrap());
+        assert_eq!(kind("crimson_stem"), Kind::Log);
+        for plant in ["pumpkin_stem", "attached_melon_stem", "big_dripleaf_stem"] {
+            assert_eq!(kind(plant), Kind::Other, "{plant}");
+        }
+    }
+
+    #[test]
     fn every_listed_version_resolves() {
         for v in versions() {
             Rules::for_version(v).unwrap();

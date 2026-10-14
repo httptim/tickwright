@@ -1,0 +1,70 @@
+{
+  "name": "piston_push_item_no_physics",
+  "description": "Two pistons side by side fire in the same tick at an item straddling both lanes. The item lies partly inside an open trapdoor standing against the near side of the second lane, so on its own tick it moves without physics, stepping east toward the nearest open side. Without physics Entity.move skips the 0.51 a tick that limits piston pushes, so the first head, the second head and the trapdoor pushed ahead of it all move it east, about a block in all.",
+  "ticks": 30,
+  "levels": [
+    "state",
+    "phase",
+    "order"
+  ],
+  "tags": [
+    "entities",
+    "piston",
+    "trapdoor"
+  ],
+  "palette": {
+    "#": "stone",
+    "P": "piston[extended=false,facing=east]",
+    "T": "oak_trapdoor[facing=east,half=bottom,open=true,powered=false,waterlogged=false]"
+  },
+  "layers": [
+    [
+      "######",
+      "######",
+      "######",
+      "######",
+      "######"
+    ],
+    [
+      "......",
+      ".P....",
+      ".PT...",
+      "......",
+      "......"
+    ]
+  ],
+  "stimuli": [
+    {
+      "tick": 10,
+      "action": "summon",
+      "entity": "item",
+      "at": [
+        1.95,
+        1.0,
+        2.1
+      ],
+      "nbt": "{Item:{id:\"minecraft:stone\",count:1},PickupDelay:40}"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        0,
+        1,
+        1
+      ],
+      "state": "redstone_block"
+    },
+    {
+      "tick": 10,
+      "action": "set",
+      "pos": [
+        1,
+        1,
+        3
+      ],
+      "state": "redstone_block"
+    }
+  ],
+  "entities": true
+}

@@ -68,6 +68,15 @@ impl FluidState {
     }
 }
 
+/// What every waterloggable block the engine has does in `updateShape`,
+/// and a trapdoor also when it opens or closes: if it holds water, it
+/// schedules a water tick, so the water can flow where the change lets it.
+pub(super) fn tick_if_waterlogged(level: &mut Level, pos: Pos, state: StateId) {
+    if is_container(level, state) && level.flag(state, "waterlogged") {
+        level.schedule_fluid_tick(pos, Fluid::Water, TICK_DELAY);
+    }
+}
+
 /// Blocks that implement `SimpleWaterloggedBlock` (a `LiquidBlockContainer`).
 pub(super) fn is_container(level: &Level, state: StateId) -> bool {
     match level.kind(state) {
