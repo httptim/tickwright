@@ -90,6 +90,11 @@ pub fn tick(level: &mut Level, pos: Pos, state: StateId) {
         return;
     };
     let stack = container::get_item(level, pos, slot);
+    // A hopper can bring in an item whose behaviour the engine lacks.
+    if !supported_item(&stack.id) {
+        level.unsupported(format!("dispensing {}", stack.id));
+        return;
+    }
     let name = stack.id.strip_prefix("minecraft:").unwrap_or(&stack.id).to_string();
     let result = match name.as_str() {
         "water_bucket" | "powder_snow_bucket" => dispense_full_bucket(level, pos, state, slot, stack),

@@ -122,7 +122,10 @@ After changing fixtures or the harness, run the workflow by hand with
   `place`: right-click a `face` of the block holding an `item`, as a player
   facing `look` and looking `pitch` degrees down (optionally at a `hit`
   point in sixteenths, or sneaking), so the block's own placement rules
-  choose its state.
+  choose its state. A `set` or `destroy` with `"discard_contents": true` removes a
+  block entity the way `/setblock` and the editor do: a container's items,
+  a lectern's book and a jukebox's disc go with the block rather than
+  spilling out as items.
 - Fixtures are placed at `[0, 100, 0]` unless `origin` says otherwise.
 - Every fixture is captured in all eight orientations unless `transforms`
   lists fewer. A fixture with `"entities": true` runs with the level random

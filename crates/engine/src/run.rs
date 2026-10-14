@@ -254,6 +254,11 @@ pub fn click(pos: Pos, p: &tickwright_trace::fixture::PlaceInput) -> Result<bloc
     })
 }
 
+/// The update flag a stimulus that discards contents adds.
+fn discard(s: &tickwright_trace::fixture::Stimulus) -> i32 {
+    if s.discard_contents { flags::SKIP_BLOCK_ENTITY_SIDEEFFECTS } else { 0 }
+}
+
 /// Apply the stimuli for game tick `t`, before the world tick runs.
 pub(crate) fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32) -> Result<()> {
     let [ox, oy, oz] = fixture.origin;
@@ -271,10 +276,10 @@ pub(crate) fn apply_stimuli(level: &mut Level, fixture: &ResolvedFixture, t: u32
             Action::Set => {
                 let text = s.state.as_deref().context("set stimulus without a state")?;
                 let how = if s.quiet { flags::CLIENTS | flags::KNOWN_SHAPE } else { flags::ALL };
-                level.set_block(pos, level.reg.parse(text)?, how);
+                level.set_block(pos, level.reg.parse(text)?, how | discard(s));
             }
             Action::Destroy => {
-                level.destroy_block(pos, false, crate::level::MAX_RECURSION);
+                level.destroy_block_with(pos, false, discard(s), crate::level::MAX_RECURSION);
             }
             Action::Place => {
                 let p = s.place.as_ref().context("place stimulus without item, face and look")?;
@@ -359,5 +364,30 @@ mod tests {
         assert_eq!(u.message, "removing minecraft:chest with items in it is not simulated by the engine yet");
         let fixture = FixtureSource::from_json(&json("")).unwrap().resolve(Transform::IDENTITY).unwrap();
         assert!(super::run(&fixture, "26.3").is_ok());
+        // Removed as `/setblock` removes it, it spills nothing.
+        let fixture = FixtureSource::from_json(
+            &json(r#"{"slot": 0, "id": "stone", "count": 3}"#)
+                .replace(r#""state": "air"}"#, r#""state": "air", "discard_contents": true}"#),
+        )
+        .unwrap();
+        assert!(super::run(&fixture.resolve(Transform::IDENTITY).unwrap(), "26.3").is_ok());
+    }
+
+    #[test]
+    fn an_item_a_dispenser_cannot_dispense_is_refused_when_fired() {
+        // A hopper brings TNT into the dispenser; firing it would prime TNT.
+        let source = FixtureSource::from_json(
+            r###"{"name": "t", "ticks": 30,
+                "palette": {"#": "stone", "h": "hopper[enabled=true,facing=down]",
+                    "d": "dispenser[facing=east,triggered=false]"},
+                "layers": [["#."], ["d."], ["h."]],
+                "stimuli": [{"tick": 20, "action": "set", "pos": [1, 1, 0], "state": "redstone_block"}],
+                "containers": [{"pos": [0, 2, 0], "items": [{"slot": 0, "id": "tnt", "count": 1}]}]}"###,
+        )
+        .unwrap();
+        let trace = super::run_partial(&source.resolve(Transform::IDENTITY).unwrap(), "26.3").unwrap();
+        let u = trace.unsupported.as_ref().unwrap();
+        assert_eq!(u.tick, 23);
+        assert_eq!(u.message, "dispensing minecraft:tnt is not simulated by the engine yet");
     }
 }
