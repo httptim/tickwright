@@ -9,7 +9,7 @@ picking the work up.
 
 - The engine targets Java Edition 26.3. Every behaviour is checked against
   traces captured from the real 26.3 server (`traces/26.3`).
-- There are 254 fixtures (`fixtures/`) and 2118 traces: one per fixture
+- There are 265 fixtures (`fixtures/`) and 2199 traces: one per fixture
   and orientation, and 100 more seeds of `phase4/tnt_cannon`. Every trace
   matches at the strictest level ("order"), and no fixture is refused.
   The fixtures listed in `crates/engine/tests/expected.txt` must keep
@@ -169,11 +169,23 @@ differs from the committed traces. That keeps them honest.
 - **Blocks an entity passes** feel it by the game's own walk
   (`entity::for_each_block_between`, a port of
   `forEachBlockIntersectedBetween`), one axis at a time for the entity's
-  own moves. Three paths follow the game's code but no capture tells them
-  apart yet: a piston pushing an item without physics past the 0.51
-  limit, a moving piston that fills its block counting as full for an
-  item stuck next to it, and block effects on a piston push the limit cut
-  to nothing.
+  own moves, at most 16 steps of it (`tnt_fast_walk_limit`). A block is
+  felt only if the box sweeps through its `getEntityInsideCollisionShape`
+  (`entity::moved_into`): the whole block for everything the engine
+  simulates but tripwire, whose thin string is traced
+  (`tripwire_item_falls_through`). A block that is missed doesn't count
+  as visited. Captures also prove the paths that used to follow the
+  game's code unproven: a minecart feels the blocks twice on every piston
+  push, even one the 0.51 limit cut to nothing, and other entities once
+  (`piston_push_two_pistons_bubble_column`); an item without physics is
+  pushed past the limit (`piston_push_item_no_physics`); and a moving
+  piston that fills its block counts as full for an item stuck next to
+  it (`item_stuck_beside_moving_piston`).
+- **Piston push reactions** are a list by kind (`piston::push_reaction`),
+  not data. 26.3 calls breaking a block in a piston's way `POPPED`
+  (`DESTROY` before). When a block gets a kind, check its reaction in the
+  game (`BlockState.getPistonPushReaction`): torches, pressure plates and
+  moss carpet were pushed until `piston_pops_torches_and_plates`.
 - **Entity moves allocate nothing:** walks and collisions visit blocks
   through callbacks, and the lists they need are buffers kept on the
   level (`entity::Scratch`) or on the entity. A build of 576 items runs

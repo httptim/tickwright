@@ -254,3 +254,13 @@ discard_contents order
 dispenser_bucket_overflow order
 dispenser_powder_snow_vibrations order
 containers_spill order
+trapdoor_waterlogged_toggle order
+tripwire_item_falls_through order
+piston_push_minecart_two_pistons order
+piston_push_two_pistons_bubble_column order
+tnt_fast_walk_limit order
+bubble_column_fast_launch order
+doors_powered_among_entities order
+piston_push_item_no_physics order
+item_stuck_beside_moving_piston order
+piston_pops_torches_and_plates order
